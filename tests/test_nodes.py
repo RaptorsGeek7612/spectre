@@ -100,13 +100,13 @@ def test_model_attribute_used_for_pricing() -> None:
     assert update["usage"][0]["model"] == "claude-sonnet-5-5"
 
 
-def test_configured_model_used_when_no_name(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_default_model_used_when_no_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Env overrides only apply to models Spectre builds, not to injected ones."""
     monkeypatch.setenv("SPECTRE_WARDEN_MODEL", "claude-custom")
     model = fake("warden", make_ai("x"))
-    with pytest.warns(RuntimeWarning, match="claude-custom"):
-        update = make_warden_node(model)(STATE)  # type: ignore[arg-type]
-    assert update["usage"][0]["model"] == "claude-custom"
-    assert update["usage"][0]["cost_usd"] is None
+    update = make_warden_node(model)(STATE)  # type: ignore[arg-type]
+    assert update["usage"][0]["model"] == "claude-opus-5-5"
+    assert update["usage"][0]["cost_usd"] is not None
 
 
 @pytest.mark.parametrize(

@@ -11,7 +11,7 @@ from langchain_core.exceptions import ModelError
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
-from spectre.config import get_spec
+from spectre.config import DEFAULT_SPECS
 from spectre.costs import usage_from_message
 from spectre.errors import AgentRefusalError, EmptyOutputError, SpectreError
 from spectre.prompts import (
@@ -34,13 +34,13 @@ class NodeFn(Protocol):
 
 
 def _resolve_model_name(agent: str, model: BaseChatModel, model_name: str | None) -> str:
-    """Model ID used for pricing: explicit name, else `model.model`, else the configured one."""
+    """Model ID used for pricing: explicit name, else `model.model`, else the default one."""
     if model_name:
         return model_name
     attr = getattr(model, "model", None)
     if isinstance(attr, str) and attr:
         return attr
-    return get_spec(agent).model
+    return DEFAULT_SPECS[agent].model
 
 
 def _call_agent(

@@ -58,11 +58,11 @@ def build_graph(models: Mapping[str, BaseChatModel] | None = None) -> SpectreGra
         raise ValueError(f"agents inconnus : {', '.join(unknown)} (attendus : {AGENT_NAMES})")
 
     missing = [name for name in AGENT_NAMES if name not in provided]
+    resolved: dict[str, BaseChatModel] = dict(provided)
+    specs = {}
     if missing:
         load_env()  # before load_specs() so SPECTRE_* overrides in .env are honoured
-    specs = load_specs()
-    resolved: dict[str, BaseChatModel] = dict(provided)
-    if missing:
+        specs = load_specs()
         if not has_api_key():
             raise MissingAPIKeyError()
         settings = load_client_settings()

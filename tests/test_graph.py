@@ -115,6 +115,13 @@ def test_agent_error_stops_pipeline(fake_models: dict[str, RecordingFakeModel]) 
     assert fake_models["warden"].received == []
 
 
+def test_injected_models_ignore_environment_config(
+    fake_models: dict[str, RecordingFakeModel], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SPECTRE_SCOUT_MAX_TOKENS", "pas-un-nombre")
+    assert run("demande", models=fake_models).final_text == "FINAL"
+
+
 def test_unknown_agent_rejected(fake_models: dict[str, RecordingFakeModel]) -> None:
     models = {**fake_models, "ghost": fake("ghost", "x")}
     with pytest.raises(ValueError, match="ghost"):
