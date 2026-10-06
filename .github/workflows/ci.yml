@@ -6,6 +6,7 @@ on:
   pull_request:
 
 jobs:
+  # Solidity / Foundry part (Voting contract, Solidity 0.8.35).
   test:
     runs-on: ubuntu-latest
     steps:
@@ -29,8 +30,37 @@ jobs:
       - name: Coverage
         run: forge coverage --report lcov
 
+  # Python part (Spectre package). No ANTHROPIC_API_KEY: tests never hit the network.
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # setup-uv no longer publishes floating major tags (since v8): pin the
+      # immutable release by commit SHA. Dependabot keeps it up to date.
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type check
+        run: uv run mypy src
+
+      - name: Test (no network) with coverage gate
+        run: uv run pytest -m "not live" --cov=spectre --cov-report=lcov:lcov.info --cov-fail-under=90
+
   coverage-badge:
-    needs: test
+    needs: [test, python]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -44,36 +74,58 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
-      - name: Generate coverage report
-        run: forge coverage --report lcov
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
 
-      - name: Publish coverage badge
+      - name: Install Python dependencies
+        run: uv sync --frozen
+
+      - name: Generate Foundry coverage report
+        run: |
+          forge coverage --report lcov
+          mv lcov.info lcov-foundry.info
+
+      - name: Generate Python coverage report
+        run: uv run pytest -m "not live" --cov=spectre --cov-report=lcov:lcov-python.info
+
+      - name: Publish coverage badges
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LH=$(awk -F: '/^LH:/{s+=$2} END{print s+0}' lcov.info)
-          LF=$(awk -F: '/^LF:/{s+=$2} END{print s+0}' lcov.info)
-          read -r PCT COLOR <<< "$(awk -v h="$LH" -v f="$LF" 'BEGIN {
-            if (f == 0) { printf "0.0 red"; exit }
-            p = (h / f) * 100
-            c = "red"
-            if (p >= 90) c = "brightgreen"
-            else if (p >= 75) c = "yellow"
-            else if (p >= 50) c = "orange"
-            printf "%.1f %s", p, c
-          }')"
-          echo "{\"schemaVersion\":1,\"label\":\"coverage\",\"message\":\"${PCT}%\",\"color\":\"${COLOR}\"}" > /tmp/coverage.json
+          # make_badge <lcov file> <label> <output json>
+          make_badge() {
+            LH=$(awk -F: '/^LH:/{s+=$2} END{print s+0}' "$1")
+            LF=$(awk -F: '/^LF:/{s+=$2} END{print s+0}' "$1")
+            read -r PCT COLOR <<< "$(awk -v h="$LH" -v f="$LF" 'BEGIN {
+              if (f == 0) { printf "0.0 red"; exit }
+              p = (h / f) * 100
+              c = "red"
+              if (p >= 90) c = "brightgreen"
+              else if (p >= 75) c = "yellow"
+              else if (p >= 50) c = "orange"
+              printf "%.1f %s", p, c
+            }')"
+            echo "{\"schemaVersion\":1,\"label\":\"$2\",\"message\":\"${PCT}%\",\"color\":\"${COLOR}\"}" > "$3"
+            echo "$2: ${PCT}%"
+          }
+          make_badge lcov-foundry.info "coverage" /tmp/coverage.json
+          make_badge lcov-python.info "coverage (python)" /tmp/coverage-python.json
+          FOUNDRY_PCT=$(sed -E 's/.*"message":"([^"]*)".*/\1/' /tmp/coverage.json)
+          PYTHON_PCT=$(sed -E 's/.*"message":"([^"]*)".*/\1/' /tmp/coverage-python.json)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout --orphan badges-tmp
           git reset --hard
           cp /tmp/coverage.json coverage.json
-          git add coverage.json
-          git commit -m "Update coverage badge: ${PCT}%"
+          cp /tmp/coverage-python.json coverage-python.json
+          git add coverage.json coverage-python.json
+          git commit -m "Update coverage badges: Foundry ${FOUNDRY_PCT}, Python ${PYTHON_PCT}"
           git push origin HEAD:badges --force
 
   release:
-    needs: test
+    needs: [test, python]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:

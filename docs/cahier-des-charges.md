@@ -10,8 +10,9 @@ par **LangGraph**. Spectre transforme une demande en texte final validé, en
 répartissant le travail entre un modèle rapide, un modèle rédacteur et un modèle
 vérificateur.
 
-Le projet est bâti sur l'ossature du dépôt `template-foundry` (CI, releases,
-documentation de dépôt), dont la partie Solidity est retirée.
+Le projet est bâti sur le dépôt `template-foundry` (CI, releases, documentation
+de dépôt). Sa partie Solidity (contrat `Voting`, tests et script Foundry) est
+**conservée et mise à jour en Solidity 0.8.35** ; le pipeline Python vit à côté.
 
 ## 2. Périmètre
 
@@ -56,6 +57,7 @@ documentation de dépôt), dont la partie Solidity est retirée.
 | NF7 | Retries automatiques sur 429/5xx (`max_retries`), timeout configurable. |
 | NF8 | Le nom du produit est **Spectre** partout (code, docs, CLI) — jamais « claude agent ». |
 | NF9 | Compatible Windows, macOS, Linux. |
+| NF10 | Partie Foundry : `solc_version = "0.8.35"` et `pragma solidity ^0.8.35;` ; `forge fmt --check`, `forge build`, `forge test` passent. |
 
 ## 5. Contraintes
 
@@ -78,5 +80,5 @@ documentation de dépôt), dont la partie Solidity est retirée.
 - [ ] `uv run ruff format --check . && uv run ruff check . && uv run mypy src` passent.
 - [ ] Avec une clé valide, `uv run spectre "Explique la relativité restreinte simplement" --costs` affiche un texte final et un coût total.
 - [ ] `spectre --json` produit un JSON valide contenant `final_text` et `total_cost_usd`.
-- [ ] Plus aucun fichier Solidity/Foundry dans le dépôt.
-- [ ] La CI GitHub s'exécute sur Python.
+- [ ] Le contrat `Voting` compile en Solidity 0.8.35 et `forge test` passe.
+- [ ] La CI GitHub exécute à la fois les vérifications Foundry et Python.

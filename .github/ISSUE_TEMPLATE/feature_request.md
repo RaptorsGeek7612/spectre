@@ -1,14 +1,17 @@
 ---
-name: Feature request
-about: Suggest an idea for this template
+name: Demande de fonctionnalité
+about: Proposer une idée (Spectre ou contrat Voting)
 title: ""
 labels: enhancement
 ---
 
-## Problem
+## Problème
 
-<!-- What's missing or annoying? -->
+<!-- Qu'est-ce qui manque ou qui gêne ? -->
 
-## Proposed solution
+## Solution proposée
 
-## Alternatives considered
+<!-- Spectre : agent(s) concerné(s) (scout / scribe / warden / nouveau nœud), impact sur le coût.
+     Foundry : fonction(s) / phase(s) du workflow Voting concernées, impact sur le gas. -->
+
+## Alternatives envisagées

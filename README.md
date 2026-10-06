@@ -1,86 +1,214 @@
-# Voting (Foundry)
+# Spectre
 
-[![CI](https://github.com/RaptorsGeek7612/template-foundry/actions/workflows/ci.yml/badge.svg)](https://github.com/RaptorsGeek7612/template-foundry/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/RaptorsGeek7612/template-foundry)](https://github.com/RaptorsGeek7612/template-foundry/releases/latest)
+[![CI](https://github.com/RaptorsGeek7612/spectre/actions/workflows/ci.yml/badge.svg)](https://github.com/RaptorsGeek7612/spectre/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/RaptorsGeek7612/spectre)](https://github.com/RaptorsGeek7612/spectre/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/RaptorsGeek7612/template-foundry/badges/coverage.json)](https://github.com/RaptorsGeek7612/template-foundry/actions/workflows/ci.yml)
+[![Coverage (Foundry)](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/RaptorsGeek7612/spectre/badges/coverage.json)](https://github.com/RaptorsGeek7612/spectre/actions/workflows/ci.yml)
+[![Coverage (Python)](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/RaptorsGeek7612/spectre/badges/coverage-python.json)](https://github.com/RaptorsGeek7612/spectre/actions/workflows/ci.yml)
 
-A whitelisted on-chain voting system built with Foundry and OpenZeppelin's `Ownable`. This is the Foundry counterpart of a pair of framework-pure starter templates implementing the same `Voting` contract:
+**Spectre** est un orchestrateur multi-agents **100 % Claude**, écrit en Python avec
+[`langchain-anthropic`](https://python.langchain.com/docs/integrations/chat/anthropic/) et
+[LangGraph](https://langchain-ai.github.io/langgraph/). Une demande en texte libre traverse
+trois agents spécialisés — **Scout** cadre, **Scribe** rédige, **Warden** vérifie et corrige —
+et Spectre affiche le coût réel de chaque étape. Le modèle le plus cher n'intervient qu'une
+fois, en dernier, sur un texte déjà préparé.
 
-- Hardhat — https://github.com/RaptorsGeek7612/template-hardhat
-- Foundry (this repo) — https://github.com/RaptorsGeek7612/template-foundry
+Le dépôt est **hybride** : il conserve aussi, issu du template
+[`template-foundry`](https://github.com/RaptorsGeek7612/template-foundry), le contrat Solidity
+`Voting` (Foundry, Solidity 0.8.35) — voir [Contrat Solidity (Foundry)](#contrat-solidity-foundry).
 
-The `Voting` contract drives voters through a fixed workflow:
-
-1. `RegisteringVoters` — the owner whitelists voter addresses.
-2. `ProposalsRegistrationStarted` — whitelisted voters submit proposals.
-3. `ProposalsRegistrationEnded`
-4. `VotingSessionStarted` — whitelisted voters cast one vote each.
-5. `VotingSessionEnded`
-6. `VotesTallied` — the owner tallies votes; the most-voted proposal wins.
-
-Only the owner can advance the workflow and register voters; only registered voters can submit proposals, vote, or read voter/proposal data.
-
-## Project layout
+## Fonctionnement
 
 ```
-src/               Voting.sol
-test/              Foundry unit + fuzz tests (Voting.t.sol)
-script/            Deployment script (Voting.s.sol)
-lib/               Dependencies as git submodules (forge-std, openzeppelin-contracts)
-examples/          Walkthroughs and usage examples (see examples/README.md)
-foundry.toml
+            ┌────────────┐     ┌─────────────┐     ┌─────────────┐
+ demande ──▶│   Scout    │────▶│   Scribe    │────▶│   Warden    │──▶ texte final
+  (START)   │ Haiku 4.5  │brief│ Sonnet 5.5  │draft│  Opus 5.5   │     (END)
+            └────────────┘     └─────────────┘     └─────────────┘
+                  │                   │                   │
+                  └────────── usage (tokens + $) ─────────┘
 ```
 
-## Setup
+| Agent | Modèle | Rôle | Réglage | Prix entrée / sortie ($/MTok) |
+|---|---|---|---|---|
+| **Scout** (l'éclaireur) | `claude-haiku-4-5` | Extrait l'intention, le public, les contraintes et un plan | `temperature` 0.2, 1 024 tokens max | 1 / 5 |
+| **Scribe** (la plume) | `claude-sonnet-5-5` | Rédige le texte complet à partir de la demande et du brief | effort `medium`, 8 000 tokens max | 2 / 10 |
+| **Warden** (le gardien) | `claude-opus-5-5` | Vérifie exactitude, cohérence et style, renvoie la version corrigée | effort `high`, 8 000 tokens max | 4 / 20 |
+
+Sonnet 5.5 et Opus 5.5 n'acceptent pas de `temperature` : leur profondeur de raisonnement se
+règle par l'**effort**. Haiku 4.5, à l'inverse, accepte `temperature` mais pas l'effort.
+
+La v0.1 est un pipeline linéaire. La boucle de révision Warden → Scribe est prévue en v0.2
+(voir [docs/PDR-produit.md](docs/PDR-produit.md)).
+
+## Installation
+
+Prérequis : Python ≥ 3.11 et [uv](https://docs.astral.sh/uv/).
 
 ```shell
-git clone --recurse-submodules <this-repo>
-# or, if already cloned without --recurse-submodules:
-git submodule update --init --recursive
-
-forge install   # only needed if lib/ is empty
-cp .env.example .env   # fill in values to deploy to Sepolia
+git clone https://github.com/RaptorsGeek7612/spectre.git
+cd spectre
+uv sync                 # crée .venv et installe les dépendances (dev incluses)
+cp .env.example .env    # puis renseignez ANTHROPIC_API_KEY
 ```
 
-## Usage
+La clé est lue depuis l'environnement ou le fichier `.env` (ignoré par git). Ne la commitez jamais.
 
-### Build
+## Utilisation
+
+### Ligne de commande
+
+```shell
+uv run spectre "Explique la relativité restreinte en trois paragraphes simples"
+uv run spectre "Explique la relativité restreinte simplement" --costs   # + tableau des coûts (stderr)
+uv run spectre --file demande.txt                                      # demande lue depuis un fichier
+uv run spectre "Rédige un court article sur LangGraph" --json          # résultat complet en JSON (stdout)
+uv run spectre --version
+```
+
+Exemple de tableau `--costs` :
+
+```
+Agent    Modèle              Entrée  Sortie   Coût
+scout    claude-haiku-4-5       210     180   0.0011 $
+scribe   claude-sonnet-5-5      420    1350   0.0144 $
+warden   claude-opus-5-5       1600    1400   0.0344 $
+Total                                         0.0499 $
+```
+
+| Option | Effet |
+|---|---|
+| `request` (positionnel) | La demande |
+| `--file PATH` | Lit la demande depuis un fichier (exclusif avec le positionnel) |
+| `--costs` | Affiche le tableau des coûts sur stderr |
+| `--json` | Écrit le résultat (`brief`, `draft`, `final_text`, `usage`, `total_cost_usd`) en JSON sur stdout |
+| `--version` | Affiche la version |
+
+Codes de sortie : `0` succès, `1` erreur Spectre/API (dont clé absente), `2` erreur d'usage.
+
+### Bibliothèque
+
+```python
+from spectre import run
+
+result = run("Explique la relativité restreinte simplement")
+print(result.final_text)
+print(f"{result.total_cost_usd:.4f} $")
+for record in result.usage:
+    print(record["agent"], record["model"], record["input_tokens"], record["output_tokens"])
+```
+
+`build_graph(models=...)` permet d'injecter vos propres modèles de chat (par exemple des faux
+modèles LangChain) pour tester sans réseau. Voir [examples/README.md](examples/README.md).
+
+## Configuration
+
+Chaque agent (`SCOUT`, `SCRIBE`, `WARDEN`) est surchargeable par variable d'environnement
+(ou dans `.env`) :
+
+| Variable | Effet | Exemple |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Clé API Anthropic (obligatoire pour un vrai run) | `sk-ant-...` |
+| `SPECTRE_<AGENT>_MODEL` | ID du modèle | `SPECTRE_SCRIBE_MODEL=claude-opus-5-5` |
+| `SPECTRE_<AGENT>_MAX_TOKENS` | Limite de tokens en sortie | `SPECTRE_WARDEN_MAX_TOKENS=4000` |
+| `SPECTRE_<AGENT>_EFFORT` | Effort (`low`, `medium`, `high`, `xhigh`, `max`) — Sonnet/Opus uniquement | `SPECTRE_WARDEN_EFFORT=max` |
+
+Un modèle absent de la table de prix donne un coût `None` (avec un avertissement), sans faire
+échouer le run.
+
+## Développement
+
+```shell
+uv sync
+uv run ruff format .                         # formate
+uv run ruff format --check . ; uv run ruff check .
+uv run mypy src                              # mypy --strict
+uv run pytest -m "not live" --cov=spectre --cov-report=term-missing
+```
+
+Les tests par défaut n'effectuent **aucun appel réseau** (faux modèles LangChain). Les tests
+qui appellent réellement l'API sont marqués `@pytest.mark.live` et s'exécutent explicitement
+avec `uv run pytest -m live` (clé requise, facturé).
+
+La CI GitHub Actions comporte deux jobs de test :
+- `test` (Foundry) : `forge fmt --check`, `forge build --sizes`, `forge test -vvv`, `forge coverage` ;
+- `python` (Spectre) : `ruff format --check`, `ruff check`, `mypy src`, `pytest` (couverture ≥ 90 %).
+
+Elle publie ensuite les deux badges de couverture (`coverage.json` pour Foundry,
+`coverage-python.json` pour Python) sur la branche `badges`, et crée automatiquement un tag et
+une release quand `CHANGELOG.md` gagne une nouvelle version.
+
+### Arborescence
+
+```
+src/spectre/      Package Spectre (config, llm, prompts, state, costs, nodes, graph, errors, cli)
+tests/            Tests pytest, sans réseau
+src/Voting.sol    Contrat Solidity (Foundry)
+test/             Tests Foundry unitaires + fuzz (Voting.t.sol)
+script/           Script de déploiement (Voting.s.sol)
+lib/              Dépendances Foundry en submodules (forge-std, openzeppelin-contracts)
+docs/             Cahier des charges, PDR produit, PDR architecture, brainstorming
+examples/         Exemples d'utilisation (Spectre et Foundry)
+.claude/skills/   Skills des agents de développement (spectre-*)
+pyproject.toml    Métadonnées Python, dépendances, configuration ruff / mypy / pytest
+foundry.toml      Configuration Foundry (solc 0.8.35)
+```
+
+## Contrat Solidity (Foundry)
+
+Un système de vote on-chain avec liste blanche, construit avec Foundry et le module `Ownable`
+d'OpenZeppelin, compilé en **Solidity 0.8.35** (`solc_version` dans `foundry.toml`,
+`pragma solidity ^0.8.35;`).
+
+Le contrat `Voting` fait passer les votants par un workflow fixe :
+
+1. `RegisteringVoters` — le propriétaire inscrit les adresses des votants.
+2. `ProposalsRegistrationStarted` — les votants inscrits soumettent des propositions.
+3. `ProposalsRegistrationEnded`
+4. `VotingSessionStarted` — chaque votant inscrit vote une fois.
+5. `VotingSessionEnded`
+6. `VotesTallied` — le propriétaire dépouille ; la proposition la plus votée gagne.
+
+Seul le propriétaire fait avancer le workflow et inscrit les votants ; seuls les votants inscrits
+peuvent proposer, voter ou lire les données de votants et de propositions.
+
+### Installation
+
+Prérequis : [Foundry](https://book.getfoundry.sh/getting-started/installation).
+
+```shell
+git clone --recurse-submodules https://github.com/RaptorsGeek7612/spectre.git
+# ou, si le dépôt a été cloné sans --recurse-submodules :
+git submodule update --init --recursive
+
+forge install   # seulement si lib/ est vide
+cp .env.example .env   # renseignez les variables Sepolia pour déployer
+```
+
+### Build, tests, formatage
 
 ```shell
 forge build
-```
-
-### Test
-
-Runs the full Solidity test suite, including the fuzz test:
-
-```shell
 forge test
-forge test -vvv          # verbose traces on failure
+forge test -vvv          # traces détaillées en cas d'échec
 forge test --match-test testFuzz_AddProposalIncrementsProposalCount
-```
-
-### Format & static checks
-
-```shell
 forge fmt --check
 ```
 
-### Local deployment (Anvil)
+### Déploiement local (Anvil)
 
 ```shell
-anvil                                                        # in one terminal
+anvil                                                        # dans un terminal
 forge script script/Voting.s.sol --rpc-url http://127.0.0.1:8545 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
   --broadcast
 ```
 
-(That private key is Anvil's well-known default test account #0 — never reuse it for anything real.)
+(Cette clé privée est celle du compte de test n° 0 bien connu d'Anvil — ne la réutilisez
+jamais pour quoi que ce soit de réel.)
 
-### Deploying to Sepolia
+### Déploiement sur Sepolia
 
-Foundry does not read `.env` automatically — export it first:
+Foundry ne lit pas `.env` automatiquement — exportez-le d'abord :
 
 ```shell
 set -a && source .env && set +a
@@ -92,31 +220,37 @@ forge script script/Voting.s.sol \
   --verify
 ```
 
-Prefer not to keep a raw private key in `.env`? Use Foundry's encrypted keystore instead:
+Pour éviter de garder une clé privée brute dans `.env`, utilisez le keystore chiffré de Foundry :
 
 ```shell
 cast wallet import deployer --interactive
 forge script script/Voting.s.sol --rpc-url sepolia --account deployer --broadcast --verify
 ```
 
-See [examples/README.md](examples/README.md#to-sepolia) for a full worked example, including expected output.
+Voir [examples/README.md](examples/README.md#to-sepolia) pour un exemple complet avec la
+sortie attendue.
 
-### Interacting with a deployed contract
+### Interagir avec un contrat déployé
 
 ```shell
 cast send <VOTING_ADDRESS> "addVoter(address)" <VOTER_ADDRESS> --rpc-url sepolia --account deployer
 cast call <VOTING_ADDRESS> "workflowStatus()(uint8)" --rpc-url sepolia
 ```
 
-## Docs
+## Documentation
 
+- [Cahier des charges](docs/cahier-des-charges.md)
+- [PDR produit](docs/PDR-produit.md)
+- [PDR architecture](docs/PDR-architecture.md)
+- [Brainstorming](docs/brainstorming.md)
 - Foundry Book — https://book.getfoundry.sh/
 - OpenZeppelin Contracts — https://docs.openzeppelin.com/contracts/5.x/
 
-## Contributing
+## Contribuer
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Voir [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) et
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
-## License
+## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT — voir [LICENSE](LICENSE).

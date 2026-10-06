@@ -1,38 +1,31 @@
 ---
 name: spectre-devops
-description: Convert the template-foundry repo scaffolding into Spectre's Python repo — remove Solidity/Foundry files and submodules, adapt GitHub Actions CI (uv, ruff, mypy, pytest, coverage badge, changelog-driven release), README, CHANGELOG, contributing docs, .env.example, .gitignore, CLAUDE.md. Use for Spectre repo infrastructure work.
+description: Maintain Spectre's hybrid repo infrastructure — Foundry part (Solidity 0.8.35 Voting contract, forge CI) kept from template-foundry alongside the Python package — GitHub Actions CI (forge job + uv/ruff/mypy/pytest job, coverage badges, changelog-driven release), README, CHANGELOG, contributing docs, .env.example, .gitignore, CLAUDE.md. Use for Spectre repo infrastructure work.
 ---
 
 # Spectre — DevOps
 
-Charge d'abord `spectre-conventions`, puis lis `docs/brainstorming.md` §4 et `docs/PDR-architecture.md` §11.
+Charge d'abord `spectre-conventions`, puis lis `docs/brainstorming.md` §4 et `docs/PDR-architecture.md` §3 et §11.
 
-## Mission
-Le dépôt vient de `RaptorsGeek7612/template-foundry` (Solidity). Garder son **ossature** (CI, release auto par CHANGELOG, badge de couverture auto-hébergé, templates GitHub), retirer tout Solidity, passer en Python.
+## Principe
+Le dépôt vient de `RaptorsGeek7612/template-foundry`. **La partie Foundry est conservée** (Solidity 0.8.35) et le pipeline Python Spectre vit à côté. Ne supprime jamais `src/Voting.sol`, `test/`, `script/`, `lib/`, `foundry.toml`, `foundry.lock`, `remappings.txt`, `.gitmodules`.
 
-## 1. Nettoyage
-- Supprimer : `src/Voting.sol`, `test/`, `script/`, `foundry.toml`, `foundry.lock`, `remappings.txt`, `.gitmodules`.
-- Submodules `lib/forge-std`, `lib/openzeppelin-contracts` : `git rm` puis supprimer `lib/` et `.git/modules/lib` s'il existe. Ne touche **pas** à `src/spectre/` (builder).
-- `.gitattributes` : retirer la règle `foundry.lock`, garder la normalisation LF, ajouter `uv.lock linguist-generated=true`.
+## CI `.github/workflows/ci.yml` (branche `master`)
+- `test` (Foundry) : checkout avec `submodules: recursive` → `foundry-rs/foundry-toolchain@v1` → `forge fmt --check` → `forge build --sizes` → `forge test -vvv` → `forge coverage --report lcov`.
+- `python` : checkout → `astral-sh/setup-uv` (épinglé par SHA, pas de tag majeur depuis v8) → `uv sync --frozen` → `uv run ruff format --check .` → `uv run ruff check .` → `uv run mypy src` → `uv run pytest -m "not live" --cov=spectre --cov-report=lcov:lcov.info --cov-fail-under=90`.
+- `coverage-badge` : badge Foundry `coverage.json` conservé (même calcul awk) + badge Python `coverage-python.json` calculé pareil, les deux publiés sur la branche orpheline `badges` en un seul commit.
+- `release` : `needs: [test, python]`, logique CHANGELOG inchangée. Jamais de `ANTHROPIC_API_KEY` en CI.
+- Dependabot : `github-actions` + `uv` sur `/`. Pas `gitsubmodule` (voir commentaire historique, à conserver).
 
-## 2. CI `.github/workflows/ci.yml`
-Garder les 3 jobs et leur logique (`test`, `coverage-badge`, `release`), branche `master`.
-- `test` : checkout → `astral-sh/setup-uv` (vérifier la dernière version majeure) → `uv sync --frozen` → `uv run ruff format --check .` → `uv run ruff check .` → `uv run mypy src` → `uv run pytest -m "not live" --cov=spectre --cov-report=lcov:lcov.info --cov-fail-under=90`.
-- `coverage-badge` : mêmes étapes d'installation, génère `lcov.info` avec pytest, **réutilise tel quel** le calcul awk + push sur `badges`.
-- `release` : inchangé. Pas de `ANTHROPIC_API_KEY` en CI.
-- Dependabot : garder `github-actions`, ajouter l'écosystème `uv` (vérifier qu'il est supporté ; sinon `pip`) sur `/`.
-
-## 3. Documentation dépôt
-- `README.md` : Spectre (badges repointés vers `RaptorsGeek7612/spectre` — hypothèse de nom à signaler), pitch, schéma Scout→Scribe→Warden, tableau modèles/prix, installation (`uv sync`, `.env`), usage CLI et bibliothèque, configuration `SPECTRE_*`, développement, liens vers `docs/`. En français.
-- `CHANGELOG.md` : repartir à zéro (Keep a Changelog), `## [Unreleased]` vide puis `## [0.1.0] - 2026-10-06` décrivant le MVP et la conversion depuis le template.
-- `CONTRIBUTING.md`, `.github/pull_request_template.md`, issue templates : commandes Python au lieu de `forge`.
-- `SECURITY.md` : clé API Anthropic, fuite de secrets, injection de prompt.
-- `.env.example` : `ANTHROPIC_API_KEY=sk-ant-...` + surcharges `SPECTRE_*` commentées (noms exacts dans `docs/PDR-architecture.md` §4).
-- `.gitignore` : `.venv/`, `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.coverage`, `lcov.info`, `htmlcov/`, `dist/` ; garder `.env` ignoré et `!.env.example`.
-- `examples/README.md` : exemples Spectre (CLI, bibliothèque, faux modèles).
-- `CLAUDE.md` à la racine : courte fiche projet pointant vers `docs/` et les skills `.claude/skills/spectre-*`.
+## Documentation dépôt
+- `README.md` : Spectre d'abord (pipeline, modèles/prix, installation, CLI, bibliothèque, config `SPECTRE_*`, dev), puis une section **« Contrat Solidity (Foundry) »** qui reprend l'essentiel de l'ancien README (workflow Voting, build/test, Anvil, Sepolia, keystore, cast) avec Solidity 0.8.35. Badges : CI, release, licence, couverture Foundry et Python.
+- `CONTRIBUTING.md`, `.github/pull_request_template.md`, issue templates : checklist Python **et** Foundry.
+- `examples/README.md` : exemples Spectre (CLI, bibliothèque, faux modèles) + exemples Foundry d'origine.
+- `CHANGELOG.md` : Keep a Changelog ; l'entrée 0.1.0 mentionne le passage à Solidity 0.8.35.
+- `.env.example` : variables Sepolia **et** Anthropic.
+- `CLAUDE.md` : fiche projet, mentionne la partie Foundry.
 
 ## Vérification
-- `git status` : plus aucun `.sol`, ni `foundry*`, ni `lib/`.
-- Valider le YAML (parser Python si disponible, sinon relecture attentive).
-- Rapport : fichiers supprimés/modifiés, hypothèses, points à valider par l'humain.
+- Parser les YAML (PyYAML via `uv run --with pyyaml python -c ...`).
+- `git status` : aucun fichier Foundry supprimé.
+- Rapport : fichiers modifiés, hypothèses, points à valider par l'humain.

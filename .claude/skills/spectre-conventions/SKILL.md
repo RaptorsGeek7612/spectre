@@ -12,6 +12,9 @@ Spectre est un orchestrateur multi-agents **100 % Claude** : Scout (Haiku 4.5) �
 - `docs/PDR-architecture.md` — arborescence, signatures, état, erreurs, tests, CI. **Le respecter** ; tout écart doit être justifié dans ton rapport.
 - `docs/PDR-produit.md` — périmètre par version (v0.1 = linéaire, PAS de boucle de révision).
 
+## Dépôt hybride
+Le dépôt garde la partie **Foundry** du template d'origine (contrat `src/Voting.sol`, `test/Voting.t.sol`, `script/Voting.s.sol`, submodules `lib/`, `foundry.toml`) en **Solidity 0.8.35** (`solc_version = "0.8.35"`, `pragma solidity ^0.8.35;`). **Ne jamais supprimer ces fichiers.** Commandes : `forge fmt --check`, `forge build`, `forge test` (forge n'est pas installé localement ; la CI les exécute).
+
 ## Règles non négociables
 1. Le produit s'appelle **Spectre**. Jamais « claude agent » dans le code, la CLI ou les docs.
 2. IDs de modèles exacts, sans suffixe de date : `claude-haiku-4-5`, `claude-sonnet-5-5`, `claude-opus-5-5`. Ils n'apparaissent **que** dans `src/spectre/config.py` (les tests et docs peuvent les citer).

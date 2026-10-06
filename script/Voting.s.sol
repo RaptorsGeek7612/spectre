@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.35;
 
 import {Script, console} from "forge-std/Script.sol";
 import {Voting} from "../src/Voting.sol";

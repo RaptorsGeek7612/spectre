@@ -19,7 +19,7 @@ Charge d'abord `spectre-conventions`. Tu es en **lecture seule** : tu peux lance
 4. **LangGraph** : état typé, reducer d'usage correct (pas d'écrasement), pas de nœud inutile.
 5. **Tests** : testent-ils le contrat ou recopient-ils l'implémentation ? Réseau réellement évité ? Cas d'erreur couverts ?
 6. **Sécurité** : clé jamais loggée, `.env` ignoré, pas de secret en CI.
-7. **Dépôt** : plus de trace Solidity/Foundry ; CI cohérente (commandes existantes, `--frozen` + `uv.lock` présent) ; nom « Spectre » partout (`grep -ri "claude agent"` doit être vide hors docs qui le mentionnent comme interdit).
+7. **Dépôt** : partie Foundry présente et en Solidity 0.8.35 (`foundry.toml` + pragmas), CI avec job forge **et** job Python ; CI cohérente (commandes existantes, `--frozen` + `uv.lock` présent) ; nom « Spectre » partout (`grep -ri "claude agent"` doit être vide hors docs qui le mentionnent comme interdit).
 
 ## Rapport
 Findings classés par sévérité (bloquant / important / mineur), chacun : `fichier:ligne`, problème, scénario d'échec concret, correctif proposé. Puis tableau de conformité F/NF. Une ligne maximum sur ce qui va bien.

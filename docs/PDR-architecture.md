@@ -46,19 +46,28 @@ Spectre/
 ├── docs/
 ├── .claude/skills/      # Skills des agents de développement
 ├── pyproject.toml
-└── .env.example
+├── .env.example
+│   # --- Partie Foundry conservée du template (Solidity 0.8.35) ---
+├── src/Voting.sol       # contrat (pragma ^0.8.35)
+├── test/Voting.t.sol    # tests forge
+├── script/Voting.s.sol  # déploiement
+├── lib/                 # submodules forge-std, openzeppelin-contracts
+└── foundry.toml         # solc_version = "0.8.35", evm_version = "cancun"
 ```
+
+Note : `src/` contient à la fois le package Python `src/spectre/` et `src/Voting.sol`.
+Hatchling ne package que `src/spectre` ; `forge` ne compile que les `.sol`.
 
 ## 4. Registre des modèles (`config.py`)
 
 ```python
 @dataclass(frozen=True)
 class AgentSpec:
-    name: str                 # "scout" | "scribe" | "warden"
-    model: str                # ID exact, sans suffixe de date
+    name: str  # "scout" | "scribe" | "warden"
+    model: str  # ID exact, sans suffixe de date
     max_tokens: int
-    temperature: float | None # None = ne pas envoyer
-    effort: str | None        # "low"|"medium"|"high"|"xhigh"|"max" ; None = ne pas envoyer
+    temperature: float | None  # None = ne pas envoyer
+    effort: str | None  # "low"|"medium"|"high"|"xhigh"|"max" ; None = ne pas envoyer
 ```
 
 | Agent | `model` | `max_tokens` | `temperature` | `effort` | Prix in / out ($/MTok) |
@@ -90,12 +99,13 @@ class UsageRecord(TypedDict):
     output_tokens: int
     cost_usd: float | None
 
+
 class SpectreState(TypedDict, total=False):
-    request: str                                        # entrée
-    brief: str                                          # sortie Scout
-    draft: str                                          # sortie Scribe
-    final_text: str                                     # sortie Warden
-    usage: Annotated[list[UsageRecord], operator.add]   # reducer additif
+    request: str  # entrée
+    brief: str  # sortie Scout
+    draft: str  # sortie Scribe
+    final_text: str  # sortie Warden
+    usage: Annotated[list[UsageRecord], operator.add]  # reducer additif
 ```
 
 ## 6. Nœuds (`nodes.py`)
@@ -170,11 +180,13 @@ Sortie forcée en UTF-8 (Windows).
 
 ## 11. CI (adaptée du template)
 
-Jobs conservés : `test` → `coverage-badge` (branche `badges`) → `release` (tag + release
-GitHub quand `CHANGELOG.md` gagne une version). Étapes Python : `astral-sh/setup-uv`,
-`uv sync --frozen`, `ruff format --check`, `ruff check`, `mypy src`,
-`pytest --cov=spectre --cov-report=lcov:lcov.info --cov-fail-under=90`.
-Le calcul du badge (awk sur `lcov.info`) reste identique.
+Jobs :
+- `test` (Foundry, **inchangé**) : `forge fmt --check`, `forge build --sizes`, `forge test -vvv`, `forge coverage`.
+- `python` (nouveau) : `astral-sh/setup-uv`, `uv sync --frozen`, `ruff format --check`,
+  `ruff check`, `mypy src`, `pytest -m "not live" --cov=spectre --cov-fail-under=90`.
+- `coverage-badge` : badge Foundry conservé tel quel (branche `badges`, `coverage.json`) ;
+  ajout d'un second badge `coverage-python.json` calculé de la même façon depuis le `lcov.info` de pytest.
+- `release` : dépend de `test` **et** `python` ; logique CHANGELOG inchangée.
 
 ## 12. Évolution v0.2 (prévue)
 

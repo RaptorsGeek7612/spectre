@@ -59,23 +59,24 @@ là où il apporte de la valeur.
 
 ### Écarté
 - Mélanger d'autres fournisseurs (OpenAI, etc.) — hors périmètre : Spectre est 100 % Claude.
-- Garder le contrat Solidity du template — sans rapport avec le produit.
 
 ## 4. Le template Foundry
 
 `RaptorsGeek7612/template-foundry` est un template **Solidity** (contrat `Voting`).
-On n'en garde pas le code, mais on garde l'**ossature de dépôt**, qui est de bonne
-qualité :
+**Décision (2026-10-06) : la partie Foundry est conservée** et mise à jour en
+**Solidity 0.8.35** ; le pipeline Python Spectre vit à côté, dans le même dépôt,
+sans lien fonctionnel entre les deux pour l'instant.
 
 | Élément du template | Devenir dans Spectre |
 |---|---|
-| `src/Voting.sol`, `test/`, `script/`, `lib/` (submodules), `foundry.toml`, `foundry.lock`, `remappings.txt` | Supprimés → remplacés par `src/spectre/`, `tests/`, `pyproject.toml` |
-| CI `fmt → build → test → coverage` | Même logique en Python : `ruff format --check`, `ruff check`, `mypy`, `pytest --cov` |
+| `src/Voting.sol`, `test/`, `script/`, `lib/` (submodules), `foundry.toml`, `foundry.lock`, `remappings.txt` | **Conservés**, `solc_version` et pragmas passés de 0.8.28 à **0.8.35** |
+| Code Python | Ajouté : `src/spectre/`, `tests/`, `pyproject.toml` |
+| CI `fmt → build → test → coverage` | Conservée pour Foundry **+** job Python : `ruff format --check`, `ruff check`, `mypy`, `pytest --cov` |
 | Badge de couverture auto-hébergé (branche `badges`) | Conservé, alimenté par `coverage.py` |
 | Release auto quand le `CHANGELOG.md` gagne une version | Conservé tel quel |
 | Templates issue/PR, `CONTRIBUTING`, `SECURITY`, `CODE_OF_CONDUCT`, `LICENSE` MIT | Conservés, adaptés à Python/Spectre |
 | Dependabot `github-actions` | Conservé + écosystème `pip` (uv) |
-| `.env.example` (clés Sepolia) | Remplacé par `ANTHROPIC_API_KEY` + surcharges de modèles |
+| `.env.example` (clés Sepolia) | Conservé + `ANTHROPIC_API_KEY` et surcharges de modèles |
 
 ## 5. Risques identifiés
 
