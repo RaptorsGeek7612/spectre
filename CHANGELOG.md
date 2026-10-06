@@ -7,6 +7,24 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+
+- Repli côté serveur en cas de refus de Sonnet 5.5 ou d'Opus 5.5 (`fallbacks: "default"`),
+  désactivable avec `SPECTRE_FALLBACKS=0`. `usage` enregistre le modèle qui a réellement
+  répondu, et le coût est calculé à son tarif (prix ajoutés pour Opus 4.8, Opus 5, Sonnet 5).
+- Champ `truncated` dans chaque ligne de `usage`, à `true` si la limite `max_tokens` est atteinte.
+- La CLI renvoie le code `130` avec le message « Interrompu. » sur Ctrl+C, au lieu d'une trace.
+
+### Fixed
+
+- Les tests hors ligne ignorent toutes les variables `ANTHROPIC_*` du shell
+  (`ANTHROPIC_WORKSPACE_ID` faisait échouer un test).
+- `SPECTRE_TIMEOUT` et `SPECTRE_MAX_RETRIES` sont documentés dans le README et `.env.example`.
+
+### Security
+
+- Actions GitHub de la CI épinglées par SHA de commit.
+
 ## [0.1.0] - 2026-10-06
 
 Première version de **Spectre**, construite sur le dépôt
