@@ -66,6 +66,7 @@ Total                                         0.0499 $
 
 | Jalon | Contenu | Sortie |
 |---|---|---|
-| v0.1.0 | MVP linéaire, coûts, CLI, CI | Ce sprint |
+| v0.1.0 | MVP linéaire, coûts, CLI, CI | Livré le 2026-10-06 |
+| v0.1.1 | Repli en cas de refus, signalement des troncatures, corrections d'audit | Livré le 2026-10-07 |
 | v0.2.0 | Boucle de révision, verdict structuré, streaming | Sprint suivant |
 | v0.3.0 | Nœuds extensibles, batch, caching, évaluation | Ultérieur |

@@ -7,6 +7,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-07
+
 ### Added
 
 - Repli côté serveur en cas de refus de Sonnet 5.5 ou d'Opus 5.5 (`fallbacks: "default"`),
@@ -20,6 +22,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 - Les tests hors ligne ignorent toutes les variables `ANTHROPIC_*` du shell
   (`ANTHROPIC_WORKSPACE_ID` faisait échouer un test).
 - `SPECTRE_TIMEOUT` et `SPECTRE_MAX_RETRIES` sont documentés dans le README et `.env.example`.
+- Scout ne termine plus son brief par une question à l'utilisateur : le brief part directement
+  au rédacteur (constaté lors d'un essai réel).
 
 ### Security
 

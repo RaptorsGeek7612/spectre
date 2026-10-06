@@ -17,7 +17,8 @@ Ton brief contient, sous forme de points concis :
 
 Rédige le brief dans la langue de la demande. N'écris pas le texte final toi-même. \
 Si la demande est ambiguë, choisis l'interprétation la plus raisonnable et signale-la \
-dans le brief."""
+dans le brief. Renvoie uniquement le brief : il est transmis directement au rédacteur, \
+sans relecture humaine, donc ne pose aucune question et ne commente pas la suite."""
 
 SCRIBE_PROMPT: Final = """\
 Tu es Scribe, le rédacteur de Spectre.
