@@ -135,6 +135,19 @@ def test_spectre_error_exit_1(
     assert err.startswith("Erreur : [warden]")
 
 
+def test_ctrl_c_exit_130(
+    api_key: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def interrupted_run(request: str) -> SpectreResult:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "run", interrupted_run)
+    assert cli.main(["demande"]) == cli.EXIT_INTERRUPTED == 130
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err.strip() == "Interrompu."
+
+
 def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as excinfo:
         cli.main(["--version"])

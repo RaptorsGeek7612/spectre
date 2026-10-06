@@ -187,6 +187,14 @@ def test_client_settings_overrides() -> None:
 
 
 @pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("0", False), ("false", False), (" OFF ", False), ("1", True), ("true", True), ("on", True)],
+)
+def test_client_settings_fallbacks(raw: str, expected: bool) -> None:
+    assert load_client_settings(env={"SPECTRE_FALLBACKS": raw}).fallbacks is expected
+
+
+@pytest.mark.parametrize(
     ("env", "var"),
     [
         ({"SPECTRE_MAX_RETRIES": "two"}, "SPECTRE_MAX_RETRIES"),
@@ -194,6 +202,7 @@ def test_client_settings_overrides() -> None:
         ({"SPECTRE_TIMEOUT": "soon"}, "SPECTRE_TIMEOUT"),
         ({"SPECTRE_TIMEOUT": "0"}, "SPECTRE_TIMEOUT"),
         ({"SPECTRE_TIMEOUT": "-5"}, "SPECTRE_TIMEOUT"),
+        ({"SPECTRE_FALLBACKS": "peut-être"}, "SPECTRE_FALLBACKS"),
     ],
 )
 def test_client_settings_invalid(env: dict[str, str], var: str) -> None:

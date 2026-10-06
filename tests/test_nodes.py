@@ -41,6 +41,7 @@ def test_scout_sends_system_and_request() -> None:
             "input_tokens": 1000,
             "output_tokens": 200,
             "cost_usd": pytest.approx(0.002),
+            "truncated": False,
         }
     ]
     assert set(update) == {"brief", "usage"}
@@ -160,6 +161,7 @@ def test_max_tokens_warns_but_continues(caplog: pytest.LogCaptureFixture) -> Non
     with caplog.at_level(logging.WARNING, logger="spectre"):
         update = make_scribe_node(model)(STATE)  # type: ignore[arg-type]
     assert update["draft"] == "texte tronqué"
+    assert update["usage"][0]["truncated"] is True
     assert any(
         "max_tokens" in r.getMessage() and "scribe" in r.getMessage() for r in caplog.records
     )
@@ -208,3 +210,27 @@ def test_other_exceptions_propagate() -> None:
     model = RaisingFakeModel(exc=KeyError("bug"))
     with pytest.raises(KeyError):
         make_scout_node(model, "m")(STATE)  # type: ignore[arg-type]
+
+
+def test_fallback_model_is_recorded_and_priced(caplog: pytest.LogCaptureFixture) -> None:
+    ai = make_ai("corrigé", input_tokens=1_000_000, output_tokens=0)
+    ai.response_metadata["model_name"] = "claude-opus-4-8"
+    model = fake("warden", ai)
+    with caplog.at_level(logging.WARNING, logger="spectre"):
+        update = make_warden_node(model, "claude-opus-5-5")(STATE)  # type: ignore[arg-type]
+    assert update["final_text"] == "corrigé"
+    (record,) = update["usage"]
+    assert record["model"] == "claude-opus-4-8"
+    assert record["cost_usd"] == 5.0  # Opus 4.8 input price, not Opus 5.5's
+    assert any(
+        "repli" in r.getMessage() and "claude-opus-4-8" in r.getMessage() for r in caplog.records
+    )
+
+
+def test_same_served_model_does_not_warn(caplog: pytest.LogCaptureFixture) -> None:
+    ai = make_ai("ok")
+    ai.response_metadata["model_name"] = "claude-opus-5-5"
+    with caplog.at_level(logging.WARNING, logger="spectre"):
+        update = make_warden_node(fake("warden", ai), "claude-opus-5-5")(STATE)  # type: ignore[arg-type]
+    assert update["usage"][0]["model"] == "claude-opus-5-5"
+    assert not caplog.records

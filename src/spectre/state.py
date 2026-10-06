@@ -7,13 +7,18 @@ from typing import Annotated, TypedDict
 
 
 class UsageRecord(TypedDict):
-    """Token usage and cost of one agent call."""
+    """Token usage and cost of one agent call.
+
+    `model` is the model that actually answered (a fallback model after a refusal);
+    `truncated` is True when the answer stopped at `max_tokens`.
+    """
 
     agent: str
     model: str
     input_tokens: int
     output_tokens: int
     cost_usd: float | None
+    truncated: bool
 
 
 class SpectreState(TypedDict, total=False):

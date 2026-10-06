@@ -19,6 +19,7 @@ from spectre.graph import run
 EXIT_OK = 0
 EXIT_ERROR = 1
 EXIT_USAGE = 2
+EXIT_INTERRUPTED = 130  # 128 + SIGINT, the shell convention for Ctrl+C
 
 
 def _force_utf8() -> None:
@@ -68,7 +69,7 @@ def _read_request(parser: argparse.ArgumentParser, args: argparse.Namespace) -> 
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the CLI and return the process exit code (0 ok, 1 Spectre/API error, 2 usage)."""
+    """Run the CLI and return the exit code (0 ok, 1 Spectre/API error, 2 usage, 130 Ctrl+C)."""
     _force_utf8()
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -87,6 +88,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except SpectreError as exc:
         print(f"Erreur : {exc}", file=sys.stderr)
         return EXIT_ERROR
+    except KeyboardInterrupt:
+        print("Interrompu.", file=sys.stderr)
+        return EXIT_INTERRUPTED
 
     if args.json:
         print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))

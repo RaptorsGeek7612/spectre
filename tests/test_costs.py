@@ -10,7 +10,9 @@ from tests.conftest import make_ai
 
 
 def _rec(agent: str, model: str, i: int, o: int, cost: float | None) -> UsageRecord:
-    return UsageRecord(agent=agent, model=model, input_tokens=i, output_tokens=o, cost_usd=cost)
+    return UsageRecord(
+        agent=agent, model=model, input_tokens=i, output_tokens=o, cost_usd=cost, truncated=False
+    )
 
 
 @pytest.mark.parametrize(
@@ -45,6 +47,7 @@ def test_usage_from_message() -> None:
         "input_tokens": 2000,
         "output_tokens": 3000,
         "cost_usd": pytest.approx(0.034),
+        "truncated": False,
     }
 
 
@@ -95,3 +98,14 @@ def test_format_cost_table() -> None:
 def test_format_cost_table_empty() -> None:
     table = format_cost_table([])
     assert table.splitlines()[-1].split() == ["Total", "0", "0", "n/d"]
+
+
+def test_usage_from_message_truncated() -> None:
+    record = usage_from_message("warden", "claude-opus-5-5", make_ai("x"), truncated=True)
+    assert record["truncated"] is True
+
+
+def test_compute_cost_fallback_models_are_priced() -> None:
+    assert compute_cost("claude-opus-4-8", 1_000_000, 1_000_000) == 30.0
+    assert compute_cost("claude-opus-5", 1_000_000, 1_000_000) == 30.0
+    assert compute_cost("claude-sonnet-5", 1_000_000, 1_000_000) == 12.0

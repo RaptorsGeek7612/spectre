@@ -89,13 +89,13 @@ def fake(name: str, *replies: AIMessage | str, **kwargs: Any) -> RecordingFakeMo
 def isolated_env(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
 ) -> Iterator[None]:
-    """Remove ANTHROPIC_API_KEY / SPECTRE_* and neutralise `.env` loading.
+    """Remove ANTHROPIC_* / SPECTRE_* and neutralise `.env` loading.
 
     Live tests keep the real environment.
     """
     if request.node.get_closest_marker("live") is None:
         for var in list(os.environ):
-            if var == "ANTHROPIC_API_KEY" or var.startswith("SPECTRE_"):
+            if var.startswith(("ANTHROPIC_", "SPECTRE_")):
                 monkeypatch.delenv(var, raising=False)
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr("spectre.graph.load_env", lambda: None)
