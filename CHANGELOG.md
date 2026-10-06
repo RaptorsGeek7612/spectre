@@ -1,84 +1,51 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+Toutes les évolutions notables de ce projet sont documentées dans ce fichier.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet adhère au
+[versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Unreleased]
 
-## [0.1.8] - 2026-09-16
+## [0.1.0] - 2026-10-06
 
-### Fixed
+Première version de **Spectre**, construite sur le dépôt
+[`template-foundry`](https://github.com/RaptorsGeek7612/template-foundry), dont le contrat
+Solidity `Voting` (Foundry) est conservé à côté du package Python. L'historique des versions
+0.1.x du template n'est pas repris ici.
 
-- The Codecov coverage upload was silently failing in CI (`"Token required - not valid tokenless upload"` — Codecov no longer accepts tokenless uploads without the repo first being activated on codecov.io, which needs a human login we can't automate). Replaced it with a self-hosted coverage badge: a `coverage-badge` CI job computes the line-coverage percentage from the lcov report and publishes it as a shields.io endpoint JSON file on an orphan `badges` branch — no third-party account or token required. The README badge now reads from that.
+### Added
 
-## [0.1.7] - 2026-09-16
+- Pipeline LangGraph linéaire `Scout → Scribe → Warden` à état typé (`SpectreState`) :
+  - **Scout** (`claude-haiku-4-5`) produit un brief (intention, public, contraintes, plan) ;
+  - **Scribe** (`claude-sonnet-5-5`, effort `medium`) rédige le texte complet ;
+  - **Warden** (`claude-opus-5-5`, effort `high`) vérifie et renvoie la version corrigée.
+- Registre de modèles centralisé (`spectre/config.py`), surchargeable par variables
+  d'environnement `SPECTRE_<AGENT>_MODEL`, `SPECTRE_<AGENT>_MAX_TOKENS`, `SPECTRE_<AGENT>_EFFORT`.
+- Limite de sortie de 16 000 tokens pour Scribe et Warden, dont la réflexion (toujours active)
+  consomme une partie ; délai d'attente HTTP de 600 s par défaut (`SPECTRE_TIMEOUT`).
+- Prise en charge des clés liées à un utilisateur (`sk-ant-usr...`) via `ANTHROPIC_WORKSPACE_ID`.
+- Suivi des tokens et du coût en dollars par agent et au total (`usage`, `total_cost_usd`).
+- Erreurs explicites nommant l'agent en cas de refus du modèle ou de sortie vide.
+- API bibliothèque : `from spectre import run, build_graph`, avec injection de modèles pour
+  tester sans réseau.
+- CLI `spectre` avec `--file`, `--costs`, `--json` et `--version`.
+- Tests pytest sans appel réseau (faux modèles LangChain), tests réels marqués `live`.
+- `CLAUDE.md` et skills des agents de développement (`.claude/skills/spectre-*`).
+- Documentation : cahier des charges, PDR produit, PDR architecture, brainstorming.
+- Dependabot pour l'écosystème `uv` (dépendances Python).
+
+- Job CI `python` : `uv sync --frozen`, `ruff format --check`, `ruff check`, `mypy src` et
+  `pytest` (couverture ≥ 90 %), à côté du job Foundry `test`.
+- Badge de couverture Python (`coverage-python.json`), publié sur la branche `badges` avec le
+  badge Foundry (`coverage.json`).
 
 ### Changed
 
-- Bumped CI actions: `actions/checkout` v4→v7, `codecov/codecov-action` v4→v6.
-- Removed the `gitsubmodule` ecosystem from `.github/dependabot.yml`. It has no concept of a tagged release for submodules — it only proposes "bump to the latest commit on the tracked branch", which conflicts with `foundry.lock` pinning `forge-std`/`openzeppelin-contracts` to specific release tags. Bump those manually with `forge install <dep>@<new-tag>` instead.
-
-### Added
-
-- `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1).
-- Dependabot config for `gitsubmodule` (forge-std, openzeppelin-contracts) and `github-actions` dependency updates.
-- Coverage upload to Codecov in CI (`forge coverage --report lcov`), plus a codecov badge in the README. (Requires enabling this repo on codecov.io — the badge and upload work tokenless for public repos, but may need a `CODECOV_TOKEN` secret for reliability.)
-
-## [0.1.6] - 2026-09-16
-
-### Added
-
-- A full worked Sepolia deployment example (with expected `forge script` output and `cast` interaction) in `examples/README.md`, linked from the README's Sepolia section.
-
-## [0.1.5] - 2026-09-16
-
-### Added
-
-- Automated tagging and releasing: a `release` job in CI now creates a git tag and GitHub release automatically whenever a push to `master` changes `CHANGELOG.md` and introduces a new version section that isn't tagged yet. It waits for the `test` job to pass first, and pulls the release notes straight from that version's CHANGELOG section. Bumping the version is still a manual, deliberate edit — only the tag/release mechanics are automated.
-
-## [0.1.4] - 2026-09-16
-
-### Added
-
-- GitHub issue templates (bug report, feature request).
-- `SECURITY.md`.
-- License badge in the README.
-- A `Coverage` step in CI (`forge coverage`).
-- GitHub repo topics (`foundry`, `solidity`, `ethereum`, `web3`, `voting`, `template`, `smart-contracts`) for discoverability.
-- Branch protection on `master`: the CI check must pass before merging; force-pushes and branch deletion are blocked.
-- `examples/` directory with a README of usage walkthroughs (deployment script, `cast` interaction, tests as documentation).
-
-### Changed
-
-- CI now only triggers on `master` (dropped the unused `main` branch trigger, kept for parity with the sibling Hardhat template).
-
-## [0.1.3] - 2026-09-16
-
-### Added
-
-- `.gitattributes` (normalize line endings to LF, mark `foundry.lock` as generated).
-
-## [0.1.2] - 2026-09-16
-
-### Added
-
-- Cross-links to the sibling Hardhat template in the README description.
-
-## [0.1.1] - 2026-09-16
-
-### Added
-
-- "Latest release" badge/link in the README.
-
-## [0.1.0] - 2026-09-16
-
-### Added
-
-- Initial pure Foundry template: `src/Voting.sol` (whitelisted on-chain voting workflow, `Ownable`-gated, mirrors the equivalent Hardhat template's contract).
-- `test/Voting.t.sol` — 18 Foundry tests (unit, revert, event, and one fuzz test) covering the full workflow and access control.
-- `script/Voting.s.sol` — deployment script (local/Anvil or Sepolia).
-- `forge-std` and `openzeppelin-contracts` (v5.7.0) as git submodules, pinned via `foundry.lock`.
-- GitHub Actions CI (`forge fmt --check`, build, test) with a status badge in the README.
-- MIT `LICENSE` file.
-- `CONTRIBUTING.md` and a pull request template.
+- Contrat `Voting` passé en **Solidity 0.8.35** (`solc_version = "0.8.35"` dans `foundry.toml`,
+  `pragma solidity ^0.8.35;`).
+- La release automatique attend désormais les deux jobs de test (`test` Foundry et `python`).
+- `.env.example` : ajout de `ANTHROPIC_API_KEY` et des surcharges `SPECTRE_*` aux variables
+  Sepolia existantes.
+- README, CONTRIBUTING, SECURITY, exemples, templates d'issue et de PR mis à jour pour le dépôt
+  hybride Spectre + Foundry.

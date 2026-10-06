@@ -1,5 +1,78 @@
 # Examples
 
+Ce dépôt est hybride : exemples **Spectre** (Python) d'abord, puis exemples **Foundry**
+(contrat `Voting`, Solidity 0.8.35).
+
+## Spectre — ligne de commande
+
+Prérequis : `uv sync` et une clé dans `.env` (`ANTHROPIC_API_KEY=sk-ant-...`).
+
+```shell
+# Texte final seul (stdout)
+uv run spectre "Explique la relativité restreinte en trois paragraphes simples"
+
+# + tableau des coûts par agent (stderr)
+uv run spectre "Explique la relativité restreinte simplement" --costs
+
+# Demande lue depuis un fichier
+uv run spectre --file demande.txt --costs
+
+# Résultat complet en JSON (brief, draft, final_text, usage, total_cost_usd)
+uv run spectre "Rédige un court article sur LangGraph" --json > resultat.json
+
+# Warden à l'effort maximal pour ce run uniquement (bash ; en PowerShell : $env:SPECTRE_WARDEN_EFFORT="max")
+SPECTRE_WARDEN_EFFORT=max uv run spectre "Relis ce contrat de prestation" --costs
+```
+
+## Spectre — bibliothèque
+
+```python
+from spectre import SpectreError, run
+
+try:
+    result = run("Explique la relativité restreinte simplement")
+except SpectreError as exc:  # refus, sortie vide, erreur API, clé absente...
+    raise SystemExit(f"Échec : {exc}")
+
+print(result.brief)  # plan de Scout
+print(result.draft)  # brouillon de Scribe
+print(result.final_text)  # texte corrigé par Warden
+print(f"Coût total : {result.total_cost_usd} $")
+```
+
+## Spectre — faux modèles (sans réseau ni clé)
+
+`build_graph(models=...)` accepte n'importe quel modèle de chat LangChain : c'est ainsi que les
+tests tournent sans appel réseau.
+
+```python
+from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+from langchain_core.messages import AIMessage
+
+from spectre import build_graph
+
+
+def fake(text: str, model: str) -> GenericFakeChatModel:
+    message = AIMessage(
+        content=text,
+        usage_metadata={"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
+        response_metadata={"stop_reason": "end_turn", "model_name": model},
+    )
+    return GenericFakeChatModel(messages=iter([message]))
+
+
+graph = build_graph(
+    models={
+        "scout": fake("Brief : public débutant, 3 paragraphes.", "claude-haiku-4-5"),
+        "scribe": fake("Brouillon de l'article...", "claude-sonnet-5-5"),
+        "warden": fake("Article final corrigé.", "claude-opus-5-5"),
+    }
+)
+state = graph.invoke({"request": "Explique la relativité restreinte simplement"})
+print(state["final_text"])  # "Article final corrigé."
+print(state["usage"])  # une ligne UsageRecord par agent
+```
+
 ## Deploying the Voting contract
 
 [`script/Voting.s.sol`](../script/Voting.s.sol) deploys the contract with no constructor arguments and logs its address.

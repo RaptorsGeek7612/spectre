@@ -1,26 +1,39 @@
 ---
-name: Bug report
-about: Something in the template doesn't work as expected
+name: Rapport de bug
+about: Quelque chose ne fonctionne pas comme prévu (Spectre ou contrat Voting)
 title: ""
 labels: bug
 ---
 
 ## Description
 
-<!-- What's wrong? -->
+<!-- Qu'est-ce qui ne va pas ? -->
 
-## Steps to reproduce
+## Partie concernée
+
+- [ ] Spectre (Python)
+- [ ] Contrat Voting (Foundry / Solidity)
+
+## Étapes pour reproduire
 
 ```shell
+uv run spectre "..." --costs
+# ou
 forge build
 # ...
 ```
 
-## Expected behavior
+## Comportement attendu
 
-## Actual behavior
+## Comportement observé
 
-## Environment
+<!-- Message d'erreur complet, agent concerné (scout / scribe / warden), code de sortie.
+     Ne collez JAMAIS votre clé API ni le contenu de votre .env. -->
 
-- OS:
-- Forge version (`forge --version`):
+## Environnement
+
+- OS :
+- Python (`uv run python --version`) :
+- Spectre (`uv run spectre --version`) :
+- Surcharges `SPECTRE_*` actives (noms et valeurs, sans secret) :
+- Forge (`forge --version`), si partie Foundry :
