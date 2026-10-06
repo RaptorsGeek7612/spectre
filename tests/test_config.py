@@ -34,12 +34,12 @@ def test_default_specs_match_pdr() -> None:
     assert DEFAULT_SPECS["scribe"] == AgentSpec(
         name="scribe",
         model="claude-sonnet-5-5",
-        max_tokens=8000,
+        max_tokens=16000,
         temperature=None,
         effort="medium",
     )
     assert DEFAULT_SPECS["warden"] == AgentSpec(
-        name="warden", model="claude-opus-5-5", max_tokens=8000, temperature=None, effort="high"
+        name="warden", model="claude-opus-5-5", max_tokens=16000, temperature=None, effort="high"
     )
 
 
@@ -176,7 +176,7 @@ def test_has_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_client_settings_defaults() -> None:
     settings = load_client_settings(env={})
-    assert settings == ClientSettings(max_retries=4, timeout=300.0)
+    assert settings == ClientSettings(max_retries=4, timeout=600.0)
     assert load_client_settings() == settings
 
 

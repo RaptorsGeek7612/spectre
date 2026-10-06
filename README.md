@@ -31,8 +31,8 @@ Le dépôt est **hybride** : il conserve aussi, issu du template
 | Agent | Modèle | Rôle | Réglage | Prix entrée / sortie ($/MTok) |
 |---|---|---|---|---|
 | **Scout** (l'éclaireur) | `claude-haiku-4-5` | Extrait l'intention, le public, les contraintes et un plan | `temperature` 0.2, 1 024 tokens max | 1 / 5 |
-| **Scribe** (la plume) | `claude-sonnet-5-5` | Rédige le texte complet à partir de la demande et du brief | effort `medium`, 8 000 tokens max | 2 / 10 |
-| **Warden** (le gardien) | `claude-opus-5-5` | Vérifie exactitude, cohérence et style, renvoie la version corrigée | effort `high`, 8 000 tokens max | 4 / 20 |
+| **Scribe** (la plume) | `claude-sonnet-5-5` | Rédige le texte complet à partir de la demande et du brief | effort `medium`, 16 000 tokens max | 2 / 10 |
+| **Warden** (le gardien) | `claude-opus-5-5` | Vérifie exactitude, cohérence et style, renvoie la version corrigée | effort `high`, 16 000 tokens max | 4 / 20 |
 
 Sonnet 5.5 et Opus 5.5 n'acceptent pas de `temperature` : leur profondeur de raisonnement se
 règle par l'**effort**. Haiku 4.5, à l'inverse, accepte `temperature` mais pas l'effort.

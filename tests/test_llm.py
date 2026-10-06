@@ -54,7 +54,7 @@ def test_kwargs_exact_content() -> None:
     kwargs = chat_model_kwargs(get_spec("warden", env={}), ClientSettings(2, 30.0))
     assert kwargs == {
         "model": "claude-opus-5-5",
-        "max_tokens": 8000,
+        "max_tokens": 16000,
         "max_retries": 2,
         "timeout": 30.0,
         "reasoning_effort": "high",
@@ -64,7 +64,7 @@ def test_kwargs_exact_content() -> None:
 def test_kwargs_default_client_settings() -> None:
     kwargs = chat_model_kwargs(get_spec("scout", env={}))
     assert kwargs["max_retries"] == 4
-    assert kwargs["timeout"] == 300.0
+    assert kwargs["timeout"] == 600.0
     assert kwargs["max_tokens"] == 1024
 
 
@@ -96,7 +96,7 @@ def test_payload_sonnet_opus_no_sampling_params(
     assert model.temperature is None
     payload = _payload(model)
     assert payload["model"] == model_id
-    assert payload["max_tokens"] == 8000
+    assert payload["max_tokens"] == 16000
     for key in SAMPLING:
         assert _sent(payload, key) is None, f"{key} sent to {model_id}"
     assert payload["output_config"]["effort"] == effort

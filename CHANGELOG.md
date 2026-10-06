@@ -22,6 +22,9 @@ Solidity `Voting` (Foundry) est conservé à côté du package Python. L'histori
   - **Warden** (`claude-opus-5-5`, effort `high`) vérifie et renvoie la version corrigée.
 - Registre de modèles centralisé (`spectre/config.py`), surchargeable par variables
   d'environnement `SPECTRE_<AGENT>_MODEL`, `SPECTRE_<AGENT>_MAX_TOKENS`, `SPECTRE_<AGENT>_EFFORT`.
+- Limite de sortie de 16 000 tokens pour Scribe et Warden, dont la réflexion (toujours active)
+  consomme une partie ; délai d'attente HTTP de 600 s par défaut (`SPECTRE_TIMEOUT`).
+- Prise en charge des clés liées à un utilisateur (`sk-ant-usr...`) via `ANTHROPIC_WORKSPACE_ID`.
 - Suivi des tokens et du coût en dollars par agent et au total (`usage`, `total_cost_usd`).
 - Erreurs explicites nommant l'agent en cas de refus du modèle ou de sortie vide.
 - API bibliothèque : `from spectre import run, build_graph`, avec injection de modèles pour

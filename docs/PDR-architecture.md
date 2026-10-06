@@ -73,8 +73,8 @@ class AgentSpec:
 | Agent | `model` | `max_tokens` | `temperature` | `effort` | Prix in / out ($/MTok) |
 |---|---|---|---|---|---|
 | scout | `claude-haiku-4-5` | 1 024 | 0.2 | — (non supporté) | 1 / 5 |
-| scribe | `claude-sonnet-5-5` | 8 000 | — (400 si ≠ défaut) | `medium` | 2 / 10 |
-| warden | `claude-opus-5-5` | 8 000 | — (400) | `high` | 4 / 20 |
+| scribe | `claude-sonnet-5-5` | 16 000 | — (400 si ≠ défaut) | `medium` | 2 / 10 |
+| warden | `claude-opus-5-5` | 16 000 | — (400) | `high` | 4 / 20 |
 
 Règles API à respecter (doc Claude, 2026-09) :
 - **Sonnet 5.5 / Opus 5.5** : pas de `temperature`/`top_p`/`top_k` ; pas de `budget_tokens` ; pas de prefill assistant ; réflexion adaptative toujours active, profondeur réglée par `effort` (défaut Opus 5.5 = `medium`, donc on le fixe explicitement).
@@ -201,6 +201,6 @@ Jobs :
 | 1 | Effort plutôt que temperature sur Sonnet/Opus | Imposé par l'API (temperature → 400) |
 | 2 | Injection des modèles dans `build_graph` | Tests sans réseau, flexibilité |
 | 3 | Reducer additif pour `usage` | Chaque nœud ajoute sa ligne sans écraser |
-| 4 | Pas de streaming en v0.1 | `max_tokens` ≤ 8 000 reste sous les timeouts HTTP ; streaming en v0.2 |
+| 4 | Pas de streaming en v0.1 | `max_tokens` ≤ 16 000 reste sous les timeouts HTTP (600 s) ; streaming en v0.2 |
 | 5 | `uv` + `pyproject.toml` | Remplace `forge` ; lock reproductible |
 | 6 | Noms d'agents Scout/Scribe/Warden | Rôles explicites, indépendants des modèles |

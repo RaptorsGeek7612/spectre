@@ -22,7 +22,7 @@ AGENT_NAMES: Final[tuple[str, ...]] = ("scout", "scribe", "warden")
 API_KEY_ENV: Final = "ANTHROPIC_API_KEY"
 WORKSPACE_ID_ENV: Final = "ANTHROPIC_WORKSPACE_ID"
 DEFAULT_MAX_RETRIES: Final = 4
-DEFAULT_TIMEOUT_S: Final = 300.0
+DEFAULT_TIMEOUT_S: Final = 600.0
 
 
 @dataclass(frozen=True)
@@ -58,10 +58,14 @@ DEFAULT_SPECS: Final[Mapping[str, AgentSpec]] = {
         name="scout", model="claude-haiku-4-5", max_tokens=1024, temperature=0.2, effort=None
     ),
     "scribe": AgentSpec(
-        name="scribe", model="claude-sonnet-5-5", max_tokens=8000, temperature=None, effort="medium"
+        name="scribe",
+        model="claude-sonnet-5-5",
+        max_tokens=16000,
+        temperature=None,
+        effort="medium",
     ),
     "warden": AgentSpec(
-        name="warden", model="claude-opus-5-5", max_tokens=8000, temperature=None, effort="high"
+        name="warden", model="claude-opus-5-5", max_tokens=16000, temperature=None, effort="high"
     ),
 }
 
