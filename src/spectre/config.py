@@ -116,7 +116,22 @@ def get_spec(name: str, env: Mapping[str, str] | None = None) -> AgentSpec:
     effort = source.get(prefix + "EFFORT", "").strip()
     if effort:
         spec = replace(spec, effort=_parse_effort(prefix + "EFFORT", effort))
+
+    # Keep sampling parameters compatible with the (possibly overridden) model.
+    if _is_haiku(spec.model):
+        if effort:
+            raise ConfigurationError(
+                f"{prefix}EFFORT n'est pas supporté par {spec.model} (Haiku n'accepte pas d'effort)"
+            )
+        spec = replace(spec, effort=None)
+    else:
+        spec = replace(spec, temperature=None)
     return spec
+
+
+def _is_haiku(model: str) -> bool:
+    """Haiku accepts `temperature` but no effort; other models are the reverse."""
+    return model.startswith("claude-haiku")
 
 
 def load_specs(env: Mapping[str, str] | None = None) -> dict[str, AgentSpec]:
