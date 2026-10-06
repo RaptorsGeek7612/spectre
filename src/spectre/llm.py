@@ -6,7 +6,7 @@ from typing import Any
 
 from langchain_anthropic import ChatAnthropic
 
-from spectre.config import AgentSpec, ClientSettings
+from spectre.config import FALLBACK_BETA, FALLBACK_MODELS, AgentSpec, ClientSettings
 
 
 def chat_model_kwargs(spec: AgentSpec, settings: ClientSettings | None = None) -> dict[str, Any]:
@@ -14,6 +14,7 @@ def chat_model_kwargs(spec: AgentSpec, settings: ClientSettings | None = None) -
 
     `temperature` and `reasoning_effort` are only included when not None, so that
     Sonnet/Opus 5.5 never receive a temperature and Haiku 4.5 never receives an effort.
+    Models in `FALLBACK_MODELS` get `fallbacks: "default"` unless disabled in `settings`.
     """
     settings = settings or ClientSettings()
     kwargs: dict[str, Any] = {
@@ -26,6 +27,9 @@ def chat_model_kwargs(spec: AgentSpec, settings: ClientSettings | None = None) -
         kwargs["temperature"] = spec.temperature
     if spec.effort is not None:
         kwargs["reasoning_effort"] = spec.effort
+    if settings.fallbacks and spec.model in FALLBACK_MODELS:
+        kwargs["betas"] = [FALLBACK_BETA]
+        kwargs["model_kwargs"] = {"fallbacks": "default"}
     if settings.workspace_id is not None:
         kwargs["default_headers"] = {"anthropic-workspace-id": settings.workspace_id}
     return kwargs

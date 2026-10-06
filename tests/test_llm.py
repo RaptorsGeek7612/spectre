@@ -58,6 +58,8 @@ def test_kwargs_exact_content() -> None:
         "max_retries": 2,
         "timeout": 30.0,
         "reasoning_effort": "high",
+        "betas": ["server-side-fallback-2026-07-01"],
+        "model_kwargs": {"fallbacks": "default"},
     }
 
 
@@ -137,3 +139,24 @@ def test_workspace_id_sent_as_header(api_key: str) -> None:
     model = make_chat_model(get_spec("warden", env={}), settings)
     assert model.default_headers == {"anthropic-workspace-id": "wrkspc_test"}
     assert model._client.default_headers["anthropic-workspace-id"] == "wrkspc_test"
+
+
+def test_fallbacks_only_for_supported_models() -> None:
+    scout = chat_model_kwargs(get_spec("scout", env={}))
+    assert "betas" not in scout
+    assert "model_kwargs" not in scout
+    other = chat_model_kwargs(get_spec("warden", env={"SPECTRE_WARDEN_MODEL": "claude-opus-4-8"}))
+    assert "betas" not in other
+
+
+def test_fallbacks_can_be_disabled() -> None:
+    kwargs = chat_model_kwargs(get_spec("scribe", env={}), ClientSettings(fallbacks=False))
+    assert "betas" not in kwargs
+    assert "model_kwargs" not in kwargs
+
+
+@pytest.mark.parametrize("agent", ["scribe", "warden"])
+def test_payload_requests_default_fallbacks(agent: str, api_key: str) -> None:
+    payload = _payload(make_chat_model(get_spec(agent, env={})))
+    assert payload["fallbacks"] == "default"
+    assert payload["betas"] == ["server-side-fallback-2026-07-01"]

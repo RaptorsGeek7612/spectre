@@ -23,6 +23,9 @@ API_KEY_ENV: Final = "ANTHROPIC_API_KEY"
 WORKSPACE_ID_ENV: Final = "ANTHROPIC_WORKSPACE_ID"
 DEFAULT_MAX_RETRIES: Final = 4
 DEFAULT_TIMEOUT_S: Final = 600.0
+FALLBACK_BETA: Final = "server-side-fallback-2026-07-01"
+# Models accepting `fallbacks: "default"` (server-side retry on another model after a refusal).
+FALLBACK_MODELS: Final = frozenset({"claude-sonnet-5-5", "claude-opus-5-5"})
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,7 @@ class ClientSettings:
     max_retries: int = DEFAULT_MAX_RETRIES
     timeout: float = DEFAULT_TIMEOUT_S
     workspace_id: str | None = None  # sent as `anthropic-workspace-id` (user-scoped keys)
+    fallbacks: bool = True  # server-side fallback after a refusal, on FALLBACK_MODELS only
 
 
 DEFAULT_SPECS: Final[Mapping[str, AgentSpec]] = {
@@ -73,6 +77,10 @@ PRICING: Final[Mapping[str, ModelPrice]] = {
     "claude-haiku-4-5": ModelPrice(input_per_mtok=1.0, output_per_mtok=5.0),
     "claude-sonnet-5-5": ModelPrice(input_per_mtok=2.0, output_per_mtok=10.0),
     "claude-opus-5-5": ModelPrice(input_per_mtok=4.0, output_per_mtok=20.0),
+    # Possible server-side fallback targets.
+    "claude-sonnet-5": ModelPrice(input_per_mtok=2.0, output_per_mtok=10.0),
+    "claude-opus-5": ModelPrice(input_per_mtok=5.0, output_per_mtok=25.0),
+    "claude-opus-4-8": ModelPrice(input_per_mtok=5.0, output_per_mtok=25.0),
 }
 
 
@@ -146,7 +154,7 @@ def load_specs(env: Mapping[str, str] | None = None) -> dict[str, AgentSpec]:
 
 
 def load_client_settings(env: Mapping[str, str] | None = None) -> ClientSettings:
-    """Return client settings (retries, timeout, workspace) from the environment."""
+    """Return client settings (retries, timeout, workspace, fallbacks) from the environment."""
     source = os.environ if env is None else env
     settings = ClientSettings()
     retries = source.get("SPECTRE_MAX_RETRIES", "").strip()
@@ -174,4 +182,21 @@ def load_client_settings(env: Mapping[str, str] | None = None) -> ClientSettings
     workspace_id = source.get(WORKSPACE_ID_ENV, "").strip()
     if workspace_id:
         settings = replace(settings, workspace_id=workspace_id)
+    fallbacks = source.get("SPECTRE_FALLBACKS", "").strip().lower()
+    if fallbacks:
+        if fallbacks not in _BOOL_VALUES:
+            raise ConfigurationError(
+                f"SPECTRE_FALLBACKS doit valoir 1/0, true/false ou on/off, reçu {fallbacks!r}"
+            )
+        settings = replace(settings, fallbacks=_BOOL_VALUES[fallbacks])
     return settings
+
+
+_BOOL_VALUES: Final[Mapping[str, bool]] = {
+    "1": True,
+    "true": True,
+    "on": True,
+    "0": False,
+    "false": False,
+    "off": False,
+}

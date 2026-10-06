@@ -25,7 +25,9 @@ def compute_cost(model: str, input_tokens: int, output_tokens: int) -> float | N
     return round(cost, 6)
 
 
-def usage_from_message(agent: str, model: str, message: AIMessage) -> UsageRecord:
+def usage_from_message(
+    agent: str, model: str, message: AIMessage, *, truncated: bool = False
+) -> UsageRecord:
     """Build a UsageRecord from `message.usage_metadata` (missing metadata counts as 0)."""
     metadata = message.usage_metadata
     input_tokens = int(metadata.get("input_tokens", 0)) if metadata else 0
@@ -36,6 +38,7 @@ def usage_from_message(agent: str, model: str, message: AIMessage) -> UsageRecor
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         cost_usd=compute_cost(model, input_tokens, output_tokens),
+        truncated=truncated,
     )
 
 

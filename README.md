@@ -83,7 +83,8 @@ Total                                         0.0499 $
 | `--json` | Écrit le résultat (`brief`, `draft`, `final_text`, `usage`, `total_cost_usd`) en JSON sur stdout |
 | `--version` | Affiche la version |
 
-Codes de sortie : `0` succès, `1` erreur Spectre/API (dont clé absente), `2` erreur d'usage.
+Codes de sortie : `0` succès, `1` erreur Spectre/API (dont clé absente), `2` erreur d'usage,
+`130` interruption par Ctrl+C.
 
 ### Bibliothèque
 
@@ -112,9 +113,22 @@ Chaque agent (`SCOUT`, `SCRIBE`, `WARDEN`) est surchargeable par variable d'envi
 | `SPECTRE_<AGENT>_MODEL` | ID du modèle | `SPECTRE_SCRIBE_MODEL=claude-opus-5-5` |
 | `SPECTRE_<AGENT>_MAX_TOKENS` | Limite de tokens en sortie | `SPECTRE_WARDEN_MAX_TOKENS=4000` |
 | `SPECTRE_<AGENT>_EFFORT` | Effort (`low`, `medium`, `high`, `xhigh`, `max`) — Sonnet/Opus uniquement | `SPECTRE_WARDEN_EFFORT=max` |
+| `SPECTRE_TIMEOUT` | Délai d'attente d'un appel HTTP, en secondes (défaut `600`) | `SPECTRE_TIMEOUT=900` |
+| `SPECTRE_MAX_RETRIES` | Nombre de nouvelles tentatives sur 429, 5xx ou erreur réseau (défaut `4`) | `SPECTRE_MAX_RETRIES=2` |
+| `SPECTRE_FALLBACKS` | Repli automatique en cas de refus (défaut activé ; `0` pour désactiver) | `SPECTRE_FALLBACKS=0` |
 
 Un modèle absent de la table de prix donne un coût `None` (avec un avertissement), sans faire
 échouer le run.
+
+**Repli en cas de refus.** Les filtres de sécurité de Sonnet 5.5 et d'Opus 5.5 peuvent refuser
+une demande légitime. Spectre active alors le repli côté serveur (`fallbacks: "default"`) :
+l'API relance la demande sur le modèle de repli recommandé pour ce type de refus, au lieu
+d'échouer. Dans `usage`, `model` indique le modèle qui a réellement répondu, et le coût est
+calculé à son tarif. Un avertissement est écrit sur stderr.
+
+**Troncature.** Si un agent atteint sa limite `max_tokens`, un avertissement est écrit sur
+stderr et la ligne correspondante de `usage` porte `"truncated": true`. Augmentez alors
+`SPECTRE_<AGENT>_MAX_TOKENS`.
 
 ## Développement
 

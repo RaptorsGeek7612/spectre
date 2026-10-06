@@ -65,10 +65,17 @@ def _call_agent(
     if not text:
         raise EmptyOutputError(agent)
 
-    if stop_reason == "max_tokens":
+    truncated = stop_reason == "max_tokens"
+    if truncated:
         logger.warning("[%s] réponse tronquée (max_tokens atteint) : texte incomplet.", agent)
 
-    return text, usage_from_message(agent, model_name, ai)
+    # After a server-side fallback, the response names the model that actually answered.
+    served = ai.response_metadata.get("model_name")
+    served_by = served if isinstance(served, str) and served else model_name
+    if served_by != model_name:
+        logger.warning("[%s] repli : %s a répondu à la place de %s.", agent, served_by, model_name)
+
+    return text, usage_from_message(agent, served_by, ai, truncated=truncated)
 
 
 def make_scout_node(model: BaseChatModel, model_name: str | None = None) -> NodeFn:

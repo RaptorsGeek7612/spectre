@@ -98,6 +98,7 @@ class UsageRecord(TypedDict):
     input_tokens: int
     output_tokens: int
     cost_usd: float | None
+    truncated: bool  # stop_reason == "max_tokens"
 
 
 class SpectreState(TypedDict, total=False):
@@ -123,8 +124,9 @@ Traitement commun (fonction `_call_agent`) :
 1. `ai = model.invoke(messages)`
 2. Si `ai.response_metadata.get("stop_reason") == "refusal"` → `AgentRefusalError(agent)`.
 3. Texte = concaténation des blocs `text` (`ai.text` ; ignore les blocs `thinking`). Vide → `EmptyOutputError(agent)`.
-4. `UsageRecord` depuis `ai.usage_metadata` (`input_tokens`, `output_tokens`) + prix.
-5. Si `stop_reason == "max_tokens"` → avertissement `logging` (texte tronqué).
+4. `UsageRecord` depuis `ai.usage_metadata` (`input_tokens`, `output_tokens`) + prix du modèle
+   qui a réellement répondu (`response_metadata["model_name"]`, différent après un repli).
+5. Si `stop_reason == "max_tokens"` → avertissement `logging` et `truncated=True`.
 
 Le prompt de Warden lui demande de **ne renvoyer que le texte final corrigé**,
 sans commentaire, pour que `final_text` soit directement exploitable.
@@ -153,7 +155,7 @@ def run(request: str, *, models: Mapping[str, BaseChatModel] | None = None) -> S
 | `--json` | Écrit `SpectreResult.to_dict()` + `total_cost_usd` en JSON sur stdout |
 | `--version` | Version |
 
-Codes de sortie : 0 succès, 1 erreur Spectre/API, 2 erreur d'usage. Clé absente →
+Codes de sortie : 0 succès, 1 erreur Spectre/API, 2 erreur d'usage, 130 Ctrl+C. Clé absente →
 message clair (« définissez ANTHROPIC_API_KEY ou créez un fichier .env »), code 1.
 Sortie forcée en UTF-8 (Windows).
 
@@ -163,9 +165,10 @@ Sortie forcée en UTF-8 (Windows).
 |---|---|
 | 429 / 5xx / réseau | Retries SDK (`max_retries=4`), puis `SpectreError` |
 | 400 / 401 / 404 | Pas de retry, `SpectreError` avec agent + message |
-| `stop_reason == "refusal"` | `AgentRefusalError` |
+| Refus de Sonnet/Opus 5.5 | Repli serveur `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`), modèle servi enregistré dans `usage` |
+| `stop_reason == "refusal"` (repli désactivé ou refusé aussi) | `AgentRefusalError` |
 | Sortie vide | `EmptyOutputError` |
-| Troncature `max_tokens` | Warning, on continue |
+| Troncature `max_tokens` | Warning, `truncated=True` dans `usage`, on continue |
 
 ## 10. Stratégie de test
 

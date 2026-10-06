@@ -6,9 +6,9 @@ updates:
   # `foundry.lock` pinning our dependencies (forge-std, openzeppelin-contracts)
   # to specific release tags via `forge install <dep>@<tag>`. Bump those
   # manually with `forge install <dep>@<new-tag>` when a new release ships.
-  # GitHub Actions used in .github/workflows (actions/checkout, astral-sh/setup-uv).
-  # setup-uv is pinned by commit SHA with a "# vX.Y.Z" comment; Dependabot
-  # updates both together.
+  # GitHub Actions used in .github/workflows (actions/checkout, astral-sh/setup-uv,
+  # foundry-rs/foundry-toolchain). Each is pinned by commit SHA with a "# vX.Y.Z"
+  # comment; Dependabot updates both together.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
