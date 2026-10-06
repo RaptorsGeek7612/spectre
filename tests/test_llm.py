@@ -12,7 +12,7 @@ import pytest
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from spectre.config import ClientSettings, get_spec, load_specs
+from spectre.config import ClientSettings, get_spec, load_client_settings, load_specs
 from spectre.llm import chat_model_kwargs, make_chat_model
 
 SAMPLING = ("temperature", "top_p", "top_k")
@@ -125,3 +125,15 @@ def test_payload_effort_override_reaches_opus(api_key: str) -> None:
 def test_payload_has_no_assistant_prefill(api_key: str) -> None:
     payload = _payload(make_chat_model(get_spec("warden", env={})))
     assert payload["messages"][-1]["role"] == "user"
+
+
+def test_kwargs_without_workspace_send_no_header() -> None:
+    assert "default_headers" not in chat_model_kwargs(get_spec("scout", env={}))
+
+
+def test_workspace_id_sent_as_header(api_key: str) -> None:
+    settings = load_client_settings(env={"ANTHROPIC_WORKSPACE_ID": " wrkspc_test "})
+    assert settings.workspace_id == "wrkspc_test"
+    model = make_chat_model(get_spec("warden", env={}), settings)
+    assert model.default_headers == {"anthropic-workspace-id": "wrkspc_test"}
+    assert model._client.default_headers["anthropic-workspace-id"] == "wrkspc_test"

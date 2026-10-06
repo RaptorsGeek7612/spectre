@@ -108,6 +108,7 @@ Chaque agent (`SCOUT`, `SCRIBE`, `WARDEN`) est surchargeable par variable d'envi
 | Variable | Effet | Exemple |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Clé API Anthropic (obligatoire pour un vrai run) | `sk-ant-...` |
+| `ANTHROPIC_WORKSPACE_ID` | ID du workspace, à renseigner seulement si la clé est liée à un utilisateur (`sk-ant-usr...`) plutôt qu'à un workspace | `wrkspc_...` |
 | `SPECTRE_<AGENT>_MODEL` | ID du modèle | `SPECTRE_SCRIBE_MODEL=claude-opus-5-5` |
 | `SPECTRE_<AGENT>_MAX_TOKENS` | Limite de tokens en sortie | `SPECTRE_WARDEN_MAX_TOKENS=4000` |
 | `SPECTRE_<AGENT>_EFFORT` | Effort (`low`, `medium`, `high`, `xhigh`, `max`) — Sonnet/Opus uniquement | `SPECTRE_WARDEN_EFFORT=max` |

@@ -26,6 +26,8 @@ def chat_model_kwargs(spec: AgentSpec, settings: ClientSettings | None = None) -
         kwargs["temperature"] = spec.temperature
     if spec.effort is not None:
         kwargs["reasoning_effort"] = spec.effort
+    if settings.workspace_id is not None:
+        kwargs["default_headers"] = {"anthropic-workspace-id": settings.workspace_id}
     return kwargs
 
 

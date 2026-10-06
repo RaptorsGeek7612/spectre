@@ -20,6 +20,7 @@ EFFORT_LEVELS: Final[tuple[Effort, ...]] = ("low", "medium", "high", "xhigh", "m
 AGENT_NAMES: Final[tuple[str, ...]] = ("scout", "scribe", "warden")
 
 API_KEY_ENV: Final = "ANTHROPIC_API_KEY"
+WORKSPACE_ID_ENV: Final = "ANTHROPIC_WORKSPACE_ID"
 DEFAULT_MAX_RETRIES: Final = 4
 DEFAULT_TIMEOUT_S: Final = 300.0
 
@@ -49,6 +50,7 @@ class ClientSettings:
 
     max_retries: int = DEFAULT_MAX_RETRIES
     timeout: float = DEFAULT_TIMEOUT_S
+    workspace_id: str | None = None  # sent as `anthropic-workspace-id` (user-scoped keys)
 
 
 DEFAULT_SPECS: Final[Mapping[str, AgentSpec]] = {
@@ -140,7 +142,7 @@ def load_specs(env: Mapping[str, str] | None = None) -> dict[str, AgentSpec]:
 
 
 def load_client_settings(env: Mapping[str, str] | None = None) -> ClientSettings:
-    """Return client settings (`SPECTRE_MAX_RETRIES`, `SPECTRE_TIMEOUT` overrides)."""
+    """Return client settings (retries, timeout, workspace) from the environment."""
     source = os.environ if env is None else env
     settings = ClientSettings()
     retries = source.get("SPECTRE_MAX_RETRIES", "").strip()
@@ -165,4 +167,7 @@ def load_client_settings(env: Mapping[str, str] | None = None) -> ClientSettings
         if seconds <= 0:
             raise ConfigurationError(f"SPECTRE_TIMEOUT doit être > 0, reçu {seconds}")
         settings = replace(settings, timeout=seconds)
+    workspace_id = source.get(WORKSPACE_ID_ENV, "").strip()
+    if workspace_id:
+        settings = replace(settings, workspace_id=workspace_id)
     return settings
