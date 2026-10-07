@@ -22,6 +22,7 @@ uv sync
 uv run ruff format --check . ; uv run ruff check .
 uv run mypy src
 uv run pytest -m "not live" --cov=spectre --cov-report=term-missing
+uv run python -m spectre.web             # interface web (spectre-web.exe peut être bloqué par Windows)
 
 # Partie Foundry
 forge fmt --check ; forge build ; forge test

@@ -7,6 +7,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+
+- Interface web `spectre-web` (ou `python -m spectre.web`) : serveur de la bibliothèque standard
+  et page HTML/CSS/JS sans build, inspirée de Hermes WebUI. Chaîne des agents en direct (SSE)
+  dessinée comme des raies d'émission, onglet Corrections (diff brouillon → texte final),
+  inspecteur des tokens et coûts, historique de plaques numérotées (recherche, tags, projets,
+  épingles, archives, export Markdown/JSON/HTML, import), préréglages d'agents, mode démo,
+  dictée vocale, commandes `/`, palette `Ctrl+K`, thèmes sombre/clair, français/anglais,
+  notifications, PWA, mise en page ordinateur/tablette/téléphone.
+- Mot de passe facultatif (`SPECTRE_WEBUI_PASSWORD`, cookie signé, limitation des essais),
+  obligatoire pour ouvrir l'interface au réseau local (`--host 0.0.0.0`).
+- Logo de Spectre : un fantôme formé de sept raies spectrales, généré par `tools/make_icons.py`.
+- Préréglages d'agents intégrés (`WEB_PRESETS` dans `config.py`).
+
 ## [0.1.1] - 2026-10-07
 
 ### Added

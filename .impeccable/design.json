@@ -1,0 +1,661 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07T21:37:17+00:00",
+  "title": "Design System: Spectre",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Charcoal Ground",
+        "canonical": "#121315",
+        "cssVar": "--ground",
+        "lightTheme": "#e9e5da",
+        "tonalRamp": [
+          "oklch(15% 0.004 264)",
+          "oklch(26% 0.004 264)",
+          "oklch(37% 0.004 264)",
+          "oklch(48% 0.004 264)",
+          "oklch(59% 0.004 264)",
+          "oklch(70% 0.004 264)",
+          "oklch(82% 0.004 264)",
+          "oklch(95% 0.004 264)"
+        ]
+      },
+      "continuum": {
+        "role": "neutral",
+        "displayName": "Continuum Charcoal",
+        "canonical": "#17181b",
+        "cssVar": "--continuum",
+        "lightTheme": "#e2ddd0",
+        "tonalRamp": [
+          "oklch(15% 0.006 271)",
+          "oklch(26% 0.006 271)",
+          "oklch(37% 0.006 271)",
+          "oklch(48% 0.006 271)",
+          "oklch(59% 0.006 271)",
+          "oklch(70% 0.006 271)",
+          "oklch(82% 0.006 271)",
+          "oklch(95% 0.006 271)"
+        ]
+      },
+      "plate": {
+        "role": "neutral",
+        "displayName": "Ash Plate",
+        "canonical": "#1b1c1f",
+        "cssVar": "--plate",
+        "lightTheme": "#f5f2ea",
+        "tonalRamp": [
+          "oklch(15% 0.006 271)",
+          "oklch(26% 0.006 271)",
+          "oklch(37% 0.006 271)",
+          "oklch(48% 0.006 271)",
+          "oklch(59% 0.006 271)",
+          "oklch(70% 0.006 271)",
+          "oklch(82% 0.006 271)",
+          "oklch(95% 0.006 271)"
+        ]
+      },
+      "plate-2": {
+        "role": "neutral",
+        "displayName": "Raised Plate",
+        "canonical": "#222327",
+        "cssVar": "--plate-2",
+        "lightTheme": "#ece8de",
+        "tonalRamp": [
+          "oklch(15% 0.008 275)",
+          "oklch(26% 0.008 275)",
+          "oklch(37% 0.008 275)",
+          "oklch(48% 0.008 275)",
+          "oklch(59% 0.008 275)",
+          "oklch(70% 0.008 275)",
+          "oklch(82% 0.008 275)",
+          "oklch(95% 0.008 275)"
+        ]
+      },
+      "hair": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#34363b",
+        "cssVar": "--hair",
+        "lightTheme": "#c9c3b4",
+        "tonalRamp": [
+          "oklch(15% 0.009 268)",
+          "oklch(26% 0.009 268)",
+          "oklch(37% 0.009 268)",
+          "oklch(48% 0.009 268)",
+          "oklch(59% 0.009 268)",
+          "oklch(70% 0.009 268)",
+          "oklch(82% 0.009 268)",
+          "oklch(95% 0.009 268)"
+        ]
+      },
+      "hair-2": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "#4a4c52",
+        "cssVar": "--hair-2",
+        "lightTheme": "#a9a291",
+        "tonalRamp": [
+          "oklch(15% 0.010 271)",
+          "oklch(26% 0.010 271)",
+          "oklch(37% 0.010 271)",
+          "oklch(48% 0.010 271)",
+          "oklch(59% 0.010 271)",
+          "oklch(70% 0.010 271)",
+          "oklch(82% 0.010 271)",
+          "oklch(95% 0.010 271)"
+        ]
+      },
+      "bone": {
+        "role": "neutral",
+        "displayName": "Bone",
+        "canonical": "#e9e4d8",
+        "cssVar": "--bone",
+        "lightTheme": "#1a1b1e",
+        "tonalRamp": [
+          "oklch(15% 0.017 88)",
+          "oklch(26% 0.017 88)",
+          "oklch(37% 0.017 88)",
+          "oklch(48% 0.017 88)",
+          "oklch(59% 0.017 88)",
+          "oklch(70% 0.017 88)",
+          "oklch(82% 0.017 88)",
+          "oklch(95% 0.017 88)"
+        ]
+      },
+      "ash": {
+        "role": "neutral",
+        "displayName": "Ash Text",
+        "canonical": "#b3aea2",
+        "cssVar": "--ash",
+        "lightTheme": "#4f4c45",
+        "tonalRamp": [
+          "oklch(15% 0.018 88)",
+          "oklch(26% 0.018 88)",
+          "oklch(37% 0.018 88)",
+          "oklch(48% 0.018 88)",
+          "oklch(59% 0.018 88)",
+          "oklch(70% 0.018 88)",
+          "oklch(82% 0.018 88)",
+          "oklch(95% 0.018 88)"
+        ]
+      },
+      "dim": {
+        "role": "neutral",
+        "displayName": "Dim Graticule",
+        "canonical": "#8f8a7f",
+        "cssVar": "--dim",
+        "lightTheme": "#6b675e",
+        "tonalRamp": [
+          "oklch(15% 0.017 86)",
+          "oklch(26% 0.017 86)",
+          "oklch(37% 0.017 86)",
+          "oklch(48% 0.017 86)",
+          "oklch(59% 0.017 86)",
+          "oklch(70% 0.017 86)",
+          "oklch(82% 0.017 86)",
+          "oklch(95% 0.017 86)"
+        ]
+      },
+      "line-405-violet": {
+        "role": "tertiary",
+        "displayName": "Violet 405 nm (mark only)",
+        "canonical": "#a084ff",
+        "cssVar": "--l405",
+        "lightTheme": "#6a3fd9",
+        "tonalRamp": [
+          "oklch(15% 0.074 292)",
+          "oklch(26% 0.106 292)",
+          "oklch(37% 0.138 292)",
+          "oklch(48% 0.171 292)",
+          "oklch(59% 0.176 292)",
+          "oklch(70% 0.176 292)",
+          "oklch(82% 0.141 292)",
+          "oklch(95% 0.103 292)"
+        ]
+      },
+      "line-436-indigo": {
+        "role": "tertiary",
+        "displayName": "Indigo 436 nm (mark only)",
+        "canonical": "#7d86ff",
+        "cssVar": "--l436",
+        "lightTheme": "#3c4cc7",
+        "tonalRamp": [
+          "oklch(15% 0.074 277)",
+          "oklch(26% 0.106 277)",
+          "oklch(37% 0.139 277)",
+          "oklch(48% 0.171 277)",
+          "oklch(59% 0.176 277)",
+          "oklch(70% 0.176 277)",
+          "oklch(82% 0.142 277)",
+          "oklch(95% 0.104 277)"
+        ]
+      },
+      "line-486-scout-cyan": {
+        "role": "secondary",
+        "displayName": "Scout Cyan 486 nm",
+        "canonical": "#4fc3f7",
+        "cssVar": "--l486 / --scout",
+        "lightTheme": "#0a679f",
+        "tonalRamp": [
+          "oklch(15% 0.062 231)",
+          "oklch(26% 0.085 231)",
+          "oklch(37% 0.108 231)",
+          "oklch(48% 0.127 231)",
+          "oklch(59% 0.127 231)",
+          "oklch(70% 0.127 231)",
+          "oklch(82% 0.110 231)",
+          "oklch(95% 0.083 231)"
+        ]
+      },
+      "line-546-scribe-green": {
+        "role": "secondary",
+        "displayName": "Scribe Green 546 nm",
+        "canonical": "#8bd450",
+        "cssVar": "--l546 / --scribe",
+        "lightTheme": "#3a7d1c",
+        "tonalRamp": [
+          "oklch(15% 0.075 134)",
+          "oklch(26% 0.108 134)",
+          "oklch(37% 0.141 134)",
+          "oklch(48% 0.174 134)",
+          "oklch(59% 0.180 134)",
+          "oklch(70% 0.180 134)",
+          "oklch(82% 0.144 134)",
+          "oklch(95% 0.105 134)"
+        ]
+      },
+      "line-589-warden-sodium": {
+        "role": "primary",
+        "displayName": "Warden Sodium 589 nm",
+        "canonical": "#ffd23f",
+        "cssVar": "--l589 / --warden",
+        "lightTheme": "#7f5f00",
+        "tonalRamp": [
+          "oklch(15% 0.070 91)",
+          "oklch(26% 0.100 91)",
+          "oklch(37% 0.130 91)",
+          "oklch(48% 0.159 91)",
+          "oklch(59% 0.162 91)",
+          "oklch(70% 0.162 91)",
+          "oklch(82% 0.132 91)",
+          "oklch(95% 0.097 91)"
+        ]
+      },
+      "line-615-orange": {
+        "role": "tertiary",
+        "displayName": "Orange 615 nm (mark only)",
+        "canonical": "#ff9f43",
+        "cssVar": "--l615",
+        "lightTheme": "#b85a00",
+        "tonalRamp": [
+          "oklch(15% 0.068 61)",
+          "oklch(26% 0.097 61)",
+          "oklch(37% 0.125 61)",
+          "oklch(48% 0.153 61)",
+          "oklch(59% 0.154 61)",
+          "oklch(70% 0.154 61)",
+          "oklch(82% 0.128 61)",
+          "oklch(95% 0.094 61)"
+        ]
+      },
+      "line-656-error-red": {
+        "role": "tertiary",
+        "displayName": "Error Red 656 nm",
+        "canonical": "#ef5f6f",
+        "cssVar": "--l656 / --danger",
+        "lightTheme": "#c0283f",
+        "tonalRamp": [
+          "oklch(15% 0.074 17)",
+          "oklch(26% 0.107 17)",
+          "oklch(37% 0.139 17)",
+          "oklch(48% 0.172 17)",
+          "oklch(59% 0.177 17)",
+          "oklch(70% 0.177 17)",
+          "oklch(82% 0.142 17)",
+          "oklch(95% 0.104 17)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display (wordmark)",
+        "purpose": "SPECTRE wordmark on the empty plate and login; uppercase, Big Shoulders Stencil; tracking 0.3em under 520px."
+      },
+      "wordmark-small": {
+        "displayName": "Wordmark small",
+        "purpose": "Brand lockup in the rail and topbar; uppercase."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Plate (run) title, editable in place; 1.3rem under 520px."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Prose headings inside the plate (h1 1.6rem, h2 1.25rem, h3 1.08rem)."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "Run total cost in the inspector."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Reading prose on the plate; blocks capped at 60ch."
+      },
+      "body-ui": {
+        "displayName": "Body UI",
+        "purpose": "Interface text and fields; root size 15px (13.5px / 17px by setting)."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Tracked uppercase field labels, group names, inspector headings, in dim."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Uppercase tracked button text."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Plate number, date, version, help text, in dim."
+      }
+    },
+    "themes": {
+      "default": "dark",
+      "light": {
+        "selector": ":root[data-theme=\"light\"]",
+        "description": "Light table: every colour token remapped (see colorMeta.*.lightTheme). Selection rgb(155 116 0 / 0.22); float shadow rgb(40 32 10 / 0.28)."
+      },
+      "fontScale": {
+        "selector": ":root[data-font]",
+        "small": "13.5px",
+        "medium": "15px",
+        "large": "17px"
+      }
+    },
+    "selection": {
+      "dark": "rgb(255 210 63 / 0.28)",
+      "light": "rgb(155 116 0 / 0.22)"
+    },
+    "focus": {
+      "controls": "outline: 1px dashed var(--l589); outline-offset: 3px",
+      "fields": "outline: none; border: 1px dashed var(--l589)",
+      "listItems": "outline: 1px dashed var(--l589); outline-offset: -2px"
+    },
+    "shadows": [
+      {
+        "name": "float",
+        "value": "0 6px 14px -6px rgb(0 0 0 / 0.55)",
+        "lightValue": "0 6px 14px -6px rgb(40 32 10 / 0.28)",
+        "purpose": "Menus, slash menu, toasts, dialogs and off-canvas drawers only."
+      },
+      {
+        "name": "emission-live",
+        "value": "0 0 10px 1px color-mix(in srgb, var(--c) 70%, transparent), 0 0 34px 6px color-mix(in srgb, var(--c) 22%, transparent)",
+        "purpose": "Glow of a live agent line in its own colour."
+      },
+      {
+        "name": "emission-done",
+        "value": "0 0 8px color-mix(in srgb, var(--c) 45%, transparent)",
+        "purpose": "Residual glow of a finished agent line."
+      },
+      {
+        "name": "doublet",
+        "value": "4px 0 0 var(--c)",
+        "purpose": "Second copy of a line: a fallback model answered. Lines only, never surfaces (3px on the switch needle)."
+      },
+      {
+        "name": "backdrop",
+        "value": "rgb(8 8 10 / 0.6)",
+        "purpose": "Dialog backdrop; the drawer scrim uses 0.55."
+      }
+    ],
+    "motion": [
+      {
+        "name": "spring",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "purpose": "Things that land: emission lines (0.55s), mark landing (1.1s), switch needle (0.35s). One overshoot."
+      },
+      {
+        "name": "out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Things that travel: drawers and settings sheet (0.45s), palette (0.3s), toasts (0.4s), wordmark resolve (1.4s), rail draw (1.2s), mark hover split (0.7s)."
+      },
+      {
+        "name": "state-fade",
+        "value": "0.2s",
+        "purpose": "Border, background and colour changes on controls."
+      },
+      {
+        "name": "live-blink",
+        "value": "0.9s ease-in-out infinite",
+        "purpose": "Running run tick and the live agent line in the brand mark."
+      },
+      {
+        "name": "eline-live",
+        "value": "1.4s ease-in-out infinite",
+        "purpose": "Breathing of a live agent line."
+      },
+      {
+        "name": "sodium-breath",
+        "value": "3.2s ease-in-out 1.6s infinite",
+        "purpose": "Idle breathing of the hero mark's sodium doublet."
+      },
+      {
+        "name": "mark-stagger",
+        "value": "70ms",
+        "purpose": "Delay step between mark lines on landing (405 to 656 nm)."
+      },
+      {
+        "name": "caret",
+        "value": "0.8s steps(1) infinite",
+        "purpose": "Streaming text caret."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "duration 0.001ms, 1 iteration",
+        "purpose": "prefers-reduced-motion: reduce collapses all animation and transition."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "1280px",
+        "purpose": "At and above: three columns, rail 268px | work | inspector 300px."
+      },
+      {
+        "name": "laptop",
+        "value": "1279px",
+        "purpose": "max-width: inspector becomes a right drawer; topbar appears."
+      },
+      {
+        "name": "compact",
+        "value": "899px",
+        "purpose": "max-width: one column; rail drawer; sticky topbar; composer docks at the bottom; 44px targets; spectrogram 150px."
+      },
+      {
+        "name": "phone",
+        "value": "520px",
+        "purpose": "max-width: spectrogram 160px with agent tags stepped in three rows; odd axis labels hidden; title 1.3rem; wordmark tracking 0.3em."
+      },
+      {
+        "name": "touch",
+        "value": "hover: none",
+        "purpose": "Row action buttons always visible."
+      }
+    ],
+    "layout": {
+      "railWidth": "268px",
+      "inspectorWidth": "300px",
+      "spectrogramHeight": "188px",
+      "axisHeight": "28px",
+      "wavelengthWindow": "430-665 nm mapped across the band width",
+      "plateMeasure": "84ch view, 60ch per prose block"
+    },
+    "mark": {
+      "source": "#mark symbol in index.html; favicon.svg and PNG icons generated by tools/make_icons.py",
+      "grid": "64 units",
+      "head": "clip: circle (32, 29, r 21) plus the rectangle below y 29",
+      "eyeGap": "y 23-31 on the 436, 486, 589 and 615 nm lines",
+      "strokeWidth": "4.6 units (589 doublet 2 each); icons draw 5-unit bars",
+      "iconTile": "#121315 rounded square, radius 13/64",
+      "sizes": "topbar 26px, rail 34px, login 96px, hero clamp(120px, 18vw, 176px)",
+      "lines": [
+        {
+          "nm": 405,
+          "x": 13.1,
+          "bottom": 50,
+          "colour": "line-405-violet"
+        },
+        {
+          "nm": 436,
+          "x": 19.4,
+          "bottom": 46,
+          "eyes": true,
+          "colour": "line-436-indigo"
+        },
+        {
+          "nm": 486,
+          "x": 25.7,
+          "bottom": 53,
+          "eyes": true,
+          "agent": "scout",
+          "colour": "line-486-scout-cyan"
+        },
+        {
+          "nm": 546,
+          "x": 32,
+          "bottom": 47,
+          "agent": "scribe",
+          "colour": "line-546-scribe-green"
+        },
+        {
+          "nm": 589,
+          "x": [
+            37.05,
+            39.55
+          ],
+          "bottom": 53,
+          "eyes": true,
+          "agent": "warden",
+          "doublet": true,
+          "colour": "line-589-warden-sodium"
+        },
+        {
+          "nm": 615,
+          "x": 44.6,
+          "bottom": 46,
+          "eyes": true,
+          "colour": "line-615-orange"
+        },
+        {
+          "nm": 656,
+          "x": 50.9,
+          "bottom": 50,
+          "colour": "line-656-error-red"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The send action (Exposer) and form submits: transparent, hairline border, green emission tick; hover adds a 10% green wash.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Exposer <svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M4 12h15M14 7l5 5-5 5\"/></svg></button>",
+      "css": ":host{--ground:#121315;--continuum:#17181b;--plate:#1b1c1f;--plate-2:#222327;--hair:#34363b;--hair-2:#4a4c52;--bone:#e9e4d8;--ash:#b3aea2;--dim:#8f8a7f;--l486:#4fc3f7;--l546:#8bd450;--l589:#ffd23f;--l656:#ef5f6f;--danger:var(--l656);--spring:cubic-bezier(0.34,1.56,0.64,1);--out:cubic-bezier(0.16,1,0.3,1);--font-ui:'Barlow Semi Condensed','Barlow','Segoe UI',system-ui,sans-serif;--font-mark:'Big Shoulders Stencil','Barlow Semi Condensed',sans-serif;}.ds-btn{position:relative;display:inline-flex;align-items:center;gap:10px;min-height:40px;padding:0 16px 0 18px;border:1px solid var(--hair-2,#4a4c52);background:transparent;color:var(--bone,#e9e4d8);font:500 12px/1 var(--font-ui);letter-spacing:0.22em;text-transform:uppercase;cursor:pointer;border-radius:0;transition:border-color .2s,background-color .2s,color .2s}.ds-btn::before{content:'';position:absolute;left:7px;top:8px;bottom:8px;width:1px;background:var(--ds-tick,var(--hair-2,#4a4c52))}.ds-btn:hover{border-color:var(--bone,#e9e4d8)}.ds-btn:active{border-style:dashed}.ds-btn:focus-visible{outline:1px dashed var(--l589,#ffd23f);outline-offset:3px}.ds-btn-primary{--ds-tick:var(--l546,#8bd450)}.ds-btn-primary:hover{background:color-mix(in srgb,var(--l546,#8bd450) 10%,transparent)}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Stop and destructive actions: red text, red tick, red border at 55%.",
+      "html": "<button class=\"ds-btn ds-btn-danger\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><rect x=\"7\" y=\"7\" width=\"10\" height=\"10\"/></svg>Arrêter</button>",
+      "css": ":host{--ground:#121315;--continuum:#17181b;--plate:#1b1c1f;--plate-2:#222327;--hair:#34363b;--hair-2:#4a4c52;--bone:#e9e4d8;--ash:#b3aea2;--dim:#8f8a7f;--l486:#4fc3f7;--l546:#8bd450;--l589:#ffd23f;--l656:#ef5f6f;--danger:var(--l656);--spring:cubic-bezier(0.34,1.56,0.64,1);--out:cubic-bezier(0.16,1,0.3,1);--font-ui:'Barlow Semi Condensed','Barlow','Segoe UI',system-ui,sans-serif;--font-mark:'Big Shoulders Stencil','Barlow Semi Condensed',sans-serif;}.ds-btn{position:relative;display:inline-flex;align-items:center;gap:10px;min-height:40px;padding:0 16px 0 18px;border:1px solid var(--hair-2,#4a4c52);background:transparent;color:var(--bone,#e9e4d8);font:500 12px/1 var(--font-ui);letter-spacing:0.22em;text-transform:uppercase;cursor:pointer;border-radius:0;transition:border-color .2s,background-color .2s,color .2s}.ds-btn::before{content:'';position:absolute;left:7px;top:8px;bottom:8px;width:1px;background:var(--ds-tick,var(--hair-2,#4a4c52))}.ds-btn:hover{border-color:var(--bone,#e9e4d8)}.ds-btn:active{border-style:dashed}.ds-btn:focus-visible{outline:1px dashed var(--l589,#ffd23f);outline-offset:3px}.ds-btn-danger{--ds-tick:var(--danger,#ef5f6f);color:var(--danger,#ef5f6f);border-color:color-mix(in srgb,var(--danger,#ef5f6f) 55%,transparent)}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Rail actions (Nouvelle plaque, Réglages): borderless until hover, keeps the tick.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M12 5v14M5 12h14\"/></svg>Nouvelle plaque<kbd class=\"ds-kbd\">N</kbd></button>",
+      "css": ":host{--ground:#121315;--continuum:#17181b;--plate:#1b1c1f;--plate-2:#222327;--hair:#34363b;--hair-2:#4a4c52;--bone:#e9e4d8;--ash:#b3aea2;--dim:#8f8a7f;--l486:#4fc3f7;--l546:#8bd450;--l589:#ffd23f;--l656:#ef5f6f;--danger:var(--l656);--spring:cubic-bezier(0.34,1.56,0.64,1);--out:cubic-bezier(0.16,1,0.3,1);--font-ui:'Barlow Semi Condensed','Barlow','Segoe UI',system-ui,sans-serif;--font-mark:'Big Shoulders Stencil','Barlow Semi Condensed',sans-serif;}.ds-btn{position:relative;display:inline-flex;align-items:center;gap:10px;min-height:40px;padding:0 16px 0 18px;border:1px solid var(--hair-2,#4a4c52);background:transparent;color:var(--bone,#e9e4d8);font:500 12px/1 var(--font-ui);letter-spacing:0.22em;text-transform:uppercase;cursor:pointer;border-radius:0;transition:border-color .2s,background-color .2s,color .2s}.ds-btn::before{content:'';position:absolute;left:7px;top:8px;bottom:8px;width:1px;background:var(--ds-tick,var(--hair-2,#4a4c52))}.ds-btn:hover{border-color:var(--bone,#e9e4d8)}.ds-btn:active{border-style:dashed}.ds-btn:focus-visible{outline:1px dashed var(--l589,#ffd23f);outline-offset:3px}.ds-btn-ghost{border-color:transparent}.ds-btn-ghost:hover{border-color:var(--hair-2,#4a4c52)}.ds-kbd{font:500 11px/1 var(--font-ui);letter-spacing:.1em;padding:3px 5px;border:1px solid var(--hair,#34363b);color:var(--dim,#8f8a7f);margin-left:12px}"
+    },
+    {
+      "name": "Icon Button",
+      "kind": "button",
+      "refersTo": "icon-button",
+      "description": "38px square glyph button; hover draws a hairline; pressed is a dashed sodium border.",
+      "html": "<button class=\"ds-icon-btn\" aria-label=\"Copier\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><rect x=\"8\" y=\"8\" width=\"12\" height=\"12\"/><path d=\"M16 8V4H4v12h4\"/></svg></button><button class=\"ds-icon-btn\" aria-pressed=\"true\" aria-label=\"Dicter\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0 0 14 0M12 18v3\"/></svg></button>",
+      "css": ":host{--ground:#121315;--continuum:#17181b;--plate:#1b1c1f;--plate-2:#222327;--hair:#34363b;--hair-2:#4a4c52;--bone:#e9e4d8;--ash:#b3aea2;--dim:#8f8a7f;--l486:#4fc3f7;--l546:#8bd450;--l589:#ffd23f;--l656:#ef5f6f;--danger:var(--l656);--spring:cubic-bezier(0.34,1.56,0.64,1);--out:cubic-bezier(0.16,1,0.3,1);--font-ui:'Barlow Semi Condensed','Barlow','Segoe UI',system-ui,sans-serif;--font-mark:'Big Shoulders Stencil','Barlow Semi Condensed',sans-serif;}.ds-icon-btn{display:inline-grid;place-items:center;width:38px;height:38px;border:1px solid transparent;background:none;color:var(--ash,#b3aea2);cursor:pointer;border-radius:0}.ds-icon-btn:hover{color:var(--bone,#e9e4d8);border-color:var(--hair-2,#4a4c52)}.ds-icon-btn[aria-pressed=true]{color:var(--l589,#ffd23f);border:1px dashed var(--l589,#ffd23f)}.ds-icon-btn:focus-visible{outline:1px dashed var(--l589,#ffd23f);outline-offset:3px}"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Square plate-coloured field with hairline border and sodium caret; focus turns the border dashed sodium.",
+      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><circle cx=\"11\" cy=\"11\" r=\"6\"/><path d=\"m20 20-4.5-4.5\"/></svg><input class=\"ds-input\" type=\"search\" placeholder=\"Rechercher, #tag…\"></label>",
+      "css": ":host{--ground:#121315;--continuum:#17181b;--plate:#1b1c1f;--plate-2:#222327;--hair:#34363b;--hair-2:#4a4c52;--bone:#e9e4d8;--ash:#b3aea2;--dim:#8f8a7f;--l486:#4fc3f7;--l546:#8bd450;--l589:#ffd23f;--l656:#ef5f6f;--danger:var(--l656);--spring:cubic-bezier(0.34,1.56,0.64,1);--out:cubic-bezier(0.16,1,0.3,1);--font-ui:'Barlow Semi Condensed','Barlow','Segoe UI',system-ui,sans-serif;--font-mark:'Big Shoulders Stencil','Barlow Semi Condensed',sans-serif;}.ds-search{position:relative;display:flex;align-items:center;width:240px}.ds-search svg{position:absolute;left:10px;color:var(--dim,#8f8a7f)}.ds-input{width:100%;min-height:38px;padding:0 10px 0 34px;background:var(--plate,#1b1c1f);border:1px solid var(--hair,#34363b);border-radius:0;color:var(--bone,#e9e4d8);caret-color:var(--l589,#ffd23f);font:400 15px/1.6 var(--font-ui)}.ds-input::placeholder{color:var(--dim,#8f8a7f)}.ds-input:focus-visible{outline:none;border:1px dashed var(--l589,#ffd23f)}"
+    },
+    {
+      "name": "Tabs and Chip",
+      "kind": "nav",
+      "refersTo": "chip",
+      "description": "Tracked-caps tabs with a 2px sodium underline when selected, and a toggle chip that turns dashed sodium when pressed.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">Texte final</button><button role=\"tab\" aria-selected=\"false\">Brouillon</button><button role=\"tab\" aria-selected=\"false\">Corrections</button></div><button class=\"ds-chip\" aria-pressed=\"true\">Archives</button>",
+      "css": ":host{--ground:#121315;--continuum:#17181b;--plate:#1b1c1f;--plate-2:#222327;--hair:#34363b;--hair-2:#4a4c52;--bone:#e9e4d8;--ash:#b3aea2;--dim:#8f8a7f;--l486:#4fc3f7;--l546:#8bd450;--l589:#ffd23f;--l656:#ef5f6f;--danger:var(--l656);--spring:cubic-bezier(0.34,1.56,0.64,1);--out:cubic-bezier(0.16,1,0.3,1);--font-ui:'Barlow Semi Condensed','Barlow','Segoe UI',system-ui,sans-serif;--font-mark:'Big Shoulders Stencil','Barlow Semi Condensed',sans-serif;}.ds-tabs{display:flex;gap:2px;border-bottom:1px solid var(--hair,#34363b);margin-bottom:12px}.ds-tabs [role=tab]{position:relative;min-height:42px;padding:0 14px;border:0;background:none;color:var(--dim,#8f8a7f);font:400 11.4px/1 var(--font-ui);letter-spacing:.2em;text-transform:uppercase;cursor:pointer}.ds-tabs [role=tab]:hover,.ds-tabs [aria-selected=true]{color:var(--bone,#e9e4d8)}.ds-tabs [aria-selected=true]::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:var(--l589,#ffd23f)}.ds-tabs [role=tab]:focus-visible{outline:1px dashed var(--l589,#ffd23f);outline-offset:3px}.ds-chip:focus-visible{outline:1px dashed var(--l589,#ffd23f);outline-offset:3px}.ds-chip{min-height:32px;padding:0 12px;border:1px solid var(--hair,#34363b);background:none;color:var(--ash,#b3aea2);font:400 11.4px/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;cursor:pointer;border-radius:0}.ds-chip:hover{color:var(--bone,#e9e4d8)}.ds-chip[aria-pressed=true]{border-style:dashed;border-color:var(--l589,#ffd23f);color:var(--bone,#e9e4d8)}"
+    },
+    {
+      "name": "Run Row",
+      "kind": "nav",
+      "refersTo": "run-row",
+      "description": "History row hanging a status tick on the calibration rail: green done, sodium blinking running, red error; the current row is dashed on plate.",
+      "html": "<div class=\"ds-rail\"><button class=\"ds-run\" data-status=\"done\"><span class=\"ds-no\">0042</span><span class=\"ds-title\">Explique la relativité</span><span class=\"ds-cost\"><i class=\"ds-mag\"></i>0,0229 $</span></button><button class=\"ds-run\" data-status=\"running\" aria-current=\"true\"><span class=\"ds-no\">0043</span><span class=\"ds-title\">Lettre de motivation</span><span class=\"ds-cost\">…</span></button></div>",
+      "css": ":host{--ground:#121315;--continuum:#17181b;--plate:#1b1c1f;--plate-2:#222327;--hair:#34363b;--hair-2:#4a4c52;--bone:#e9e4d8;--ash:#b3aea2;--dim:#8f8a7f;--l486:#4fc3f7;--l546:#8bd450;--l589:#ffd23f;--l656:#ef5f6f;--danger:var(--l656);--spring:cubic-bezier(0.34,1.56,0.64,1);--out:cubic-bezier(0.16,1,0.3,1);--font-ui:'Barlow Semi Condensed','Barlow','Segoe UI',system-ui,sans-serif;--font-mark:'Big Shoulders Stencil','Barlow Semi Condensed',sans-serif;}.ds-rail{position:relative;width:240px;padding:4px 0 4px 16px;background:var(--continuum,#17181b)}.ds-rail::before{content:'';position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--hair-2,#4a4c52)}.ds-run{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:baseline;gap:2px 10px;width:100%;min-height:44px;padding:7px 10px;border:1px solid transparent;background:none;color:var(--ash,#b3aea2);text-align:left;cursor:pointer;font:400 15px/1.6 var(--font-ui)}.ds-run::before{content:'';position:absolute;left:-16px;top:50%;width:11px;height:1px;background:var(--ds-tick,var(--hair-2,#4a4c52))}.ds-run[data-status=done]{--ds-tick:var(--l546,#8bd450)}.ds-run[data-status=running]{--ds-tick:var(--l589,#ffd23f)}.ds-run[data-status=running]::before{animation:ds-tick .9s ease-in-out infinite}@keyframes ds-tick{50%{opacity:.3}}.ds-run:hover{color:var(--bone,#e9e4d8);border-color:var(--hair,#34363b)}.ds-run[aria-current=true]{color:var(--bone,#e9e4d8);border:1px dashed var(--hair-2,#4a4c52);background:var(--plate,#1b1c1f)}.ds-run[aria-current=true]::before{width:14px;height:2px}.ds-run:focus-visible{outline:1px dashed var(--l589,#ffd23f);outline-offset:3px}.ds-no,.ds-cost{font-size:11.4px;color:var(--dim,#8f8a7f)}.ds-no{letter-spacing:.12em}.ds-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-mag{display:inline-block;width:7px;height:7px;margin-right:5px;border-radius:50%;background:var(--l589,#ffd23f);vertical-align:middle}"
+    },
+    {
+      "name": "Emission Lines",
+      "kind": "custom",
+      "refersTo": "spectrogram",
+      "description": "Signature: agents as 1.5px lines on the continuum; idle dashed and short, live solid and glowing, done solid with a soft glow. Hover the band to see an idle line land with the spring.",
+      "html": "<div class=\"ds-spectro\"><div class=\"ds-agent\" style=\"--c:var(--l486,#4fc3f7);left:20%\" data-state=\"done\"><i class=\"ds-eline\"></i><b>Scout</b></div><div class=\"ds-agent\" style=\"--c:var(--l546,#8bd450);left:45%\" data-state=\"live\"><i class=\"ds-eline\"></i><b>Scribe</b></div><div class=\"ds-agent\" style=\"--c:var(--l589,#ffd23f);left:70%\" data-state=\"idle\"><i class=\"ds-eline\"></i><b>Warden</b></div></div>",
+      "css": ":host{--ground:#121315;--continuum:#17181b;--plate:#1b1c1f;--plate-2:#222327;--hair:#34363b;--hair-2:#4a4c52;--bone:#e9e4d8;--ash:#b3aea2;--dim:#8f8a7f;--l486:#4fc3f7;--l546:#8bd450;--l589:#ffd23f;--l656:#ef5f6f;--danger:var(--l656);--spring:cubic-bezier(0.34,1.56,0.64,1);--out:cubic-bezier(0.16,1,0.3,1);--font-ui:'Barlow Semi Condensed','Barlow','Segoe UI',system-ui,sans-serif;--font-mark:'Big Shoulders Stencil','Barlow Semi Condensed',sans-serif;}.ds-spectro{position:relative;height:150px;width:100%;min-width:320px;background:var(--continuum,#17181b);border-bottom:1px solid var(--hair-2,#4a4c52)}.ds-agent{position:absolute;top:0;bottom:0;width:0}.ds-agent b{position:absolute;top:12px;left:10px;font:500 12.3px/1 var(--font-ui);letter-spacing:.26em;text-transform:uppercase;color:var(--bone,#e9e4d8)}.ds-eline{position:absolute;left:0;bottom:0;width:1.5px;height:100%;background:var(--c);transform-origin:50% 100%;transition:transform .55s var(--spring),opacity .4s,box-shadow .4s}.ds-agent[data-state=idle] .ds-eline{background:repeating-linear-gradient(to top,var(--c) 0 6px,transparent 6px 11px);opacity:.55;transform:scaleY(.62)}.ds-agent[data-state=live] .ds-eline{box-shadow:0 0 10px 1px color-mix(in srgb,var(--c) 70%,transparent),0 0 34px 6px color-mix(in srgb,var(--c) 22%,transparent);animation:ds-live 1.4s ease-in-out infinite}@keyframes ds-live{50%{opacity:.72}}.ds-agent[data-state=done] .ds-eline{box-shadow:0 0 8px color-mix(in srgb,var(--c) 45%,transparent)}.ds-spectro:hover .ds-agent[data-state=idle] .ds-eline{transform:scaleY(1);opacity:1;background:var(--c)}"
+    },
+    {
+      "name": "Toast",
+      "kind": "card",
+      "refersTo": "menu",
+      "description": "Floating plate-2 surface with the float shadow and a 1px status tick (green, sodium warn, red error).",
+      "html": "<div class=\"ds-toast\">Plaque N° 0042 exportée.</div><div class=\"ds-toast\" data-kind=\"error\">Warden : délai dépassé.</div>",
+      "css": ":host{--ground:#121315;--continuum:#17181b;--plate:#1b1c1f;--plate-2:#222327;--hair:#34363b;--hair-2:#4a4c52;--bone:#e9e4d8;--ash:#b3aea2;--dim:#8f8a7f;--l486:#4fc3f7;--l546:#8bd450;--l589:#ffd23f;--l656:#ef5f6f;--danger:var(--l656);--spring:cubic-bezier(0.34,1.56,0.64,1);--out:cubic-bezier(0.16,1,0.3,1);--font-ui:'Barlow Semi Condensed','Barlow','Segoe UI',system-ui,sans-serif;--font-mark:'Big Shoulders Stencil','Barlow Semi Condensed',sans-serif;}.ds-toast{position:relative;margin-bottom:8px;max-width:360px;padding:12px 16px 12px 20px;background:var(--plate-2,#222327);border:1px solid var(--hair-2,#4a4c52);box-shadow:0 6px 14px -6px rgb(0 0 0 / .55);color:var(--bone,#e9e4d8);font:400 15px/1.6 var(--font-ui);animation:ds-in .4s var(--out)}.ds-toast::before{content:'';position:absolute;left:8px;top:10px;bottom:10px;width:1px;background:var(--ds-tick,var(--l546,#8bd450))}.ds-toast[data-kind=error]{--ds-tick:var(--danger,#ef5f6f)}@keyframes ds-in{from{transform:translateY(10px);opacity:0}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Emission-Line Rail",
+    "overview": "Spectre reads a run as a spectrogram plate. A charcoal continuum carries bone type, and colour exists only as hairline emission lines at real wavelengths: Scout at 486 nm, Scribe at 546 nm, Warden at the 589 nm sodium doublet, errors at 656 nm. Each agent is one line on a wavelength axis, and its state is the line's form: dashed while pending, solid and glowing while live, half-height when truncated, struck through on failure, doubled when a fallback model answered. The interface is a working instrument, not a chat thread; there are no bubbles, no avatars, no rounded cards.\n\nDensity is that of a tool: a fixed three-column workbench (history rail, work area, measurements inspector), condensed grotesque type, tracked uppercase labels and tabular numerals. Everything registers against hairlines and an off-centre vertical calibration rail in the history column. Depth is tonal, from ground to continuum to plate; shadows exist only for things that float. The same mark geometry serves as logo and progress indicator: the brand mark's lines dim, dash and come alive with the pipeline.\n\nTwo themes share one structure: the dark \"spectrogram plate\" (default) and a light \"light table\" in warm paper tones, where every emission colour is darkened to keep contrast on paper.",
+    "keyCharacteristics": [
+      "Charcoal tonal layering, bone text, colour only as 1-2px emission lines, ticks and dashed outlines.",
+      "Line form encodes state: dashed, solid, half, struck, doubled.",
+      "Square corners everywhere; circles only for magnitude dots and rail terminals.",
+      "Condensed grotesque UI (Barlow Semi Condensed) with tracked caps labels; stencil wordmark (Big Shoulders Stencil).",
+      "Dashed outline means active, selected or focused.",
+      "Motion is physical: a spring overshoot when lines land, an expo ease-out for drawers and sheets."
+    ],
+    "rules": [
+      {
+        "name": "The Hairline Emission Rule",
+        "body": "Spectral colour is drawn, never filled: lines, ticks, underlines, dashed outlines, text. The only coloured fills are the 10% green wash on the primary button hover and the magnitude dots.",
+        "section": "colors"
+      },
+      {
+        "name": "The Wavelength Identity Rule",
+        "body": "Each agent owns its wavelength everywhere it appears (spectrogram, inspector rule, preset labels, mark line): Scout cyan, Scribe green, Warden sodium. Never reassign them.",
+        "section": "colors"
+      },
+      {
+        "name": "The Paper Darkening Rule",
+        "body": "In the light theme every line colour is darkened, never reused as-is; the dark-theme hex values fail contrast on paper.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tracked Caps Rule",
+        "body": "Uppercase is always tracked (0.1em minimum, 0.22em for labels and buttons). Running text is never uppercase.",
+        "section": "typography"
+      },
+      {
+        "name": "The Plate Number Rule",
+        "body": "Runs are named by plate number (`N° 0042`) in meta and history; numerals stay tabular so columns of costs and tokens align.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Geometry Rule",
+        "body": "Wavelength position is the only horizontal logic in the spectrogram; agent lines never move to make room, their tags do.",
+        "section": "layout"
+      },
+      {
+        "name": "The Float-Only Shadow Rule",
+        "body": "Anything in the grid is flat. Only menus, toasts, dialogs and drawers cast the float shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** draw state as line form (dash, length, count, strike) in the owning agent's wavelength colour.",
+      "**Do** mark focus, selection and pressed state with a 1px dashed sodium outline or border (offset 3px for focus-visible).",
+      "**Do** give every button its 1px left tick, coloured by meaning.",
+      "**Do** keep every surface and control square with 1px hairline borders, and build depth from ground → continuum → plate → plate-2.",
+      "**Do** set labels and controls in tracked uppercase Barlow Semi Condensed and numbers in tabular figures.",
+      "**Do** reserve the float shadow for menus, toasts, dialogs and drawers.",
+      "**Do** use the spring easing for things that land and the expo out easing for things that travel, and respect reduced motion.",
+      "**Do** darken every line colour in the light theme rather than reusing dark-theme values."
+    ],
+    "donts": [
+      "**Don't** fill surfaces or buttons with spectral colour; colour is a hairline, a tick or text.",
+      "**Don't** render runs as chat bubbles, avatars or message threads.",
+      "**Don't** round corners on panels, controls or fields; circles are only magnitude dots and rail terminals.",
+      "**Don't** give the 405, 436 or 615 nm colours UI meaning; they belong to the mark.",
+      "**Don't** reassign an agent's colour or move a line off its wavelength position.",
+      "**Don't** use shadows to separate panels inside the grid.",
+      "**Don't** set running text in uppercase or set the wordmark in anything but Big Shoulders Stencil."
+    ]
+  }
+}

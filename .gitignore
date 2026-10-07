@@ -40,3 +40,5 @@ htmlcov/
 .impeccable/ref/
 .impeccable/mocks/
 .playwright-mcp/
+.impeccable/questions/
+.impeccable/hook.cache.json
