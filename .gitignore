@@ -34,3 +34,9 @@ htmlcov/
 .vscode/
 .idea/
 .DS_Store
+
+# Impeccable design workflow: review captures and catalog references stay local
+.impeccable/review/
+.impeccable/ref/
+.impeccable/mocks/
+.playwright-mcp/
