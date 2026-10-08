@@ -119,6 +119,14 @@ class VoskWake:
         return False
 
 
+# Names Whisper "base" tends to mishear in French speech; the prompt biases it towards them.
+VOCABULARY = (
+    "Spectre, assistant personnel. Ouvre YouTube, Google Chrome, Spotify, Netflix, WhatsApp, "
+    "Discord, Word, Excel, PowerPoint, Outlook, Gmail, Visual Studio Code, l'Explorateur de "
+    "fichiers, sur l'écran 1 ou l'écran 2."
+)
+
+
 class WhisperSTT:
     """faster-whisper on CPU (int8)."""
 
@@ -142,8 +150,11 @@ class WhisperSTT:
             audio,
             language=self.language,
             beam_size=1,
+            temperature=0.0,  # no fallback re-decoding: steady ~1 s latency
+            condition_on_previous_text=False,
+            without_timestamps=True,
             vad_filter=False,
-            initial_prompt="Spectre, assistant personnel.",
+            initial_prompt=VOCABULARY,
         )
         return " ".join(s.text.strip() for s in segments).strip()
 
