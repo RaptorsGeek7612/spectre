@@ -35,8 +35,8 @@ class AssistantConfig:
     allowed_roots: list[str] = field(default_factory=lambda: [str(Path.home())])
     wake_word: str = "spectre"
     stt_model: str = "base"
-    tts_voice: str = "fr_FR-gilles-low"  # male French voice (also: fr_FR-tom-medium, upmc-medium)
-    tts_speaker: str = ""  # speaker of a multi-speaker voice, e.g. "pierre" for fr_FR-upmc-medium
+    tts_voice: str = "fr_FR-upmc-medium"  # male French voice (also: fr_FR-gilles-low, tom-medium)
+    tts_speaker: str = "pierre"  # speaker of a multi-speaker voice, e.g. "pierre" for fr_FR-upmc-medium
     tts_effect: str = "futuriste"  # onboard-AI timbre: futuriste, vaisseau (subtler) or aucun
     speak_initiatives: bool = True
 

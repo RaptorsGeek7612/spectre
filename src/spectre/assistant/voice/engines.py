@@ -154,8 +154,8 @@ class PiperTTS:
     def __init__(
         self,
         models: Path,
-        voice: str = "fr_FR-gilles-low",
-        speaker: str = "",
+        voice: str = "fr_FR-upmc-medium",
+        speaker: str = "pierre",
         effect: str = "futuriste",
     ) -> None:
         from piper import PiperVoice, SynthesisConfig
