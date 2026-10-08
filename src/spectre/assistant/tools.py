@@ -17,6 +17,7 @@ from spectre.assistant.actions import ActionContext, ActionError
 from spectre.assistant.db import now_iso
 from spectre.assistant.governance import Gate, Level
 from spectre.assistant.memory import Memory
+from spectre.assistant.vision.faces import describe_presence
 
 
 @dataclass(frozen=True)
@@ -69,6 +70,10 @@ def _start_mission(ctx: ActionContext, goal: str, kind: str = "mission") -> str:
     return (
         f"mission #{mid} lancée en arrière-plan : {goal.strip()} (je te préviens quand c'est fini)"
     )
+
+
+def _who_is_there(ctx: ActionContext) -> str:
+    return describe_presence(ctx.db)
 
 
 def _missions(ctx: ActionContext) -> str:
@@ -186,6 +191,13 @@ TOOLS: dict[str, Tool] = {
             _start_mission,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
+        Tool(
+            "who_is_there",
+            "Qui est devant l'écran (caméra, personnes enregistrées seulement).",
+            Level.READ,
+            "read",
+            _who_is_there,
+        ),
     ]
 }
 

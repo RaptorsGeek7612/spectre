@@ -92,6 +92,7 @@
       </div>
       <div class="orb-caption" aria-live="polite">
         <p class="orb-state" id="orb-state">Connexion…</p>
+        <p class="presence-line" id="presence-line"></p>
         <p class="signal"><span class="label">Signal</span><span class="signal-bar"><i id="signal-fill"></i></span><b id="signal-value">0,0 %</b></p>
         <p class="heard" id="heard"></p>
         <p class="said" id="said"></p>
@@ -153,6 +154,15 @@
     <section class="as-view" data-view="settings" hidden>
       <h2 class="as-h">Réglages de l'assistant</h2>
       <form id="settings-form" class="settings-grid" autocomplete="off"></form>
+      <section class="faces-panel" aria-labelledby="faces-title">
+        <h3 class="as-h" id="faces-title">Visages connus</h3>
+        <p class="meta">Spectre ne reconnaît que les personnes enregistrées ici, avec leur accord. Il ne garde aucune photo : seulement une empreinte numérique (128 nombres), sur ce PC, effaçable à tout moment.</p>
+        <form class="inline-form" id="face-form" autocomplete="off">
+          <input type="text" id="face-name" placeholder="Prénom de la personne devant la caméra" aria-label="Prénom">
+          <button class="btn btn-primary" type="submit" id="face-enroll">Enregistrer ce visage</button>
+        </form>
+        <div id="faces" class="facts"></div>
+      </section>
     </section>
   </main>
 

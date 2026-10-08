@@ -226,3 +226,8 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 @media (prefers-reduced-motion: reduce) {
   .heard, .said, .signal-bar i { transition: none; }
 }
+
+/* ---- presence and faces ---- */
+.presence-line { margin: 0; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--l546); }
+.presence-line:empty { display: none; }
+.faces-panel { max-width: 84ch; margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--hair); }

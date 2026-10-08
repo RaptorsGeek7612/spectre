@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import queue
 from typing import Any
+from urllib.parse import unquote
 
 from spectre.assistant.service import AssistantService
 
@@ -67,6 +68,15 @@ def handle(
             handler._json(200, service.correct(int(fact_id), str(body().get("value", ""))))
         case "GET", ["audit"]:
             handler._json(200, service.audit())
+        case "GET", ["faces"]:
+            handler._json(
+                200, {"camera": service.camera is not None, "people": service.faces.people()}
+            )
+        case "POST", ["faces", "enroll"]:
+            name = str(body().get("name", "")).strip() or service.config.user_name
+            handler._json(200, {"name": name, "samples": service.enroll_face(name)})
+        case "POST", ["faces", name, "forget"]:
+            handler._json(200, {"removed": service.forget_face(unquote(name))})
         case "GET", ["config"]:
             handler._json(200, service.config.__dict__)
         case "POST", ["config"]:

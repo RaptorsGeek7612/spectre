@@ -20,7 +20,7 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
 ```shell
 uv sync
 uv run ruff format --check . ; uv run ruff check .
-uv run mypy src
+uv run mypy src                  # si Windows bloque mypy : uv run python -m mypy --no-native-parser src
 uv run pytest -m "not live" --cov=spectre --cov-report=term-missing
 uv run python -m spectre.web             # interface web (spectre-web.exe peut être bloqué par Windows)
 uv run python -m spectre.assistant --voice   # assistant vocal (uv sync --extra voice)

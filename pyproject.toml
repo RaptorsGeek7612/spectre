@@ -34,6 +34,7 @@ voice = [
     "faster-whisper>=1.2",
     "piper-tts>=1.8",
 ]
+vision = ["numpy>=2.0", "opencv-python-headless>=4.10", "onnxruntime>=1.20"]
 
 [project.scripts]
 spectre = "spectre.cli:main"
@@ -80,7 +81,7 @@ files = ["src"]
 
 [[tool.mypy.overrides]]
 # Optional voice extra: untyped, and absent from CI.
-module = ["sounddevice", "vosk", "faster_whisper", "av", "piper", "piper.*"]
+module = ["sounddevice", "vosk", "faster_whisper", "av", "piper", "piper.*", "cv2", "cv2.*", "onnxruntime"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -90,4 +91,4 @@ addopts = "-m 'not live'"
 
 [tool.coverage.run]
 # Hardware glue (microphone, speakers, Win32 windows): exercised by hand, not in CI.
-omit = ["*/assistant/voice/engines.py", "*/assistant/winapi.py"]
+omit = ["*/assistant/voice/engines.py", "*/assistant/winapi.py", "*/assistant/vision/camera.py"]

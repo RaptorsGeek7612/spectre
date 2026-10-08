@@ -188,7 +188,34 @@ const FIELDS = [
   ["tts_speaker", "Locuteur", "text", ""],
   ["tts_effect", "Timbre", ["futuriste", "androide", "hologramme", "vaisseau", "aucun"], "futuriste : IA de bord grave et métallique ; androide : robot vocodé ; hologramme : chœur scintillant ; vaisseau : discret ; aucun : voix naturelle."],
   ["speak_initiatives", "Annoncer les initiatives à voix haute", "checkbox", ""],
+  ["camera", "Reconnaissance des visages (webcam)", "checkbox", "Au prochain lancement. Ou lance Spectre avec --camera."],
 ];
+async function loadFaces() {
+  const data = await api("GET", "faces");
+  $("#face-enroll").disabled = !data.camera;
+  $("#face-name").placeholder = data.camera ? "Prénom de la personne devant la caméra" : "Caméra inactive : active-la dans les réglages puis relance Spectre";
+  $("#faces").replaceChildren(...(data.people.length ? data.people.map((p) => h("div", { class: "fact" },
+    h("span", { class: "cat" }, "visage"),
+    h("span", { class: "claim" }, h("b", {}, p.name)),
+    h("span", { class: "acts" }, h("button", { class: "btn btn-ghost", type: "button", onclick: async () => {
+      await api("POST", `faces/${encodeURIComponent(p.name)}/forget`, {}); toast(`Visage de ${p.name} oublié.`); loadFaces();
+    } }, h("span", {}, "Oublier"))),
+    h("span", { class: "sub" }, `${p.samples} empreintes · depuis ${date(p.since)}`))) : [h("p", { class: "empty-cards" }, "Aucun visage enregistré.")]));
+}
+$("#face-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("#face-enroll"); btn.disabled = true; btn.textContent = "Regarde la caméra…";
+  try { const r = await api("POST", "faces/enroll", { name: $("#face-name").value }); toast(`Visage de ${r.name} enregistré (${r.samples} prises).`); $("#face-name").value = ""; }
+  catch (err) { toast(err.message, "error", 7000); }
+  finally { btn.textContent = "Enregistrer ce visage"; loadFaces(); }
+});
+function showPresence(people, unknown, spoof = 0) {
+  const parts = [...people];
+  if (unknown) parts.push(unknown > 1 ? `${unknown} inconnus` : "1 inconnu");
+  if (spoof) parts.push(spoof > 1 ? `${spoof} photos ou écrans` : "1 photo ou écran");
+  $("#presence-line").textContent = parts.length ? `Présent : ${parts.join(", ")}` : "";
+}
+
 async function loadSettings() {
   const cfg = await api("GET", "config");
   const form = $("#settings-form");
@@ -225,10 +252,11 @@ async function loadStatus() {
   $("#hud-approvals").textContent = s.pending_approvals;
   $("#dock-approvals").textContent = s.pending_approvals || "";
   $("#hud-missions").textContent = s.missions_running;
+  if (s.camera) showPresence(s.present || [], 0);
   $("#hud-brain").textContent = String(s.brain_label || s.brain_model).toUpperCase();
   if (!document.body.dataset.voice || document.body.dataset.voice === "off") setState(s.voice);
 }
-const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: loadMissions, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: loadSettings };
+const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: loadMissions, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
 function show(view) {
   $$(".as-nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === view)));
   $$(".as-view").forEach((v) => { v.hidden = v.dataset.view !== view; });
@@ -251,6 +279,8 @@ function connect() {
     loadStatus().catch(() => {});
   });
   es.addEventListener("level", (e) => setLevel(JSON.parse(e.data).v));
+  es.addEventListener("presence", (e) => { const d = JSON.parse(e.data); showPresence(d.people, d.unknown, d.spoof); });
+  es.addEventListener("arrival", (e) => { const d = JSON.parse(e.data); caption("#said", d.text, 8000); });
   es.addEventListener("approval", () => { loadApprovals(); toast("Spectre attend ta validation pour une action.", "warn", 6000); });
   es.addEventListener("approval_done", () => loadApprovals());
   es.addEventListener("initiative", (e) => { const d = JSON.parse(e.data); toast(`${d.title}${d.body ? ` — ${d.body}` : ""}`, "ok", 8000); loadInitiatives(); loadMissions(); });

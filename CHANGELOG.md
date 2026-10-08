@@ -21,6 +21,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   d'audit immuable. Écritures journalisées et annulables, corbeille propre à Spectre.
 - Mémoire qui apprend (SQLite FTS5, renforcement, remplacement, oubli, correction, miroir
   Markdown), consolidation nocturne, briefing du matin, rappels, missions vérifiées avec rapport.
+- Reconnaissance des visages optionnelle (extra `vision`, `--camera`) : OpenCV Zoo YuNet
+  (MIT) + SFace (Apache 2.0) + anti-fraude MiniFASNet (Apache 2.0) en local, modèles vérifiés
+  par SHA-256 ; enregistrement volontaire, empreintes seulement (aucune
+  photo), accueil au retour, présence dans le HUD, outil `who_is_there`.
 - Page `assistant.html` dans l'univers des raies d'émission, liée depuis l'interface principale.
 
 ## [0.2.0] - 2026-10-08
