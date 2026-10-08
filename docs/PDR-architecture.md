@@ -50,7 +50,7 @@ Spectre/
 │       ├── export.py    # Export Markdown et page HTML autonome
 │       ├── demo.py      # Modèle démo (textes dans static/demo.json)
 │       └── static/      # index.html, app.css, app.js (sans build), polices, icônes, PWA
-├── tools/make_icons.py  # Génère favicon et icônes PNG à partir de la géométrie du logo
+├── tools/make_logo.py   # Génère le logo (casque spartiate), le favicon et le symbole #mark
 ├── tests/               # pytest, faux modèles, aucun réseau
 ├── docs/
 ├── .claude/skills/      # Skills des agents de développement

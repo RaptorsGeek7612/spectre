@@ -7,6 +7,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Changed
+
+- Nouveau logo : un casque corinthien de Spartiate en trois-quarts, crête de crin aux sept
+  couleurs de Spectre, capteur à la tempe et pistes de circuit gravées (logo complet animé sur
+  l'accueil, la connexion et la présence de l'assistant ; version simplifiée dans le menu, dont
+  les bandes de Scout, Scribe et Warden suivent toujours le pipeline ; favicon et icônes PNG).
+  `tools/make_logo.py` remplace `tools/make_icons.py`.
+- Voix de l'assistant plus fluide : débit réglable (posé, naturel, vif ; naturel par défaut),
+  rythme plus régulier et phrases enchaînées avec une courte respiration.
+
 ## [0.3.0] - 2026-10-08
 
 ### Added

@@ -70,6 +70,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/spectre/assistant/db.py" = ["E501"]  # SQL schema reads better unwrapped
+"tools/make_logo.py" = ["E501"]  # SVG markup and geometry read better unwrapped
 
 [tool.ruff.format]
 quote-style = "double"

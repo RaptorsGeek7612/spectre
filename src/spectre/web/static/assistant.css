@@ -46,21 +46,14 @@
 .presence-state { margin: 0; font: 200 clamp(1.6rem, 3.4vw, 2.4rem)/1.1 var(--font-mark); letter-spacing: 0.2em; text-transform: uppercase; }
 .presence-detail { margin: 10px 0 0; max-width: 60ch; color: var(--ash); font-size: 1rem; }
 .presence-detail:empty { display: none; }
-/* state as the mark's form (same grammar as the agents' lines) */
-body[data-voice="sleeping"] .mark-presence, body[data-voice="off"] .mark-presence { opacity: 0.55; }
-body[data-voice="sleeping"] .mark-presence .mk-l, body[data-voice="off"] .mark-presence .mk-l { stroke-dasharray: 3 3; }
-body[data-voice="listening"] .mark-presence { transform: scale(1.04); }
-body[data-voice="listening"] .mark-presence .mk-l { animation: as-listen 1.1s ease-in-out infinite; }
-body[data-voice="listening"] .mark-presence .mk-436, body[data-voice="listening"] .mark-presence .mk-546 { animation-delay: 0.15s; }
-body[data-voice="listening"] .mark-presence .mk-486, body[data-voice="listening"] .mark-presence .mk-615 { animation-delay: 0.3s; }
-@keyframes as-listen { 50% { transform: scaleY(0.82); } }
-body[data-voice="thinking"] .mark-presence .mk-l { animation: mk-live 0.8s ease-in-out infinite; }
-body[data-voice="thinking"] .mark-presence .mk-546 { animation-delay: 0.2s; }
-body[data-voice="thinking"] .mark-presence .mk-589 { animation-delay: 0.4s; }
-body[data-voice="speaking"] .mark-presence .mk-l { animation: as-speak 0.45s ease-in-out infinite alternate; }
-body[data-voice="speaking"] .mark-presence .mk-486, body[data-voice="speaking"] .mark-presence .mk-615 { animation-delay: 0.12s; }
-@keyframes as-speak { from { transform: scaleY(0.88); } to { transform: scaleY(1.04); } }
-.mark-presence .mk-l { transform-box: fill-box; transform-origin: 50% 100%; }
+/* state as the helmet's light: dim asleep, leaning in to listen, breathing as it thinks */
+body[data-voice="sleeping"] .mark-presence, body[data-voice="off"] .mark-presence { opacity: 0.55; filter: saturate(0.6); }
+body[data-voice="listening"] .mark-presence { transform: scale(1.05); filter: drop-shadow(0 0 14px color-mix(in oklab, var(--l486) 45%, transparent)); }
+body[data-voice="thinking"] .mark-presence { animation: as-think 1.2s ease-in-out infinite; }
+@keyframes as-think { 50% { filter: drop-shadow(0 0 10px color-mix(in oklab, var(--l589) 45%, transparent)); } }
+body[data-voice="speaking"] .mark-presence { animation: as-speak 0.5s ease-in-out infinite alternate; }
+@keyframes as-speak { from { transform: scale(1); } to { transform: scale(1.03); } }
+@media (prefers-reduced-motion: reduce) { .mark-presence { animation: none !important; } }
 
 /* ---- views ---- */
 .as-view { flex: 1; padding: clamp(18px, 3vw, 36px) clamp(16px, 3vw, 36px) 32px; }
