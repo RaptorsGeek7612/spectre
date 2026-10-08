@@ -160,14 +160,13 @@ def _master(x: Signal, rate: int) -> Signal:
 
 
 def futuristic(pcm: bytes, rate: int) -> bytes:
-    """Onboard AI, deeper: shifted harmonies layered on a metallic, spacious voice."""
+    """Onboard AI: a bright shifted harmony on a metallic, spacious voice (no dark undertone)."""
     x = _deepen(_to_float(pcm), PITCH["futuriste"])
     if x.size == 0:
         return b""
     t = np.arange(x.size, dtype=np.float32) / rate
     x = 0.8 * x + 0.2 * x * np.sin(2 * np.pi * 48 * t).astype(np.float32)
-    sub_octave = _deepen(x, 0.5)[: x.size]  # gravitas, an octave below
-    x = x + 0.34 * _freq_shift(x, rate, 110) + 0.3 * _freq_shift(x, rate, -55) + 0.22 * sub_octave
+    x = x + 0.34 * _freq_shift(x, rate, 110)
     x = _master(_equalise(_metal(x, rate), rate), rate)
     return _to_pcm(_reverb(x, rate, seconds=0.7, mix=0.24))
 
