@@ -419,8 +419,14 @@ def test_status_and_settings(client: Client, monkeypatch: pytest.MonkeyPatch) ->
 def test_bad_bodies(client: Client) -> None:
     assert client.request("POST", "/api/settings", raw=b"{nope")[0] == 400
     assert client.request("POST", "/api/settings", raw=b"[1]")[0] == 400
-    big = b"{" + b" " * (server_mod.MAX_BODY + 1) + b"}"
-    assert client.request("POST", "/api/settings", raw=big)[0] == 400
+    # Announce an oversized body without sending it: the server must refuse before reading.
+    with socket.create_connection(("127.0.0.1", client.port), timeout=10) as sock:
+        sock.sendall(
+            b"POST /api/settings HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Spectre: 1\r\n"
+            b"Content-Length: " + str(server_mod.MAX_BODY + 1).encode() + b"\r\n\r\n"
+        )
+        reply = sock.recv(4096)
+    assert reply.startswith(b"HTTP/1.1 413") and b"Connection: close" in reply
     assert client.json("GET", "/api/unknown")[0] == 404
     assert client.json("POST", "/api/run", {"request": " "})[0] == 400
     assert client.json("POST", "/api/run", {"request": "x" * 100_001})[0] == 400
