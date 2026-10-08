@@ -377,7 +377,7 @@ def _utterance() -> list[bytes]:
 
 
 def _loop(
-    blocks: list[bytes], stt: FakeSTT, reply: Any = None
+    blocks: list[bytes], stt: FakeSTT, reply: Any = None, ack: str = ""
 ) -> tuple[VoiceLoop, FakeTTS, list[str]]:
     states: list[str] = []
     tts = FakeTTS()
@@ -391,6 +391,7 @@ def _loop(
         lambda state, detail: states.append(state),
         play=lambda pcm, rate: plays.append(rate),
         follow_up_s=0.5,
+        ack=ack,
     )
     return voice, tts, states
 
@@ -439,9 +440,14 @@ def test_voice_ack_error_and_say(monkeypatch: pytest.MonkeyPatch) -> None:
         time.sleep(0.2)
         raise RuntimeError("panne")
 
-    voice, tts, _ = _loop([WAKE, *_utterance()], FakeSTT("fais un truc"), reply=slow)
+    voice, tts, _ = _loop(
+        [WAKE, *_utterance()], FakeSTT("fais un truc"), reply=slow, ack="Je m'en occupe."
+    )
     voice.run()
     assert tts.spoken == ["Je m'en occupe.", "Désolé, une erreur est survenue : panne"]
+    quiet, quiet_tts, _ = _loop([WAKE, *_utterance()], FakeSTT("encore"), reply=slow)
+    quiet.run()
+    assert quiet_tts.spoken == ["Désolé, une erreur est survenue : panne"]  # no filler by default
     voice.say("Rappel : pain")
     assert tts.spoken[-1] == "Rappel : pain"
 

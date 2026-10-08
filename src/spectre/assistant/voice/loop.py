@@ -52,7 +52,7 @@ class VoiceLoop:
         *,
         play: Callable[[bytes, int], None] | None = None,
         follow_up_s: float = 6.0,
-        ack: str = "Je m'en occupe.",
+        ack: str = "",  # optional filler while the brain thinks; off, users found it grating
     ) -> None:
         self.mic, self.wake, self.stt, self.tts = mic, wake, stt, tts
         self.reply = reply

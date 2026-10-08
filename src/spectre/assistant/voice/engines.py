@@ -132,7 +132,7 @@ class VoskWake:
         return False
 
 
-# Names Whisper "base" tends to mishear in French speech; the prompt biases it towards them.
+# Names Whisper tends to mishear in French speech; the prompt biases it towards them.
 VOCABULARY = (
     "Spectre, assistant personnel. Ouvre YouTube, Google Chrome, Spotify, Netflix, WhatsApp, "
     "Discord, Word, Excel, PowerPoint, Outlook, Gmail, Visual Studio Code, l'Explorateur de "
@@ -143,7 +143,7 @@ VOCABULARY = (
 class WhisperSTT:
     """faster-whisper on CPU (int8)."""
 
-    def __init__(self, model_size: str = "base", language: str = "fr") -> None:
+    def __init__(self, model_size: str = "small", language: str = "fr") -> None:
         try:
             import av  # noqa: F401
         except ImportError:

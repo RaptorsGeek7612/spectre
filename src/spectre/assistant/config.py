@@ -35,7 +35,7 @@ class AssistantConfig:
     allowed_roots: list[str] = field(default_factory=lambda: [str(Path.home())])
     wake_word: str = "spectre"
     mic_device: str = ""  # part of the microphone's name; empty = pick a real microphone
-    stt_model: str = "base"
+    stt_model: str = "small"  # faster-whisper; "base" is faster but mishears French speech
     tts_voice: str = "fr_FR-upmc-medium"  # male French voice (also: fr_FR-gilles-low, tom-medium)
     tts_speaker: str = "pierre"  # speaker of a multi-speaker voice (fr_FR-upmc-medium)
     tts_effect: str = "futuriste"  # onboard-AI timbre: futuriste, vaisseau (subtler) or aucun
