@@ -165,7 +165,7 @@ const FIELDS = [
   ["auto_max_level", "Autonomie (0 à 2)", "number", "Au-dessus de ce niveau de risque, Spectre demande ta validation. Supprimer, envoyer ou toucher au système demande toujours ton accord."],
   ["tts_voice", "Voix", ["fr_FR-tom-medium", "fr_FR-upmc-medium", "fr_FR-gilles-low"], "Voix d'homme ; pour fr_FR-upmc-medium, mets le locuteur « pierre »."],
   ["tts_speaker", "Locuteur", "text", ""],
-  ["tts_effect", "Timbre", ["futuriste", "vaisseau", "aucun"], "« futuriste » : IA de bord aux harmonies métalliques ; « vaisseau » : plus discret ; « aucun » : voix naturelle."],
+  ["tts_effect", "Timbre", ["futuriste", "androide", "hologramme", "vaisseau", "aucun"], "futuriste : IA de bord grave et métallique ; androide : robot vocodé ; hologramme : chœur scintillant ; vaisseau : discret ; aucun : voix naturelle."],
   ["speak_initiatives", "Annoncer les initiatives à voix haute", "checkbox", ""],
 ];
 async function loadSettings() {

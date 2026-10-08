@@ -40,7 +40,8 @@ def test_ship_edge_cases_and_apply() -> None:
 def test_futuristic() -> None:
     dry = _tone()
     wet = fx.apply("futuriste", dry, RATE)
-    assert len(wet) == len(dry) + 2 * int(RATE * 0.7)
+    deep = int(round(len(dry) // 2 / fx.PITCH["futuriste"]))
+    assert len(wet) == 2 * (deep + int(RATE * 0.7))
     assert wet == fx.futuristic(dry, RATE) and wet != fx.ship(dry, RATE)
     assert fx.futuristic(b"", RATE) == b""
     shifted = fx._freq_shift(
@@ -48,3 +49,31 @@ def test_futuristic() -> None:
     )
     peak = np.argmax(np.abs(np.fft.rfft(shifted))) * RATE / (RATE)  # 1 Hz bins over one second
     assert abs(peak - 1100) <= 2
+
+
+def test_android_hologram_and_pace() -> None:
+    dry = _tone(0.4)
+    for effect, tail in (("androide", 0.6), ("hologramme", 1.3)):
+        wet = fx.apply(effect, dry, RATE)
+        deep = int(round(len(dry) // 2 / fx.PITCH[effect]))
+        assert len(wet) == 2 * (deep + int(RATE * tail))
+        assert wet == fx.apply(effect, dry, RATE)
+        assert fx.CHAINS[effect](b"", RATE) == b""
+    assert fx.length_scale("futuriste") == round(1.08 * 0.9, 3)
+    assert fx.length_scale("vaisseau") == 1.08 and fx.length_scale("aucun") is None
+    tone = np.sin(2 * np.pi * 400 * np.arange(RATE) / RATE).astype(np.float32)
+    lowered = fx._deepen(tone, 0.8)
+    assert lowered.size == int(RATE / 0.8)
+    peak = np.argmax(np.abs(np.fft.rfft(lowered))) * RATE / lowered.size
+    assert abs(peak - 320) < 3
+    assert fx._deepen(tone, 1.0) is tone
+
+
+def test_master() -> None:
+    loud = np.concatenate([np.full(2000, 0.9), np.full(2000, 0.05)]).astype(np.float32)
+    out = fx._master(loud, RATE)
+    assert np.max(np.abs(out)) <= 1.0
+    assert out[1000] / out[3000] < loud[1000] / loud[3000]  # dynamics evened out
+    silent = fx._master(np.zeros(100, np.float32), RATE)
+    assert not np.any(silent)
+    assert fx._master(np.zeros(0, np.float32), RATE).size == 0

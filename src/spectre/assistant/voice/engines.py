@@ -160,13 +160,15 @@ class PiperTTS:
     ) -> None:
         from piper import PiperVoice, SynthesisConfig
 
+        from spectre.assistant.voice import fx
+
         path = ensure_piper_voice(models, voice)
         self.voice = PiperVoice.load(str(path))
         self.effect = effect
         speakers = getattr(self.voice.config, "speaker_id_map", None) or {}
         self.syn = SynthesisConfig(
             speaker_id=speakers.get(speaker),
-            length_scale=1.08 if effect != "aucun" else None,  # calm, deliberate cadence
+            length_scale=fx.length_scale(effect),  # calm cadence, offsets the deepening
         )
 
     def speak(self, text: str, stop: threading.Event | None = None) -> None:
