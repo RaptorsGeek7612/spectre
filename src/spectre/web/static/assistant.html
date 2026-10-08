@@ -46,6 +46,7 @@
 <filter id="mk-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 <clipPath id="mk-shell"><path d="M150 400 C132 360 116 300 108 252 C100 210 104 160 140 128 C178 96 252 92 296 126 C330 152 336 204 326 250 C320 292 330 340 352 392 C318 392 280 380 252 362 C226 346 214 330 206 318 C196 344 178 372 150 400 Z"/></clipPath>
 </defs><path d="M150 400 C132 360 116 300 108 252 C100 210 104 160 140 128 C178 96 252 92 296 126 C330 152 336 204 326 250 C320 292 330 340 352 392 C318 392 280 380 252 362 C226 346 214 330 206 318 C196 344 178 372 150 400 Z" fill="url(#mk-steel)"/><path d="M104 204 C150 178 252 170 332 198 L330 222 C252 194 152 202 106 228 Z" fill="url(#mk-band)"/><path d="M101 236 L108 234 C110 268 116 300 128 338 C134 360 142 384 150 400 C136 380 122 350 112 318 C106 296 102 266 101 236 Z" fill="#050506"/><path d="M116 243 C134 226 172 220 203 229 C194 247 160 258 121 256 Z" fill="#030304"/><ellipse cx="160" cy="241" rx="30" ry="9" fill="url(#mk-eyeglow)"/><circle cx="252" cy="262" r="22" fill="none" stroke="#e9e4d6" stroke-width="6"/><circle cx="252" cy="262" r="7" fill="#4fc3f7"/><path d="M150 400 C132 360 116 300 108 252 C100 210 104 160 140 128 C178 96 252 92 296 126 C330 152 336 204 326 250 C320 292 330 340 352 392 C318 392 280 380 252 362 C226 346 214 330 206 318 C196 344 178 372 150 400 Z" fill="none" stroke="#e9e4d6" stroke-width="9" stroke-linejoin="round"/><path d="M150 120 C190 98 252 98 294 128" fill="none" stroke="#e9e4d6" stroke-width="10" stroke-linecap="round"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></symbol>
     <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2"/></symbol>
     <symbol id="i-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="2 3"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
@@ -62,6 +63,10 @@
       <span class="wordmark wordmark-sm" aria-hidden="true">SPECTRE</span>
       <button class="icon-btn rail-close" type="button" data-action="close-drawers" aria-label="Fermer"><svg class="ic"><use href="#i-close"/></svg></button>
     </header>
+    <nav class="app-switch" aria-label="Espaces de Spectre">
+      <a href="./"><svg class="ic"><use href="#i-edit"/></svg><span>Rédaction</span></a>
+      <a href="assistant.html" aria-current="page"><svg class="ic"><use href="#i-mic"/></svg><span>Assistant</span></a>
+    </nav>
     <nav class="as-nav" id="as-nav" aria-label="Sections">
       <button type="button" data-view="talk" aria-current="true"><span>Conversation</span></button>
       <button type="button" data-view="approvals"><span>Validations</span><b class="count" id="count-approvals"></b></button>
@@ -72,7 +77,6 @@
       <button type="button" data-view="settings"><span>Réglages</span></button>
     </nav>
     <footer class="rail-foot">
-      <a class="btn btn-ghost" href="/">Rédaction</a>
       <span class="meta" id="brain-model"></span>
     </footer>
   </aside>
@@ -81,6 +85,7 @@
     <div class="topbar">
       <button class="icon-btn only-compact" type="button" data-action="open-rail" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
       <span class="topbar-title">Spectre</span>
+      <a class="icon-btn" href="./" aria-label="Aller à la rédaction"><svg class="ic"><use href="#i-edit"/></svg></a>
       <button class="icon-btn only-narrow-inspector" type="button" data-action="open-inspector" aria-label="Validations"><svg class="ic"><use href="#i-shield"/></svg></button>
     </div>
 

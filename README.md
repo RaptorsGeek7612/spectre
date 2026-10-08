@@ -148,8 +148,9 @@ uv run python -m spectre.assistant --voice         # dis « Spectre » pour lui 
 ```
 
 Sous Windows, le plus simple est de double-cliquer sur `tools\spectre-assistant.cmd` : Spectre
-démarre avec la voix et la caméra dans sa propre fenêtre (à garder ouverte) et écrit son journal
-dans `~/.spectre/assistant/spectre.log`. Depuis la page d'accueil, le bouton « Parler à Spectre »
+démarre en arrière-plan avec la voix et la caméra (aucune fenêtre à garder ouverte), puis son
+interface s'ouvre ; `tools\spectre-stop.cmd` l'arrête. Journal : `~/.spectre/assistant/spectre.log`.
+Le sélecteur « Rédaction | Assistant », sous le logo, passe d'un espace à l'autre. Depuis la page d'accueil, le bouton « Parler à Spectre »
 (en bas à droite) le fait écouter sans le mot d'éveil.
 
 Le premier lancement avec `--voice` télécharge les modèles (environ 200 Mo) dans

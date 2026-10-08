@@ -90,6 +90,10 @@
       <span class="wordmark wordmark-sm" aria-hidden="true">SPECTRE</span>
       <button class="icon-btn rail-close" type="button" data-action="close-drawers" aria-label="Fermer"><svg class="ic"><use href="#i-close"/></svg></button>
     </header>
+    <nav class="app-switch" aria-label="Espaces de Spectre">
+      <a href="./" aria-current="page"><svg class="ic"><use href="#i-edit"/></svg><span>Rédaction</span></a>
+      <a href="assistant.html" id="switch-assistant"><svg class="ic"><use href="#i-mic"/></svg><span>Assistant</span></a>
+    </nav>
     <button id="new-plate" class="btn btn-ghost btn-wide" type="button" data-action="new"><svg class="ic"><use href="#i-plus"/></svg><span data-i18n="rail.new">Nouvelle plaque</span><kbd>N</kbd></button>
     <label class="search">
       <svg class="ic"><use href="#i-search"/></svg>
@@ -103,7 +107,6 @@
     <footer class="rail-foot">
       <button class="btn btn-ghost" type="button" data-action="settings"><svg class="ic"><use href="#i-gear"/></svg><span data-i18n="rail.settings">Réglages</span></button>
       <button class="icon-btn" type="button" data-action="palette" aria-label="Palette de commandes (Ctrl+K)"><svg class="ic"><use href="#i-cmd"/></svg></button>
-      <a class="btn btn-ghost" id="assistant-link" href="assistant.html" hidden>Assistant</a>
       <span id="version" class="meta"></span>
     </footer>
   </aside>
@@ -115,6 +118,7 @@
       <svg class="mark mark-brand mark-top" aria-hidden="true"><use href="#mark"/></svg>
       <span class="topbar-title" id="topbar-title"></span>
       <span id="mode-badge" class="badge" hidden></span>
+      <a class="icon-btn only-compact" href="assistant.html" aria-label="Aller à l'assistant"><svg class="ic"><use href="#i-mic"/></svg></a>
       <button class="icon-btn only-narrow-inspector" type="button" data-action="open-inspector" aria-label="Coûts et détails"><svg class="ic"><use href="#i-gauge"/></svg></button>
     </div>
 

@@ -7,3 +7,4 @@ uv.lock linguist-generated=true
 
 # Windows batch files need CRLF line endings
 *.cmd text eol=crlf
+*.ps1 text eol=crlf

@@ -7,6 +7,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-10-09
+
+### Added
+
+- Sélecteur « Rédaction | Assistant » sous le logo, dans les deux pages, pour passer de l'une à
+  l'autre ; sur téléphone, une icône dans l'en-tête fait la même chose.
+- `tools/spectre-stop.cmd` arrête l'assistant.
+
+### Changed
+
+- `tools/spectre-assistant.cmd` démarre Spectre en arrière-plan, sans fenêtre de console : fermer
+  une fenêtre ou un Ctrl+C ne l'interrompt plus par accident ; s'il tourne déjà, le lanceur ouvre
+  simplement l'interface.
+
 ## [0.3.3] - 2026-10-09
 
 ### Added

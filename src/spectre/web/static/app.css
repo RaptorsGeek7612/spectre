@@ -316,6 +316,24 @@ select:focus-visible, input:focus-visible, textarea:focus-visible { outline: non
 .rail-axis::after { bottom: -4px; }
 .brand { display: flex; align-items: center; gap: 12px; min-height: 40px; margin-left: -12px; }
 .rail-close { margin-left: auto; display: none; }
+/* Switch between the two spaces: writing (Scout, Scribe, Warden) and the voice assistant. */
+.app-switch { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--hair); }
+.app-switch a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  color: var(--ash);
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.app-switch a + a { border-left: 1px solid var(--hair); }
+.app-switch .ic { width: 16px; height: 16px; }
+.app-switch a:hover, .app-switch a:focus-visible { color: var(--bone); background: var(--plate); }
+.app-switch a[aria-current="page"] { color: var(--bone); background: var(--plate-2); box-shadow: inset 0 -2px 0 var(--l486); }
 .search { position: relative; display: flex; align-items: center; }
 .search .ic { position: absolute; left: 10px; width: 16px; height: 16px; color: var(--dim); }
 .search input { width: 100%; min-height: 38px; padding: 0 10px 0 34px; }
