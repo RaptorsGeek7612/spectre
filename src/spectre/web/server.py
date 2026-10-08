@@ -64,6 +64,10 @@ SECURITY_HEADERS = {
 }
 
 
+class BodyTooLarge(ValueError):
+    """The request body exceeds MAX_BODY (it is left unread, so the connection must close)."""
+
+
 class App:
     """Shared server state: store, auth, running jobs and demo settings."""
 
@@ -106,6 +110,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        if self.close_connection:
+            self.send_header("Connection", "close")
         for key, value in {**SECURITY_HEADERS, **(extra or {})}.items():
             self.send_header(key, value)
         self.end_headers()
@@ -122,7 +128,7 @@ class Handler(BaseHTTPRequestHandler):
     def _body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length") or 0)
         if length > MAX_BODY:
-            raise ValueError("requête trop volumineuse (2 Mo maximum)")
+            raise BodyTooLarge("requête trop volumineuse (2 Mo maximum)")
         raw = self.rfile.read(length) if length else b"{}"
         data = json.loads(raw.decode("utf-8") or "{}")
         if not isinstance(data, dict):
@@ -190,6 +196,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._error(HTTPStatus.UNAUTHORIZED, "connexion requise")
                 return
             self._api(method, path, query)
+        except BodyTooLarge as exc:
+            # The body was never read: close so its bytes are not parsed as the next request.
+            self.close_connection = True
+            self._error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, str(exc))
         except (ValueError, ConfigurationError) as exc:
             self._error(HTTPStatus.BAD_REQUEST, str(exc))
         except KeyError:
