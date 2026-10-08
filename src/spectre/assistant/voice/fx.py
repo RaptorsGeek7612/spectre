@@ -208,11 +208,34 @@ CHAINS: Final = {
 }
 
 
-def length_scale(effect: str) -> float | None:
-    """Piper speaking pace for an effect: calm, and faster to make up for the deepening."""
-    if effect not in CHAINS:
-        return None
-    return round(1.08 * PITCH.get(effect, 1.0), 3)
+PACES: Final = {"pose": 1.02, "naturel": 0.94, "vif": 0.84}  # Piper length_scale = final speed
+BREATH_S: Final = 0.14  # pause between two sentences
+FADE_S: Final = 0.012  # tiny fades so sentence joins never click
+
+
+def length_scale(effect: str, pace: str = "naturel") -> float:
+    """Piper pace: the chosen speed, made faster beforehand when the effect deepens the voice."""
+    return round(PACES.get(pace, PACES["naturel"]) * PITCH.get(effect, 1.0), 3)
+
+
+def join_sentences(chunks: list[bytes], rate: int) -> bytes:
+    """Concatenate per-sentence PCM with soft edges and a short breath, for a fluid delivery."""
+    fade = int(rate * FADE_S)
+    gap = np.zeros(int(rate * BREATH_S), np.float32)
+    parts: list[Signal] = []
+    for chunk in chunks:
+        x = _to_float(chunk) * 32768
+        if not x.size:
+            continue
+        n = min(fade, x.size // 2)
+        x[:n] *= np.linspace(0, 1, n, dtype=np.float32)
+        x[x.size - n :] *= np.linspace(1, 0, n, dtype=np.float32)
+        if parts:
+            parts.append(gap)
+        parts.append(x)
+    if not parts:
+        return b""
+    return np.round(np.concatenate(parts)).astype("<i2").tobytes()
 
 
 def apply(effect: str, pcm: bytes, rate: int) -> bytes:

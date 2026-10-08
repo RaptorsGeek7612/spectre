@@ -59,8 +59,9 @@ def test_android_hologram_and_pace() -> None:
         assert len(wet) == 2 * (deep + int(RATE * tail))
         assert wet == fx.apply(effect, dry, RATE)
         assert fx.CHAINS[effect](b"", RATE) == b""
-    assert fx.length_scale("futuriste") == round(1.08 * 0.9, 3)
-    assert fx.length_scale("vaisseau") == 1.08 and fx.length_scale("aucun") is None
+    assert fx.length_scale("futuriste") == round(0.94 * 0.9, 3)  # natural, offset for depth
+    assert fx.length_scale("vaisseau", "pose") == 1.02 and fx.length_scale("aucun", "vif") == 0.84
+    assert fx.length_scale("aucun", "inconnu") == 0.94
     tone = np.sin(2 * np.pi * 400 * np.arange(RATE) / RATE).astype(np.float32)
     lowered = fx._deepen(tone, 0.8)
     assert lowered.size == int(RATE / 0.8)
@@ -77,3 +78,12 @@ def test_master() -> None:
     silent = fx._master(np.zeros(100, np.float32), RATE)
     assert not np.any(silent)
     assert fx._master(np.zeros(0, np.float32), RATE).size == 0
+
+
+def test_join_sentences() -> None:
+    one = (np.full(1000, 8000, dtype="<i2")).tobytes()
+    joined = np.frombuffer(fx.join_sentences([one, b"", one], RATE), dtype="<i2")
+    assert joined.size == 2000 + int(RATE * fx.BREATH_S)  # empty chunk skipped, one breath
+    assert joined[0] == 0 and joined[500] == 8000  # soft edge, untouched middle
+    assert not joined[1000 : 1000 + int(RATE * fx.BREATH_S)].any()
+    assert fx.join_sentences([], RATE) == b"" and fx.join_sentences([b""], RATE) == b""

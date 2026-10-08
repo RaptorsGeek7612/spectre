@@ -106,6 +106,7 @@ kbd {
 
 /* ---------- Mark (logo) ---------------------------------------------------------------- */
 .mark { display: block; overflow: visible; }
+img.mark { object-fit: contain; }
 .mk-l { stroke-width: 4.6; fill: none; }
 .mk-405 { stroke: var(--l405); }
 .mk-436 { stroke: var(--l436); }
@@ -116,31 +117,16 @@ kbd {
 .mk-656 { stroke: var(--l656); }
 .mark-brand { width: 34px; height: 34px; }
 .mark-login { width: 96px; height: 96px; margin: 0 auto 8px; }
-.mark-hero { width: clamp(120px, 18vw, 176px); height: clamp(120px, 18vw, 176px); }
+.mark-hero { width: clamp(140px, 20vw, 210px); height: clamp(148px, 21vw, 221px); }
 
-/* Landing: every line slides up to its position and damps with one overshoot. */
+/* Landing: the helmet rises into place (its crest then draws itself, inside logo.svg). */
 .mark .mk-l { transform-box: fill-box; transform-origin: 50% 100%; }
-.mark-hero .mk-l, .mark-login .mk-l { animation: mk-land 1.1s var(--spring) both; }
-.mark-hero .mk-436, .mark-login .mk-436 { animation-delay: 70ms; }
-.mark-hero .mk-486, .mark-login .mk-486 { animation-delay: 140ms; }
-.mark-hero .mk-546, .mark-login .mk-546 { animation-delay: 210ms; }
-.mark-hero .mk-589, .mark-login .mk-589 { animation-delay: 280ms; }
-.mark-hero .mk-615, .mark-login .mk-615 { animation-delay: 350ms; }
-.mark-hero .mk-656, .mark-login .mk-656 { animation-delay: 420ms; }
+img.mark-hero, img.mark-login { animation: mk-land 1.1s var(--spring) both; }
 @keyframes mk-land {
-  0% { transform: translateY(12px) scaleY(0.35); opacity: 0.4; }
+  0% { transform: translateY(14px) scale(0.94); opacity: 0; }
   100% { transform: none; opacity: 1; }
 }
-/* Idle life: the sodium doublet breathes; a calibration sweep crosses the mark. */
-.mark-hero .mk-589 { animation: mk-land 1.1s var(--spring) 280ms both, mk-sodium 3.2s ease-in-out 1.6s infinite; }
-@keyframes mk-sodium { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
-.mark-hero:hover .mk-l { animation: mk-split 0.7s var(--out); }
-@keyframes mk-split {
-  0% { transform: none; }
-  30% { transform: translateX(var(--split, 2px)); filter: blur(0.4px); }
-  100% { transform: none; }
-}
-.mark-hero .mk-405, .mark-hero .mk-436, .mark-hero .mk-486 { --split: -2.5px; }
+@media (prefers-reduced-motion: reduce) { img.mark-hero, img.mark-login { animation: none; } }
 
 /* The brand mark mirrors the pipeline: one geometry for logo and progress. */
 .mark-brand .mk-l { transition: opacity 0.4s var(--out); }

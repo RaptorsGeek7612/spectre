@@ -199,6 +199,7 @@ class PiperTTS:
         voice: str = "fr_FR-upmc-medium",
         speaker: str = "pierre",
         effect: str = "futuriste",
+        pace: str = "naturel",
     ) -> None:
         from piper import PiperVoice, SynthesisConfig
 
@@ -211,20 +212,22 @@ class PiperTTS:
         speakers = getattr(self.voice.config, "speaker_id_map", None) or {}
         self.syn = SynthesisConfig(
             speaker_id=speakers.get(speaker),
-            length_scale=fx.length_scale(effect),  # calm cadence, offsets the deepening
+            length_scale=fx.length_scale(effect, pace),  # chosen speed, offsets the deepening
+            noise_w_scale=0.7,  # steadier rhythm between syllables: a smoother flow
         )
 
     def speak(self, text: str, stop: threading.Event | None = None) -> None:
-        buffer = io.BytesIO()
+        from spectre.assistant.voice import fx
+
+        sentences: list[bytes] = []
         rate = 22050
         for chunk in self.voice.synthesize(text, syn_config=self.syn):
             rate = chunk.sample_rate
-            buffer.write(chunk.audio_int16_bytes)
+            sentences.append(chunk.audio_int16_bytes)
             if stop is not None and stop.is_set():
                 return
-        from spectre.assistant.voice import fx
-
-        play_pcm(fx.apply(self.effect, buffer.getvalue(), rate), rate, stop, self.on_level)
+        pcm = fx.join_sentences(sentences, rate)
+        play_pcm(fx.apply(self.effect, pcm, rate), rate, stop, self.on_level)
 
 
 class WindowsTTS:
@@ -280,8 +283,10 @@ def ensure_piper_voice(models: Path, voice: str) -> Path:
     return path
 
 
-def make_tts(models: Path, voice: str, speaker: str = "", effect: str = "futuriste") -> Any:
+def make_tts(
+    models: Path, voice: str, speaker: str = "", effect: str = "futuriste", pace: str = "naturel"
+) -> Any:
     try:
-        return PiperTTS(models, voice, speaker, effect)
+        return PiperTTS(models, voice, speaker, effect, pace)
     except Exception:  # noqa: BLE001 - any Piper failure falls back to the system voice
         return WindowsTTS()
