@@ -161,6 +161,14 @@ les écritures sont journalisées et annulables (« annule »), et la suppressio
 corbeille de Spectre. Les outils sont exposés au cerveau par un serveur MCP
 (`spectre.assistant.mcp_server`) qui partage la base SQLite de l'assistant.
 
+**Reconnaissance des visages (optionnelle).** `uv sync --extra vision` puis
+`python -m spectre.assistant --voice --camera` : Spectre reconnaît les personnes enregistrées
+dans Réglages › Visages connus (YuNet pour la détection, licence MIT ; SFace pour la
+reconnaissance, licence Apache 2.0 ; tout tourne sur le PC). Il t'accueille quand tu reviens,
+affiche qui est présent et répond à « qui est devant l'écran ? ». Aucune photo n'est gardée :
+seulement une empreinte de 128 nombres par prise, effaçable d'un clic ; les inconnus ne sont
+jamais enregistrés.
+
 La mémoire stocke des faits datés et sourcés (sujet, prédicat, valeur), renforcés quand ils
 reviennent et remplacés quand ils changent ; une vue Markdown en lecture seule est écrite dans
 `~/.spectre/assistant/memoire/`. Chaque nuit, Spectre consolide les échanges de la veille ; chaque

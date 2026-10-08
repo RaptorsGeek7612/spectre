@@ -40,6 +40,8 @@ class AssistantConfig:
     tts_speaker: str = "pierre"  # speaker of a multi-speaker voice (fr_FR-upmc-medium)
     tts_effect: str = "futuriste"  # onboard-AI timbre: futuriste, vaisseau (subtler) or aucun
     speak_initiatives: bool = True
+    camera: bool = False  # face recognition of enrolled people (opt-in, nothing leaves the PC)
+    camera_index: int = 0
 
     @classmethod
     def load(cls, root: Path) -> AssistantConfig:

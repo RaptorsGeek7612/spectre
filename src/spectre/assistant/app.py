@@ -26,6 +26,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--voice", action="store_true", help="active la voix (mot d'éveil « Spectre »)"
     )
+    parser.add_argument(
+        "--camera", action="store_true", help="reconnaissance des visages enregistrés (webcam)"
+    )
     parser.add_argument("--host", default="127.0.0.1", help="adresse d'écoute (défaut 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8765, help="port de l'interface (défaut 8765)")
     parser.add_argument("--dir", type=Path, help="dossier des données de l'assistant")
@@ -67,6 +70,18 @@ def start_voice(service: AssistantService) -> str:  # pragma: no cover - needs a
 
     threading.Thread(target=run, name="spectre-voice", daemon=True).start()
     return f"Voix active : dis « {service.config.wake_word.capitalize()} » pour lui parler."
+
+
+def start_camera(service: AssistantService) -> str:  # pragma: no cover - needs a webcam
+    """Load YuNet + SFace and start watching; return a status line."""
+    from spectre.assistant.vision.camera import Camera, FaceEngine
+
+    engine = FaceEngine(service.root / "models")
+    camera = Camera(engine, service.on_faces, index=service.config.camera_index)
+    service.attach_camera(camera)
+    camera.start()
+    people = ", ".join(p["name"] for p in service.faces.people()) or "personne encore"
+    return f"Caméra active (visages connus : {people}). Rien n'est enregistré sans ton accord."
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -120,6 +135,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(start_voice(service), flush=True)
         except Exception as exc:  # noqa: BLE001 - the UI still works without voice
             print(f"Voix indisponible : {exc}", file=sys.stderr, flush=True)
+    if args.camera or config.camera:  # pragma: no cover - needs a webcam
+        try:
+            print(start_camera(service), flush=True)
+        except Exception as exc:  # noqa: BLE001 - the assistant still works without it
+            print(f"Caméra indisponible : {exc}", file=sys.stderr, flush=True)
     if not args.no_browser and args.host in LOCAL_HOSTS:
         webbrowser.open(url)
     try:
