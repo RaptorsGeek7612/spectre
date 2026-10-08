@@ -99,7 +99,7 @@ TOOLS: dict[str, Tool] = {
         ),
         Tool(
             "list_screens",
-            "Liste des écrans connectés (index pour ouvrir sur un écran).",
+            "Liste des écrans connectés, numérotés à partir de 1 (l'écran 1 est le principal).",
             Level.READ,
             "read",
             actions.list_screens,

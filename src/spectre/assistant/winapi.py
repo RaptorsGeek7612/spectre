@@ -25,7 +25,7 @@ IS_WINDOWS = sys.platform == "win32"
 
 def monitors() -> list[Monitor]:  # pragma: no cover - needs a real Windows desktop
     """Connected monitors, primary first, then left to right."""
-    if not IS_WINDOWS:
+    if sys.platform != "win32":  # literal check: lets mypy skip Win32 code elsewhere
         return []
     import ctypes
     from ctypes import wintypes
@@ -49,22 +49,22 @@ def monitors() -> list[Monitor]:  # pragma: no cover - needs a real Windows desk
         wintypes.LPARAM,
     )
 
-    def callback(hmon, _hdc, _rect, _data):  # type: ignore[no-untyped-def]
+    def callback(hmon: int, _hdc: int, _rect: object, _data: int) -> bool:
         info = MONITORINFO()
         info.cbSize = ctypes.sizeof(MONITORINFO)
         user32.GetMonitorInfoW(hmon, ctypes.byref(info))
         r = info.rcWork
         found.append((r.left, r.top, r.right - r.left, r.bottom - r.top, bool(info.dwFlags & 1)))
-        return 1
+        return True
 
     user32.EnumDisplayMonitors(None, None, proc_type(callback), 0)
     found.sort(key=lambda m: (not m[4], m[0], m[1]))
-    return [Monitor(i, *m) for i, m in enumerate(found)]
+    return [Monitor(i, *m) for i, m in enumerate(found, start=1)]  # as people say them
 
 
 def visible_windows() -> set[int]:  # pragma: no cover - needs a real Windows desktop
     """Handles of visible top-level windows that have a title."""
-    if not IS_WINDOWS:
+    if sys.platform != "win32":  # literal check: lets mypy skip Win32 code elsewhere
         return set()
     import ctypes
     from ctypes import wintypes
@@ -73,7 +73,7 @@ def visible_windows() -> set[int]:  # pragma: no cover - needs a real Windows de
     handles: set[int] = set()
     proc_type = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
 
-    def callback(hwnd, _data):  # type: ignore[no-untyped-def]
+    def callback(hwnd: int, _data: int) -> bool:
         if user32.IsWindowVisible(hwnd) and user32.GetWindowTextLengthW(hwnd) > 0:
             handles.add(int(hwnd))
         return True
@@ -86,14 +86,13 @@ def move_new_window(
     before: set[int], monitor_index: int, timeout_s: float = 8.0
 ) -> bool:  # pragma: no cover
     """Wait for a window that was not in `before` and maximise it on the given monitor."""
-    if not IS_WINDOWS:
+    if sys.platform != "win32":  # literal check: lets mypy skip Win32 code elsewhere
         return False
     import ctypes
 
-    screens = monitors()
-    if not 0 <= monitor_index < len(screens):
+    target = next((m for m in monitors() if m.index == monitor_index), None)
+    if target is None:
         return False
-    target = screens[monitor_index]
     user32 = ctypes.windll.user32
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
