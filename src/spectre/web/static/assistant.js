@@ -180,8 +180,8 @@ async function loadAudit() {
 const FIELDS = [
   ["user_name", "Ton prénom", "text", "Spectre l'utilise pour s'adresser à toi."],
   ["city", "Ta ville", "text", "Pour la météo du briefing."],
-  ["brain_model", "Modèle de conversation", ["haiku", "sonnet", "opus"], "haiku répond plus vite, opus réfléchit plus."],
-  ["mission_model", "Modèle des missions", ["haiku", "sonnet", "opus"], ""],
+  ["brain_model", "Spectre, l'agent supérieur", ["opus", "sonnet", "haiku"], "opus = Opus 5.5 : le plus capable ; il planifie aussi les missions et rédige leurs rapports."],
+  ["mission_model", "Agents d'exécution des missions", ["sonnet", "opus", "haiku"], "sonnet = Sonnet 5.5 ; haiku = Haiku 4.5, plus rapide."],
   ["briefing_hour", "Heure du briefing", "number", "Le briefing du matin apparaît à partir de cette heure."],
   ["auto_max_level", "Autonomie (0 à 2)", "number", "Au-dessus de ce niveau de risque, Spectre demande ta validation. Supprimer, envoyer ou toucher au système demande toujours ton accord."],
   ["tts_voice", "Voix", ["fr_FR-upmc-medium", "fr_FR-gilles-low", "fr_FR-tom-medium"], "Voix d'homme ; pour fr_FR-upmc-medium, mets le locuteur « pierre »."],
@@ -215,7 +215,7 @@ $("#settings-form").addEventListener("submit", async (e) => {
 async function loadStatus() {
   const s = await api("GET", "status");
   voiceAvailable = s.voice_available;
-  $("#brain-model").textContent = `cerveau : ${s.brain_model}`;
+  $("#brain-model").textContent = `cerveau : ${s.brain_label || s.brain_model}`;
   $("#talk-btn").hidden = !voiceAvailable;
   $("#count-approvals").textContent = s.pending_approvals || "";
   $("#count-initiatives").textContent = s.pending_initiatives || "";
@@ -225,7 +225,7 @@ async function loadStatus() {
   $("#hud-approvals").textContent = s.pending_approvals;
   $("#dock-approvals").textContent = s.pending_approvals || "";
   $("#hud-missions").textContent = s.missions_running;
-  $("#hud-brain").textContent = String(s.brain_model).toUpperCase();
+  $("#hud-brain").textContent = String(s.brain_label || s.brain_model).toUpperCase();
   if (!document.body.dataset.voice || document.body.dataset.voice === "off") setState(s.voice);
 }
 const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: loadMissions, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: loadSettings };

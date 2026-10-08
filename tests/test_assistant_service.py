@@ -180,7 +180,7 @@ def test_api_routes(api: Client, service: AssistantService, home: Path) -> None:
     from spectre.assistant import tools
 
     assert api.json("GET", "/api/status")[1]["assistant"] is True
-    assert api.json("GET", "/api/assistant/status")[1]["brain_model"] == "sonnet"
+    assert api.json("GET", "/api/assistant/status")[1]["brain_label"] == "Opus 5.5"
     assert api.json("POST", "/api/assistant/chat", {"text": "Salut"}) == (
         200,
         {"reply": "Réponse."},

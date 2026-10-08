@@ -24,8 +24,8 @@ class AssistantConfig:
     name: str = "Spectre"
     user_name: str = ""
     language: str = "fr"
-    brain_model: str = "sonnet"  # Claude Code model alias for conversation
-    mission_model: str = "sonnet"
+    brain_model: str = "opus"  # the superior agent (Opus 5.5): conversation, plans, reports
+    mission_model: str = "sonnet"  # execution agents for mission steps
     claude_bin: str = "claude"
     brain_timeout_s: float = 300.0
     city: str = "Paris"

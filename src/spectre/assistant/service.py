@@ -19,6 +19,7 @@ from spectre.assistant.governance import Gate
 from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
+from spectre.config import model_label
 
 Event = dict[str, Any]
 LEVEL_EVERY_S = 0.05
@@ -50,6 +51,7 @@ class AssistantService:
             self.cli,
             lambda kind, title, body: self.proactive.add_initiative(kind, title, body),
             model=self.config.mission_model,
+            lead_model=self.config.brain_model,
         )
         self.voice: Any = None
         self.voice_state = "off"
@@ -246,6 +248,7 @@ class AssistantService:
             "voice": self.voice_state,
             "voice_available": self.voice is not None,
             "brain_model": self.config.brain_model,
+            "brain_label": model_label(self.config.brain_model),
             "pending_approvals": len(self.approvals()),
             "pending_initiatives": len(self.initiatives()),
             "facts": len(self.memory.list()),

@@ -22,6 +22,7 @@ from spectre.assistant.config import AssistantConfig
 from spectre.assistant.db import Database
 from spectre.assistant.mcp_server import SERVER_NAME
 from spectre.assistant.memory import Memory
+from spectre.config import ASSISTANT_MODELS
 
 STRIPPED_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_WORKSPACE_ID")
 WEB_TOOLS = ("WebSearch", "WebFetch")
@@ -43,6 +44,9 @@ lieu...), retiens-le avec l'outil remember. Ne retiens pas les banalités du mom
 - Pour une tâche longue ou en plusieurs étapes, lance une mission (start_mission) et réponds \
 tout de suite que c'est en cours. Pour un texte soigné (article, lettre, rapport), lance une \
 mission kind=redaction : tes trois agents Scout, Scribe et Warden s'en chargent.
+- Tu es l'agent supérieur : tu décides, tu délègues et tu rends compte. Tes agents d'exécution \
+réalisent les étapes des missions que tu planifies, un vérificateur contrôle chaque étape, et \
+Scout, Scribe et Warden rédigent les textes soignés. C'est toi qui réponds à l'utilisateur.
 - Sois honnête quand tu ne sais pas. Sois concis : une ou deux phrases suffisent souvent.
 """
 
@@ -96,7 +100,7 @@ class ClaudeCLI:
             "--output-format",
             "json",
             "--model",
-            model,
+            ASSISTANT_MODELS.get(model, model),
             "--system-prompt",
             system,
             "--permission-mode",
