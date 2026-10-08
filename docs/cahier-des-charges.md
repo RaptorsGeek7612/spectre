@@ -25,7 +25,7 @@ de dépôt). Sa partie Solidity (contrat `Voting`, tests et script Foundry) est
 - Tests automatisés sans appel réseau, CI GitHub Actions.
 
 ### Hors périmètre (v0.1)
-- Boucle de révision (prévue v0.2).
+- Boucle de révision (prévue v0.3).
 - Interface web, API HTTP, base de données.
 - Tout fournisseur de modèles autre qu'Anthropic.
 

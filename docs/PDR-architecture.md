@@ -200,7 +200,7 @@ Jobs :
   ajout d'un second badge `coverage-python.json` calculé de la même façon depuis le `lcov.info` de pytest.
 - `release` : dépend de `test` **et** `python` ; logique CHANGELOG inchangée.
 
-## 12. Évolution v0.2 (prévue)
+## 12. Évolution v0.3 (prévue)
 
 - Warden renvoie un verdict structuré (`with_structured_output`) `{approved, issues, final_text}`.
 - Arête conditionnelle `warden → scribe` si `approved == False` et `revisions < MAX_REVISIONS`.
@@ -213,6 +213,6 @@ Jobs :
 | 1 | Effort plutôt que temperature sur Sonnet/Opus | Imposé par l'API (temperature → 400) |
 | 2 | Injection des modèles dans `build_graph` | Tests sans réseau, flexibilité |
 | 3 | Reducer additif pour `usage` | Chaque nœud ajoute sa ligne sans écraser |
-| 4 | Pas de streaming en v0.1 | `max_tokens` ≤ 16 000 reste sous les timeouts HTTP (600 s) ; streaming en v0.2 |
+| 4 | Pas de streaming en v0.1 | `max_tokens` ≤ 16 000 reste sous les timeouts HTTP (600 s) ; l'interface web (v0.2) diffuse déjà les tokens ; streaming de la CLI en v0.3 |
 | 5 | `uv` + `pyproject.toml` | Remplace `forge` ; lock reproductible |
 | 6 | Noms d'agents Scout/Scribe/Warden | Rôles explicites, indépendants des modèles |
