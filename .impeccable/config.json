@@ -101,6 +101,15 @@
         ],
         "createdAt": "2026-10-08T14:40:21.313Z",
         "reason": "build thread: emission-line bloom shared from app.css, sanctioned world grammar (finish reviewer 2026-10-08)"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/assistant.html"
+        ],
+        "createdAt": "2026-10-08T15:06:57.893Z",
+        "reason": "false positive: .presence has 20px/16-36px padding; the flush child is the absolutely positioned decorative .continuum background"
       }
     ]
   }
