@@ -367,7 +367,7 @@ select:focus-visible, input:focus-visible, textarea:focus-visible { outline: non
 .run-more { position: absolute; right: 2px; top: 50%; translate: 0 -50%; opacity: 0; width: 30px; height: 30px; }
 .run:hover .run-more, .run:focus-within .run-more, .run[aria-current="true"] .run-more { opacity: 1; }
 .run-empty { padding: 18px 4px; color: var(--dim); font-size: 0.85rem; }
-.rail-foot { display: flex; align-items: center; gap: 6px; padding-top: 10px; border-top: 1px solid var(--hair); }
+.rail-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 10px; border-top: 1px solid var(--hair); }
 .rail-foot .meta { margin-left: auto; }
 
 /* ---------- Topbar --------------------------------------------------------------------- */
@@ -652,6 +652,49 @@ dialog::backdrop { background: rgb(8 8 10 / 0.6); }
 @keyframes toast-in { from { transform: translateY(10px); opacity: 0; } }
 .scrim { position: fixed; inset: 0; z-index: 25; background: rgb(8 8 10 / 0.55); }
 
+/* ---------- Voice button: talk to the assistant from the writing app ---------------------- */
+.voice-fab {
+  --lvl: 0;
+  position: fixed;
+  z-index: 40;
+  right: calc(var(--insp-w) + 24px);
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 18px 0 8px;
+  border: 1px solid var(--hair-2);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--plate-2) 92%, transparent);
+  color: var(--bone);
+  font: 500 0.82rem/1 var(--font-ui);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.voice-fab[hidden] { display: none; }
+.voice-fab .ic { position: relative; width: 20px; height: 20px; margin-left: 10px; color: var(--l486); }
+.voice-ring {
+  position: absolute;
+  left: 8px;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid var(--l486);
+  border-radius: 50%;
+  opacity: 0.5;
+  transform: scale(calc(1 + var(--lvl) * 0.45));
+  transition: transform 0.08s linear;
+}
+.voice-fab:hover, .voice-fab:focus-visible { border-color: var(--l486); }
+.voice-fab[data-voice="listening"] .voice-ring { opacity: 1; box-shadow: 0 0 14px color-mix(in oklab, var(--l486) 55%, transparent); }
+.voice-fab[data-voice="thinking"] .voice-ring { border-color: var(--l589); border-style: dashed; animation: fab-spin 1.6s linear infinite; }
+.voice-fab[data-voice="speaking"] .voice-ring { opacity: 1; }
+.voice-fab[data-voice="off"] { opacity: 0.7; }
+@keyframes fab-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .voice-ring { transition: none; animation: none !important; } }
+
 /* ---------- Responsive ----------------------------------------------------------------- */
 /* Laptop / landscape tablet: inspector becomes a drawer. */
 @media (max-width: 1279px) {
@@ -668,6 +711,7 @@ dialog::backdrop { background: rgb(8 8 10 / 0.6); }
     box-shadow: var(--shadow);
   }
   .inspector-close { display: inline-grid; }
+  .voice-fab { right: 18px; }
   body.inspector-open .inspector { transform: none; }
 }
 /* Portrait tablet and phone: one column, the rail is a drawer, the composer docks at the bottom. */
@@ -702,6 +746,8 @@ dialog::backdrop { background: rgb(8 8 10 / 0.6); }
     padding: 10px 12px max(10px, env(safe-area-inset-bottom));
   }
   .composer textarea { min-height: 52px; font-size: 1rem; }
+  .voice-fab { bottom: 168px; padding-right: 8px; }
+  .voice-fab .voice-label { display: none; }
   .composer .select-inline .label { display: none; }
   .btn { min-height: 44px; }
   .icon-btn { width: 44px; height: 44px; }

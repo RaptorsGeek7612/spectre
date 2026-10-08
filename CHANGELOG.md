@@ -7,6 +7,21 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-09
+
+### Added
+
+- Bouton « Parler à Spectre » sur la page d'accueil, visible quand l'assistant tourne : un clic le
+  fait écouter sans le mot d'éveil ; son anneau suit l'état de la voix et le niveau sonore.
+- Lanceur Windows `tools/spectre-assistant.cmd` (double-clic) : fenêtre dédiée, journal dans
+  `~/.spectre/assistant/spectre.log`.
+
+### Fixed
+
+- L'assistant ne s'interrompt plus brutalement (« forrtl: error (200) ») sur un événement de la
+  console : le lanceur désactive le gestionnaire du runtime Intel Fortran des bibliothèques vocales.
+- Téléphone : le lien « Assistant » du menu ne déborde plus de l'écran.
+
 ## [0.3.2] - 2026-10-09
 
 ### Changed

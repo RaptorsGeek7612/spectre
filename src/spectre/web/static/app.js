@@ -80,6 +80,32 @@ const store = {
   get(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch { return fallback; } },
   set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ } },
 };
+/* ============================== voice button (when the assistant runs) =================== */
+const VOICE_LABELS = { sleeping: "Parler à Spectre", listening: "J'écoute…", thinking: "Je réfléchis…", speaking: "Spectre parle", off: "Ouvrir l'assistant" };
+let voiceEvents = null;
+function voiceFab() {
+  const fab = $("#voice-fab");
+  if (voiceEvents) return;
+  fab.hidden = false;
+  const show = (state) => {
+    fab.dataset.voice = state;
+    $("#voice-label").textContent = VOICE_LABELS[state] || VOICE_LABELS.sleeping;
+    if (state !== "listening" && state !== "speaking") fab.style.setProperty("--lvl", "0");
+  };
+  fetch("/api/assistant/status", { credentials: "same-origin" })
+    .then((r) => r.json()).then((s) => show(s.voice_available ? s.voice : "off")).catch(() => show("off"));
+  voiceEvents = new EventSource("/api/assistant/events");
+  voiceEvents.addEventListener("state", (e) => { const d = JSON.parse(e.data); if (d.state !== "heard") show(d.state); });
+  voiceEvents.addEventListener("level", (e) => fab.style.setProperty("--lvl", String(JSON.parse(e.data).v)));
+  fab.addEventListener("click", async () => {
+    if (fab.dataset.voice === "off") { location.href = "assistant.html"; return; }
+    try {
+      const r = await fetch("/api/assistant/talk", { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/json" }, body: "{}" });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
 function toast(message, kind = "ok", ms = 3800) {
   const node = h("div", { class: "toast", "data-kind": kind, role: kind === "error" ? "alert" : "status" }, message);
   $("#toasts").append(node);
@@ -1086,6 +1112,7 @@ async function boot() {
   state.backend = backend;
   state.status = status;
   $("#assistant-link").hidden = !status.assistant;
+  if (status.assistant) voiceFab();
   if (status.auth_required && !status.authenticated) {
     $("#login").hidden = false;
     $("#login-password").focus();
