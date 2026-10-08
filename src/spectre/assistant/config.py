@@ -34,6 +34,7 @@ class AssistantConfig:
     auto_max_level: int = 2  # actions above this level need your approval
     allowed_roots: list[str] = field(default_factory=lambda: [str(Path.home())])
     wake_word: str = "spectre"
+    mic_device: str = ""  # part of the microphone's name; empty = pick a real microphone
     stt_model: str = "base"
     tts_voice: str = "fr_FR-upmc-medium"  # male French voice (also: fr_FR-gilles-low, tom-medium)
     tts_speaker: str = "pierre"  # speaker of a multi-speaker voice (fr_FR-upmc-medium)

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import array
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import Any
 
 SAMPLE_RATE = 16_000
 
@@ -75,3 +77,32 @@ def chime(freq: float = 880.0, seconds: float = 0.12, volume: float = 0.25) -> b
         fade = min(1.0, i / 200, (count - i) / 200)
         data.append(int(32767 * volume * fade * math.sin(2 * math.pi * freq * i / SAMPLE_RATE)))
     return data.tobytes()
+
+
+# Inputs that record what the PC plays, not the person: never listen to those by default.
+NOT_A_MICROPHONE = ("mixage stéréo", "stereo mix", "what u hear", "loopback", "mappeur", "mapper")
+
+
+def pick_input(devices: Sequence[dict[str, Any]], default: int, wanted: str = "") -> int | None:
+    """Index of the input device to open; None keeps the system default.
+
+    `wanted` (part of a name) wins. Otherwise the default is kept when it is a real microphone,
+    else the first input whose name says "micro" (Windows often defaults to "Stereo Mix").
+    """
+    inputs = [(i, str(d["name"]).lower()) for i, d in enumerate(devices) if d["max_input_channels"]]
+    if wanted.strip():
+        match = next((i for i, name in inputs if wanted.strip().lower() in name), None)
+        if match is None:
+            raise ValueError(f"micro introuvable : {wanted}")
+        return match
+    names = dict(inputs)
+    if default in names and not any(word in names[default] for word in NOT_A_MICROPHONE):
+        return None
+    return next(
+        (
+            i
+            for i, name in inputs
+            if "micro" in name and not any(word in name for word in NOT_A_MICROPHONE)
+        ),
+        None,
+    )

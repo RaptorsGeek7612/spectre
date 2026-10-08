@@ -457,3 +457,22 @@ def test_listen_helpers() -> None:
     assert not waiting.heard_speech
     assert len(chime()) == int(SAMPLE_RATE * 0.12) * 2
     assert json.dumps(Reply("a", "b", False).text) == '"a"'
+
+
+def test_pick_input_avoids_stereo_mix() -> None:
+    from spectre.assistant.voice.listen import pick_input
+
+    devices = [
+        {"name": "Mappeur de sons Microsoft - Input", "max_input_channels": 2},
+        {"name": "Mixage stéréo (Realtek(R) Audio", "max_input_channels": 2},
+        {"name": "Haut-parleurs (Realtek)", "max_input_channels": 0},
+        {"name": "Microphone Array (AMD Audio Dev", "max_input_channels": 2},
+        {"name": "Casque USB", "max_input_channels": 1},
+    ]
+    assert pick_input(devices, default=1) == 3
+    assert pick_input(devices, default=3) is None
+    assert pick_input(devices, default=4) is None
+    assert pick_input(devices, default=1, wanted="casque") == 4
+    with pytest.raises(ValueError):
+        pick_input(devices, default=1, wanted="inexistant")
+    assert pick_input(devices[:3], default=1) is None

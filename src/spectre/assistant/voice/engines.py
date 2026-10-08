@@ -27,6 +27,19 @@ VOSK_MODEL = "vosk-model-small-fr-0.22"
 VOSK_URL = f"https://alphacephei.com/vosk/models/{VOSK_MODEL}.zip"
 
 
+def pick_microphone(wanted: str = "") -> tuple[int | None, str]:
+    """The device to listen to (see `listen.pick_input`) and its name, for the console."""
+    import sounddevice as sd
+
+    from spectre.assistant.voice.listen import pick_input
+
+    devices = list(sd.query_devices())
+    default = sd.default.device[0]
+    index = pick_input(devices, int(default) if default is not None else -1, wanted)
+    name = devices[index]["name"] if index is not None else sd.query_devices(kind="input")["name"]
+    return index, str(name)
+
+
 class Microphone:
     """16 kHz mono int16 blocks from the default input device."""
 
