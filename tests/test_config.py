@@ -237,7 +237,7 @@ def test_model_ids_only_in_config() -> None:
     package = Path(config.__file__).parent
     offenders = [
         path.name
-        for path in package.glob("*.py")
+        for path in package.rglob("*.py")
         if path.name != "config.py"
         and any(
             model in path.read_text(encoding="utf-8")

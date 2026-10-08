@@ -25,6 +25,7 @@ dependencies = [
 
 [project.scripts]
 spectre = "spectre.cli:main"
+spectre-web = "spectre.web.server:main"
 
 [dependency-groups]
 dev = [

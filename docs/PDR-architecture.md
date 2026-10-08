@@ -41,7 +41,16 @@ Spectre/
 │   ├── nodes.py         # Fabriques de nœuds scout / scribe / warden
 │   ├── graph.py         # build_graph(models=None), run(request)
 │   ├── errors.py        # SpectreError, AgentRefusalError, EmptyOutputError
-│   └── cli.py           # Point d'entrée `spectre`
+│   ├── cli.py           # Point d'entrée `spectre`
+│   └── web/             # Interface web `spectre-web` / `python -m spectre.web`
+│       ├── server.py    # Serveur stdlib : API JSON, flux SSE, fichiers statiques, sécurité
+│       ├── pipeline.py  # stream_run : graphe → événements agent_start/token/agent_done/done
+│       ├── store.py     # Historique, réglages, préréglages (JSON, ~/.spectre/webui)
+│       ├── auth.py      # Mot de passe facultatif, cookie HMAC, limitation des essais
+│       ├── export.py    # Export Markdown et page HTML autonome
+│       ├── demo.py      # Modèle démo (textes dans static/demo.json)
+│       └── static/      # index.html, app.css, app.js (sans build), polices, icônes, PWA
+├── tools/make_icons.py  # Génère favicon et icônes PNG à partir de la géométrie du logo
 ├── tests/               # pytest, faux modèles, aucun réseau
 ├── docs/
 ├── .claude/skills/      # Skills des agents de développement

@@ -1,0 +1,85 @@
+{
+  "_note": "Mode démo de Spectre. Le texte final est une vraie sortie de Spectre (2026-10-07) ; le brouillon en est une version antérieure illustrative contenant les erreurs que Warden corrige.",
+  "request": "Explique la relativité restreinte simplement",
+  "brief": "- Intention : {request}\n- Public : lecteurs curieux sans formation scientifique avancée, niveau lycée.\n- Contraintes : français, ton pédagogique et imagé, 500 à 800 mots, aucune équation à dériver, peu d'histoire.\n- Plan :\n  1. Le train qui roule : on ne sent pas le mouvement.\n  2. Les deux postulats : mêmes lois pour tous, vitesse de la lumière constante.\n  3. La dilatation du temps, avec l'horloge à lumière.\n  4. La contraction des longueurs.\n  5. E = mc², la masse comme énergie concentrée.\n  6. Conclusion : l'espace-temps et ses preuves (GPS, muons).",
+  "final": "# La relativité restreinte, expliquée simplement\n\nImaginez que vous êtes dans un train qui roule à vitesse constante. Vous lancez une balle en l'air : elle retombe dans votre main, exactement comme si vous étiez immobile sur le quai. Rien, à l'intérieur du train, ne vous indique que vous bougez. Cette observation toute simple est le point de départ de la relativité restreinte, formulée par Albert Einstein en 1905. Elle nous apprend que le temps et l'espace ne sont pas aussi rigides qu'on le croit.\n\n## Deux idées de départ\n\n**Premier principe : les lois de la physique sont les mêmes pour tous ceux qui se déplacent à vitesse constante.** Dans un train parfaitement lisse, aucune expérience ne permet de dire si vous roulez ou si vous êtes à l'arrêt.\n\n**Second principe : la vitesse de la lumière dans le vide est la même pour tous les observateurs**, environ 300 000 kilomètres par seconde, quelle que soit leur propre vitesse.\n\nPour que ces deux principes tiennent ensemble, quelque chose doit céder : notre idée d'un temps et d'un espace identiques pour tout le monde.\n\n## Le temps qui se dilate\n\nPrenons une horloge faite d'un rayon de lumière qui rebondit entre deux miroirs. Dans un vaisseau très rapide, l'astronaute voit la lumière monter et descendre en ligne droite. Depuis la Terre, vous la voyez dessiner une diagonale, un trajet plus long, parcouru à la même vitesse : l'horloge du vaisseau vous semble battre plus lentement. C'est la **dilatation du temps**. Elle est mesurée chaque jour sur des particules rapides, les muons, et prise en compte par le GPS.\n\n## Les longueurs qui se contractent\n\nPour un observateur extérieur, un objet très rapide paraît **raccourci dans le sens de son déplacement**. Pour ses passagers, une fusée de 100 mètres mesure toujours 100 mètres : chacun mesure l'espace selon son propre mouvement.\n\n## E = mc² : la masse, de l'énergie concentrée\n\nUn objet immobile renferme une énergie colossale du seul fait de sa masse. Un trombone d'un gramme, si l'on pouvait en libérer toute l'énergie, fournirait autant qu'une centrale nucléaire pendant une journée. Dans le Soleil, environ 4 millions de tonnes de masse sont converties en lumière chaque seconde.\n\n## Pour finir\n\nIl n'existe ni horloge universelle ni règle universelle : le temps et l'espace forment une seule étoffe, l'**espace-temps**, et la vitesse de la lumière en est la limite. Depuis Einstein, regarder sa montre n'est plus tout à fait pareil.",
+  "draft_slips": [
+    [
+      "en 1905",
+      "en 1915"
+    ],
+    [
+      "environ 300 000 kilomètres par seconde",
+      "environ 300 000 kilomètres par heure"
+    ],
+    [
+      "pendant une journée",
+      "pendant un siècle"
+    ],
+    [
+      "environ 4 millions de tonnes",
+      "environ 4 tonnes"
+    ],
+    [
+      "regarder sa montre n'est plus tout à fait pareil",
+      "on ne regarde plus sa montre pareil"
+    ]
+  ],
+  "agents": [
+    {
+      "name": "scout",
+      "model": "claude-haiku-4-5",
+      "max_tokens": 1024,
+      "effort": null
+    },
+    {
+      "name": "scribe",
+      "model": "claude-sonnet-5-5",
+      "max_tokens": 16000,
+      "effort": "medium"
+    },
+    {
+      "name": "warden",
+      "model": "claude-opus-5-5",
+      "max_tokens": 16000,
+      "effort": "high"
+    }
+  ],
+  "prices": {
+    "claude-haiku-4-5": [
+      1.0,
+      5.0
+    ],
+    "claude-sonnet-5-5": [
+      2.0,
+      10.0
+    ],
+    "claude-opus-5-5": [
+      4.0,
+      20.0
+    ],
+    "claude-sonnet-5": [
+      2.0,
+      10.0
+    ],
+    "claude-opus-5": [
+      5.0,
+      25.0
+    ],
+    "claude-opus-4-8": [
+      5.0,
+      25.0
+    ]
+  },
+  "presets": {
+    "Standard": {},
+    "Économie": {
+      "SPECTRE_WARDEN_MODEL": "claude-sonnet-5-5",
+      "SPECTRE_WARDEN_EFFORT": "medium"
+    },
+    "Qualité max": {
+      "SPECTRE_SCRIBE_EFFORT": "high",
+      "SPECTRE_WARDEN_EFFORT": "max"
+    }
+  }
+}

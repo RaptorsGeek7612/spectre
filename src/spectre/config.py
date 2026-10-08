@@ -84,6 +84,14 @@ PRICING: Final[Mapping[str, ModelPrice]] = {
 }
 
 
+# Built-in presets for the web UI: named sets of `SPECTRE_<AGENT>_*` overrides.
+WEB_PRESETS: Final[Mapping[str, Mapping[str, str]]] = {
+    "Standard": {},
+    "Économie": {"SPECTRE_WARDEN_MODEL": "claude-sonnet-5-5", "SPECTRE_WARDEN_EFFORT": "medium"},
+    "Qualité max": {"SPECTRE_SCRIBE_EFFORT": "high", "SPECTRE_WARDEN_EFFORT": "max"},
+}
+
+
 def load_env() -> None:
     """Load a `.env` file found from the current working directory (never overrides)."""
     load_dotenv(find_dotenv(usecwd=True), override=False)

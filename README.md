@@ -86,6 +86,51 @@ Total                                         0.0499 $
 Codes de sortie : `0` succès, `1` erreur Spectre/API (dont clé absente), `2` erreur d'usage,
 `130` interruption par Ctrl+C.
 
+### Interface web
+
+```shell
+uv run python -m spectre.web            # ouvre http://127.0.0.1:8765/ dans le navigateur
+uv run spectre-web                      # même chose (si Windows n'a pas bloqué l'exécutable)
+uv run python -m spectre.web --port 9000 --no-browser
+```
+
+Une interface complète, sans framework ni build (même principe que Hermes WebUI) : un serveur
+Python de la bibliothèque standard et une page HTML/CSS/JS.
+
+- **Chaîne en direct** : les trois agents sont des raies d'émission sur un axe en nanomètres
+  (Scout 486 nm, Scribe 546 nm, Warden 589 nm). La forme de la raie dit l'état : pointillée en
+  attente, pleine et lumineuse quand l'agent écrit, à mi-hauteur si la réponse est tronquée,
+  doublée si un modèle de repli a répondu, barrée en cas d'échec. Le texte s'affiche mot à mot.
+- **Lecture** : onglets Texte final, Brouillon, Brief, **Corrections** (ce que Warden a changé,
+  en barré/souligné), Demande, Brut ; copie, relance, modification de la demande.
+- **Mesures** : tokens, durée, coût et modèle réellement servi pour chaque agent, et le total.
+- **Historique** (« plaques » numérotées) : recherche, `#tags`, projets, épingles, archives,
+  renommer, dupliquer, supprimer ; export Markdown, JSON ou page HTML autonome à partager ;
+  export et import de tout l'historique.
+- **Saisie** : dictée vocale (navigateurs compatibles), fichier texte joint, commandes `/`
+  (`/nouveau`, `/demo`, `/theme`, `/couts`, `/preset`, `/export`, `/aide`…), palette `Ctrl+K`,
+  raccourcis (`Ctrl+Entrée`, `N`, `/`, `J`/`K`, `Échap`).
+- **Préréglages** : modèle, effort et limite de tokens par agent (Standard, Économie,
+  Qualité max, et les vôtres).
+- **Réglages** : thème sombre, clair ou système, taille du texte, touche d'envoi, langue
+  (français, anglais), affichage des coûts, notification de fin.
+- **Mode démo** : réponses préenregistrées, sans clé ni coût, clairement signalées.
+- **Ordinateur, tablette, téléphone** : mise en page adaptée à chaque taille ; installable comme
+  une application (PWA).
+
+**Sur téléphone ou tablette** : l'interface n'écoute que sur ce PC par défaut. Pour l'ouvrir au
+réseau local, définissez d'abord un mot de passe, puis lancez avec `--host 0.0.0.0` et ouvrez
+l'adresse affichée sur l'appareil (même Wi-Fi) :
+
+```shell
+# dans .env : SPECTRE_WEBUI_PASSWORD=un-mot-de-passe-solide
+uv run python -m spectre.web --host 0.0.0.0
+```
+
+Sans mot de passe, Spectre refuse de s'ouvrir au réseau : n'importe qui sur le Wi-Fi pourrait
+lancer des exécutions facturées sur votre clé. La clé API n'est jamais envoyée au navigateur.
+L'historique est rangé dans `~/.spectre/webui/` (modifiable avec `SPECTRE_WEBUI_STATE_DIR`).
+
 ### Bibliothèque
 
 ```python
@@ -116,6 +161,8 @@ Chaque agent (`SCOUT`, `SCRIBE`, `WARDEN`) est surchargeable par variable d'envi
 | `SPECTRE_TIMEOUT` | Délai d'attente d'un appel HTTP, en secondes (défaut `600`) | `SPECTRE_TIMEOUT=900` |
 | `SPECTRE_MAX_RETRIES` | Nombre de nouvelles tentatives sur 429, 5xx ou erreur réseau (défaut `4`) | `SPECTRE_MAX_RETRIES=2` |
 | `SPECTRE_FALLBACKS` | Repli automatique en cas de refus (défaut activé ; `0` pour désactiver) | `SPECTRE_FALLBACKS=0` |
+| `SPECTRE_WEBUI_PASSWORD` | Mot de passe de l'interface web (obligatoire avec `--host 0.0.0.0`) | `SPECTRE_WEBUI_PASSWORD=...` |
+| `SPECTRE_WEBUI_STATE_DIR` | Dossier de l'historique et des réglages de l'interface web | `SPECTRE_WEBUI_STATE_DIR=D:/spectre` |
 
 Un modèle absent de la table de prix donne un coût `None` (avec un avertissement), sans faire
 échouer le run.

@@ -1,0 +1,98 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/index.html"
+        ],
+        "createdAt": "2026-10-07T21:30:01.453Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - false positive: positioned spectrogram children, underline tabs, sheet-body carries 20px padding"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/index.html"
+        ],
+        "createdAt": "2026-10-07T21:30:01.518Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - emission-line bloom on live/done lines is the chosen world's signature material"
+      },
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/index.html"
+        ],
+        "createdAt": "2026-10-07T21:30:01.575Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - .spectro clips its agent tags on purpose; they are labels, not popovers"
+      },
+      {
+        "rule": "repeating-stripes-gradient",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/index.html"
+        ],
+        "createdAt": "2026-10-07T21:30:01.634Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - dashed emission line = pending state in the world grammar"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/index.html"
+        ],
+        "createdAt": "2026-10-07T21:30:01.691Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - direction contract: lines land and damp with one overshoot"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/app.css"
+        ],
+        "createdAt": "2026-10-07T21:30:01.750Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - false positive: positioned spectrogram children, underline tabs, sheet-body carries 20px padding"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/app.css"
+        ],
+        "createdAt": "2026-10-07T21:30:01.806Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - emission-line bloom on live/done lines is the chosen world's signature material"
+      },
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/app.css"
+        ],
+        "createdAt": "2026-10-07T21:30:01.866Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - .spectro clips its agent tags on purpose; they are labels, not popovers"
+      },
+      {
+        "rule": "repeating-stripes-gradient",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/app.css"
+        ],
+        "createdAt": "2026-10-07T21:30:01.922Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - dashed emission line = pending state in the world grammar"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/app.css"
+        ],
+        "createdAt": "2026-10-07T21:30:01.980Z",
+        "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - direction contract: lines land and damp with one overshoot"
+      }
+    ]
+  }
+}

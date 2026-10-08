@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#121315">
+<meta name="description" content="Spectre : trois agents Claude en chaîne — Scout, Scribe, Warden — qui transforment une demande en texte final relu.">
+<title>Spectre</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<svg width="0" height="0" class="sr-only" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M14 7l5 5-5 5"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24"><path d="M20 11.5 12 19.5a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4L15 7"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12"/><path d="M16 8V4H4v12h4"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 13v8h14v-8"/></symbol>
+    <symbol id="i-dup" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11"/><rect x="4" y="4" width="11" height="11"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 3h6l-1 6 4 4H6l4-4zM12 13v8"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><path d="M3 4h18v4H3zM5 8v12h14V8M10 12h4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18V6M9 18v-8M14 18V4M19 18v-5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-cmd" viewBox="0 0 24 24"><path d="M7 4a3 3 0 1 0 3 3V4h4v3a3 3 0 1 0 3-3h-3M10 14v3a3 3 0 1 1-3-3h3zm4 0h3a3 3 0 1 1-3 3zM10 10h4v4h-4z"/></symbol>
+    <symbol id="mark" viewBox="0 0 64 64">
+      <clipPath id="mark-head"><circle cx="32" cy="29" r="21"/><rect x="11" y="29" width="42" height="35"/></clipPath>
+      <g class="mk" clip-path="url(#mark-head)">
+        <path class="mk-l mk-405" d="M13.1 8V50"/>
+        <path class="mk-l mk-436" d="M19.4 8V23M19.4 31V46"/>
+        <path class="mk-l mk-486 agent-scout" d="M25.7 8V23M25.7 31V53"/>
+        <path class="mk-l mk-546 agent-scribe" d="M32 8V47"/>
+        <path class="mk-l mk-589 agent-warden" d="M37.05 8V23M37.05 31V53M39.55 8V23M39.55 31V53"/>
+        <path class="mk-l mk-615" d="M44.6 8V23M44.6 31V46"/>
+        <path class="mk-l mk-656" d="M50.9 8V50"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<a class="skip" href="#composer-input">Aller à la saisie</a>
+
+<!-- Login (only when SPECTRE_WEBUI_PASSWORD is set) -->
+<section id="login" class="login" hidden>
+  <form id="login-form" class="login-plate">
+    <svg class="mark mark-login" aria-hidden="true"><use href="#mark"/></svg>
+    <h1 class="wordmark" aria-label="Spectre"><span aria-hidden="true">SPECTRE</span></h1>
+    <label class="field">
+      <span class="label" data-i18n="login.password">Mot de passe</span>
+      <input id="login-password" type="password" autocomplete="current-password" required>
+    </label>
+    <p id="login-error" class="form-error" role="alert"></p>
+    <button class="btn btn-primary" type="submit"><span data-i18n="login.submit">Entrer</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+  </form>
+</section>
+
+<div id="app" class="app" hidden>
+  <!-- ===== Rail: history of plates ===== -->
+  <aside id="rail" class="rail" aria-label="Historique des plaques">
+    <div class="rail-axis" aria-hidden="true"></div>
+    <header class="brand">
+      <svg class="mark mark-brand" role="img" aria-label="Spectre"><use href="#mark"/></svg>
+      <span class="wordmark wordmark-sm" aria-hidden="true">SPECTRE</span>
+      <button class="icon-btn rail-close" type="button" data-action="close-drawers" aria-label="Fermer"><svg class="ic"><use href="#i-close"/></svg></button>
+    </header>
+    <button id="new-plate" class="btn btn-ghost btn-wide" type="button" data-action="new"><svg class="ic"><use href="#i-plus"/></svg><span data-i18n="rail.new">Nouvelle plaque</span><kbd>N</kbd></button>
+    <label class="search">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input id="search" type="search" placeholder="Rechercher, #tag…" data-i18n-placeholder="rail.search" autocomplete="off">
+    </label>
+    <div class="rail-filters">
+      <select id="project-filter" aria-label="Projet"><option value="" data-i18n="rail.allProjects">Tous les projets</option></select>
+      <button id="archive-toggle" class="chip" type="button" aria-pressed="false" data-i18n="rail.archives">Archives</button>
+    </div>
+    <nav id="run-list" class="run-list" aria-live="polite"></nav>
+    <footer class="rail-foot">
+      <button class="btn btn-ghost" type="button" data-action="settings"><svg class="ic"><use href="#i-gear"/></svg><span data-i18n="rail.settings">Réglages</span></button>
+      <button class="icon-btn" type="button" data-action="palette" aria-label="Palette de commandes (Ctrl+K)"><svg class="ic"><use href="#i-cmd"/></svg></button>
+      <span id="version" class="meta"></span>
+    </footer>
+  </aside>
+
+  <!-- ===== Main work area ===== -->
+  <main class="main" id="main">
+    <div class="topbar">
+      <button class="icon-btn only-compact" type="button" data-action="open-rail" aria-label="Historique"><svg class="ic"><use href="#i-menu"/></svg></button>
+      <svg class="mark mark-brand mark-top" aria-hidden="true"><use href="#mark"/></svg>
+      <span class="topbar-title" id="topbar-title"></span>
+      <span id="mode-badge" class="badge" hidden></span>
+      <button class="icon-btn only-narrow-inspector" type="button" data-action="open-inspector" aria-label="Coûts et détails"><svg class="ic"><use href="#i-gauge"/></svg></button>
+    </div>
+
+    <!-- Spectrogram: the three agents as emission lines on a wavelength axis -->
+    <section class="spectro" aria-label="Chaîne des agents">
+      <div class="continuum" aria-hidden="true"></div>
+      <div class="axis" aria-hidden="true">
+        <span style="--nm:450">450</span><span style="--nm:500">500</span>
+        <span style="--nm:550">550</span><span style="--nm:600">600</span><span style="--nm:650">650</span>
+        <em class="axis-unit">nm</em>
+      </div>
+      <ol class="agents" id="agents">
+        <li class="agent" data-agent="scout" data-state="idle" style="--nm:486">
+          <i class="eline" aria-hidden="true"></i>
+          <div class="agent-tag"><b>Scout</b><span class="agent-model"></span><span class="agent-status" data-i18n="state.idle">en attente</span></div>
+        </li>
+        <li class="agent" data-agent="scribe" data-state="idle" style="--nm:546">
+          <i class="eline" aria-hidden="true"></i>
+          <div class="agent-tag"><b>Scribe</b><span class="agent-model"></span><span class="agent-status" data-i18n="state.idle">en attente</span></div>
+        </li>
+        <li class="agent" data-agent="warden" data-state="idle" style="--nm:589">
+          <i class="eline" aria-hidden="true"></i>
+          <div class="agent-tag"><b>Warden</b><span class="agent-model"></span><span class="agent-status" data-i18n="state.idle">en attente</span></div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- Composer -->
+    <form id="composer" class="composer" autocomplete="off">
+      <div class="composer-field">
+        <textarea id="composer-input" rows="2" placeholder="Décris le texte à produire…  ( / pour les commandes )" data-i18n-placeholder="composer.placeholder" aria-label="Demande"></textarea>
+        <ul id="slash-menu" class="slash-menu" role="listbox" hidden></ul>
+      </div>
+      <div class="composer-bar">
+        <label class="select-inline">
+          <span class="label" data-i18n="composer.preset">Préréglage</span>
+          <select id="preset-select"></select>
+        </label>
+        <label class="switch" title="Réponses préenregistrées, sans clé API ni coût">
+          <input id="demo-switch" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span class="label" data-i18n="composer.demo">Démo</span>
+        </label>
+        <span class="spacer"></span>
+        <input id="file-input" type="file" accept=".txt,.md,.markdown,.csv,.json,text/*" hidden>
+        <button class="icon-btn" type="button" data-action="attach" aria-label="Joindre un fichier texte"><svg class="ic"><use href="#i-clip"/></svg></button>
+        <button class="icon-btn" type="button" id="mic-btn" data-action="voice" aria-label="Dicter" hidden><svg class="ic"><use href="#i-mic"/></svg></button>
+        <span id="char-count" class="meta"></span>
+        <button id="send-btn" class="btn btn-primary" type="submit"><span data-i18n="composer.send">Exposer</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+        <button id="stop-btn" class="btn btn-danger" type="button" data-action="stop" hidden><svg class="ic"><use href="#i-stop"/></svg><span data-i18n="composer.stop">Arrêter</span></button>
+      </div>
+    </form>
+
+    <!-- Plate: the run being read -->
+    <section id="plate" class="plate" aria-live="polite">
+      <div id="empty" class="empty">
+        <svg class="mark mark-hero" role="img" aria-label="Logo Spectre"><use href="#mark"/></svg>
+        <h1 class="wordmark wordmark-hero" aria-label="Spectre"><span aria-hidden="true">SPECTRE</span></h1>
+        <p class="empty-lede" data-i18n="empty.lede">Trois agents Claude en chaîne. Scout cadre la demande, Scribe rédige, Warden relit et corrige.</p>
+        <div class="suggestions" id="suggestions"></div>
+      </div>
+
+      <article id="plate-view" class="plate-view" hidden>
+        <header class="plate-head">
+          <div class="plate-id">
+            <h2 class="plate-title" id="plate-title" tabindex="0" title="Renommer"></h2>
+            <span class="meta" id="plate-meta"></span>
+          </div>
+          <div class="plate-actions">
+            <button class="icon-btn" type="button" data-action="copy" aria-label="Copier le texte affiché"><svg class="ic"><use href="#i-copy"/></svg></button>
+            <button class="icon-btn" type="button" data-action="rerun" aria-label="Relancer"><svg class="ic"><use href="#i-redo"/></svg></button>
+            <button class="icon-btn" type="button" data-action="edit-request" aria-label="Modifier la demande et relancer"><svg class="ic"><use href="#i-edit"/></svg></button>
+            <button class="icon-btn" type="button" data-action="export-menu" aria-label="Exporter" aria-haspopup="menu"><svg class="ic"><use href="#i-down"/></svg></button>
+            <button class="icon-btn" type="button" data-action="share" aria-label="Partager (page autonome)"><svg class="ic"><use href="#i-share"/></svg></button>
+          </div>
+        </header>
+        <div class="tabs" role="tablist" id="tabs">
+          <button role="tab" data-tab="final" aria-selected="true" data-i18n="tab.final">Texte final</button>
+          <button role="tab" data-tab="draft" aria-selected="false" data-i18n="tab.draft">Brouillon</button>
+          <button role="tab" data-tab="brief" aria-selected="false" data-i18n="tab.brief">Brief</button>
+          <button role="tab" data-tab="diff" aria-selected="false" data-i18n="tab.diff">Corrections</button>
+          <button role="tab" data-tab="request" aria-selected="false" data-i18n="tab.request">Demande</button>
+          <button role="tab" data-tab="raw" aria-selected="false" data-i18n="tab.raw">Brut</button>
+        </div>
+        <div id="plate-alert" class="alert" role="alert" hidden></div>
+        <div id="plate-body" class="plate-body prose" tabindex="0"></div>
+      </article>
+    </section>
+  </main>
+
+  <!-- ===== Inspector: tokens, cost, served model ===== -->
+  <aside id="inspector" class="inspector" aria-label="Coûts et détails">
+    <header class="inspector-head">
+      <h2 class="label" data-i18n="insp.title">Mesures</h2>
+      <button class="icon-btn inspector-close" type="button" data-action="close-drawers" aria-label="Fermer"><svg class="ic"><use href="#i-close"/></svg></button>
+    </header>
+    <div id="inspector-body" class="inspector-body"></div>
+  </aside>
+  <div class="scrim" data-action="close-drawers" hidden></div>
+</div>
+
+<!-- Control centre -->
+<dialog id="settings" class="sheet" aria-labelledby="settings-title">
+  <form method="dialog" class="sheet-inner">
+    <header class="sheet-head">
+      <h2 id="settings-title" class="label" data-i18n="set.title">Réglages</h2>
+      <button class="icon-btn" value="close" aria-label="Fermer"><svg class="ic"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="tabs" role="tablist" id="settings-tabs">
+      <button type="button" role="tab" data-stab="prefs" aria-selected="true" data-i18n="set.prefs">Préférences</button>
+      <button type="button" role="tab" data-stab="presets" aria-selected="false" data-i18n="set.presets">Préréglages</button>
+      <button type="button" role="tab" data-stab="history" aria-selected="false" data-i18n="set.history">Historique</button>
+      <button type="button" role="tab" data-stab="system" aria-selected="false" data-i18n="set.system">Système</button>
+    </div>
+    <div class="sheet-body" id="settings-body"></div>
+  </form>
+</dialog>
+
+<!-- Command palette -->
+<dialog id="palette" class="palette" aria-label="Palette de commandes">
+  <div class="palette-inner">
+    <label class="search search-lg"><svg class="ic"><use href="#i-search"/></svg><input id="palette-input" placeholder="Commande ou plaque…" data-i18n-placeholder="palette.placeholder" autocomplete="off"></label>
+    <ul id="palette-list" class="palette-list" role="listbox"></ul>
+  </div>
+</dialog>
+
+<div id="menu" class="menu" role="menu" hidden></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<input id="import-input" type="file" accept=".json,application/json" hidden>
+
+<script src="app.js" type="module"></script>
+</body>
+</html>
