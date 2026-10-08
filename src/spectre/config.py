@@ -26,6 +26,22 @@ DEFAULT_TIMEOUT_S: Final = 600.0
 FALLBACK_BETA: Final = "server-side-fallback-2026-07-01"
 # Models accepting `fallbacks: "default"` (server-side retry on another model after a refusal).
 FALLBACK_MODELS: Final = frozenset({"claude-sonnet-5-5", "claude-opus-5-5"})
+# The voice assistant runs on Claude Code (`claude -p`): its short names map to exact models,
+# so "opus" always means Opus 5.5 whatever the CLI's own alias points to.
+ASSISTANT_MODELS: Final[dict[str, str]] = {
+    "opus": "claude-opus-5-5",
+    "sonnet": "claude-sonnet-5-5",
+    "haiku": "claude-haiku-4-5",
+}
+
+
+def model_label(model: str) -> str:
+    """Human name of a model: "claude-opus-5-5" or "opus" -> "Opus 5.5"."""
+    exact = ASSISTANT_MODELS.get(model, model)
+    parts = exact.removeprefix("claude-").split("-")
+    if len(parts) < 2 or not parts[1].isdigit():
+        return model
+    return f"{parts[0].capitalize()} {'.'.join(parts[1:])}"
 
 
 @dataclass(frozen=True)

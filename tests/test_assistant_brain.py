@@ -92,7 +92,7 @@ def test_cli_command_env_and_mcp_config(tmp_path: Path, monkeypatch: pytest.Monk
     reply = cli.ask("bonjour", system="SYS", resume="old")
     assert reply == Reply("Salut", "abc", False, None)
     cmd = seen["cmd"]
-    assert cmd[:2] == ["claude", "-p"] and cmd[cmd.index("--model") + 1] == "haiku"
+    assert cmd[:2] == ["claude", "-p"] and cmd[cmd.index("--model") + 1] == "claude-haiku-4-5"
     assert cmd[-2:] == ["--resume", "old"] and "--strict-mcp-config" in cmd
     assert "mcp__spectre__*" in cmd
     assert seen["input"] == "bonjour" and seen["cwd"] == tmp_path / "workspace"
@@ -220,6 +220,8 @@ def test_mission_plan_steps_verify_retry_report(db: Database, tmp_path: Path) ->
     assert json.loads(row["plan"])["steps"] == ["chercher", "écrire"]
     assert "Tentative précédente insuffisante : vérification illisible" in cli.calls[5]["prompt"]
     assert cli.calls[1]["tools"] is True and cli.calls[2]["model"] == "haiku"
+    assert cli.calls[0]["model"] == "opus" and cli.calls[-1]["model"] == "opus"  # Spectre leads
+    assert cli.calls[1]["model"] == "haiku"  # execution agents (model set by _engine)
     assert (cli.workspace / "missions" / f"mission-{mid:04d}.md").read_text(
         encoding="utf-8"
     ) == "# Rapport"
@@ -377,3 +379,33 @@ def test_consolidation(db: Database, tmp_path: Path) -> None:
 def test_brain_module_constants() -> None:
     assert "ANTHROPIC_API_KEY" in brain_mod.STRIPPED_ENV
     assert "ni Jarvis" in brain_mod.CORE.format(name="Spectre", user="Barth", language_name="fr")
+
+
+def test_usage_limit_is_explained_in_french(db: Database, tmp_path: Path) -> None:
+    from spectre.assistant.brain import explain_limit, usage_limit
+
+    notice = "You've hit your session limit · resets 8pm (Europe/Paris)"
+    assert usage_limit(notice) and not usage_limit("Il est midi.")
+    assert explain_limit(notice).endswith("se réinitialise à 20 h.")
+    assert explain_limit("Usage limit reached, resets at 12:30am").endswith("à 0 h 30.")
+    assert explain_limit("Usage limit reached, resets 9am").endswith("à 9 h.")
+    assert explain_limit("rate limit").endswith("Réessaie un peu plus tard.")
+    cli = FakeCLI(tmp_path, Reply(notice, "s1", False))
+    db.set_kv("brain_session", f"{datetime.now():%Y-%m-%d}|old")
+    reply = Brain(db, cli, AssistantConfig()).ask("Merci")  # type: ignore[arg-type]
+    assert reply.is_error and reply.text.startswith("J'ai atteint la limite")
+    assert len(cli.calls) == 1  # no pointless retry
+
+
+def test_superior_agent_runs_on_opus_5_5(tmp_path: Path) -> None:
+    from spectre.config import ASSISTANT_MODELS, model_label
+
+    assert AssistantConfig().brain_model == "opus" and ASSISTANT_MODELS["opus"] == "claude-opus-5-5"
+    cli = ClaudeCLI(AssistantConfig(), tmp_path, runner=lambda *a, **k: None)
+    cmd = cli.command(system="s", model="opus", resume=None, with_tools=False)
+    assert cmd[cmd.index("--model") + 1] == "claude-opus-5-5"
+    custom = cli.command(system="s", model="claude-opus-4-8", resume=None, with_tools=False)
+    assert custom[custom.index("--model") + 1] == "claude-opus-4-8"  # exact IDs pass through
+    assert model_label("opus") == "Opus 5.5" and model_label("haiku") == "Haiku 4.5"
+    assert model_label("claude-opus-4-8") == "Opus 4.8" and model_label("bizarre") == "bizarre"
+    assert "agent supérieur" in brain_mod.CORE

@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import queue
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -18,8 +19,10 @@ from spectre.assistant.governance import Gate
 from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
+from spectre.config import model_label
 
 Event = dict[str, Any]
+LEVEL_EVERY_S = 0.05
 
 
 class AssistantService:
@@ -48,6 +51,7 @@ class AssistantService:
             self.cli,
             lambda kind, title, body: self.proactive.add_initiative(kind, title, body),
             model=self.config.mission_model,
+            lead_model=self.config.brain_model,
         )
         self.voice: Any = None
         self.voice_state = "off"
@@ -55,6 +59,7 @@ class AssistantService:
         self._sub_lock = threading.Lock()
         self._busy = threading.Lock()
         self._stop = threading.Event()
+        self._level_at = 0.0
         self._seen = {
             "approvals": self._max_id("approvals"),
             "initiatives": self._max_id("initiatives"),
@@ -126,6 +131,15 @@ class AssistantService:
             self.poll_changes()
 
     # ---- conversation ----------------------------------------------------------------------
+
+    def set_level(self, rms: float) -> None:
+        """Loudness heard or spoken (int16 RMS), throttled to ~20 events/s for the voice orb."""
+        now = time.monotonic()
+        if rms > 0 and now - self._level_at < LEVEL_EVERY_S:
+            return
+        self._level_at = now
+        level = min(1.0, (max(rms, 0.0) / 6000) ** 0.6)
+        self.publish({"type": "level", "v": round(level, 3)})
 
     def set_voice_state(self, state: str, detail: str = "") -> None:
         if state != "heard":
@@ -234,6 +248,7 @@ class AssistantService:
             "voice": self.voice_state,
             "voice_available": self.voice is not None,
             "brain_model": self.config.brain_model,
+            "brain_label": model_label(self.config.brain_model),
             "pending_approvals": len(self.approvals()),
             "pending_initiatives": len(self.initiatives()),
             "facts": len(self.memory.list()),

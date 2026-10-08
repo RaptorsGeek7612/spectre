@@ -24,8 +24,8 @@ class AssistantConfig:
     name: str = "Spectre"
     user_name: str = ""
     language: str = "fr"
-    brain_model: str = "sonnet"  # Claude Code model alias for conversation
-    mission_model: str = "sonnet"
+    brain_model: str = "opus"  # the superior agent (Opus 5.5): conversation, plans, reports
+    mission_model: str = "sonnet"  # execution agents for mission steps
     claude_bin: str = "claude"
     brain_timeout_s: float = 300.0
     city: str = "Paris"
@@ -34,7 +34,8 @@ class AssistantConfig:
     auto_max_level: int = 2  # actions above this level need your approval
     allowed_roots: list[str] = field(default_factory=lambda: [str(Path.home())])
     wake_word: str = "spectre"
-    stt_model: str = "base"
+    mic_device: str = ""  # part of the microphone's name; empty = pick a real microphone
+    stt_model: str = "small"  # faster-whisper; "base" is faster but mishears French speech
     tts_voice: str = "fr_FR-upmc-medium"  # male French voice (also: fr_FR-gilles-low, tom-medium)
     tts_speaker: str = "pierre"  # speaker of a multi-speaker voice (fr_FR-upmc-medium)
     tts_effect: str = "futuriste"  # onboard-AI timbre: futuriste, vaisseau (subtler) or aucun

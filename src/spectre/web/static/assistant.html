@@ -33,6 +33,9 @@
         <path class="mk-l mk-656" d="M50.9 8V50"/>
       </g>
     </symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2"/></symbol>
+    <symbol id="i-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="2 3"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
   </defs>
 </svg>
@@ -77,18 +80,40 @@
       </div>
     </section>
 
-    <section class="as-view" data-view="talk" id="view-talk">
-      <ol class="transcript" id="transcript" aria-live="polite"></ol>
-      <form class="composer as-composer" id="say-form" autocomplete="off">
-        <div class="composer-field">
-          <textarea id="say" rows="1" placeholder="Parle à Spectre… (ou dis « Spectre » au micro)" aria-label="Message à Spectre"></textarea>
-        </div>
-        <div class="composer-bar">
-          <button class="btn" type="button" id="talk-btn" data-action="talk"><svg class="ic"><use href="#i-mic"/></svg><span>Parler</span></button>
-          <span class="spacer"></span>
-          <button class="btn btn-primary" type="submit" id="send"><span>Envoyer</span><svg class="ic"><use href="#i-arrow"/></svg></button>
-        </div>
+    <section class="as-view orb-view" data-view="talk" id="view-talk">
+      <div class="hud" aria-label="État de Spectre">
+        <p class="hud-read hud-tl"><span class="label">Mémoire</span><b id="hud-facts">0</b><span class="unit">faits</span></p>
+        <p class="hud-read hud-tr"><span class="label">Validations</span><b id="hud-approvals">0</b><span class="unit">en attente</span></p>
+        <p class="hud-read hud-bl"><span class="label">Missions</span><b id="hud-missions">0</b><span class="unit">en cours</span></p>
+        <p class="hud-read hud-br"><span class="label">Cerveau</span><b id="hud-brain">—</b></p>
+      </div>
+      <div class="orb-stage">
+        <canvas id="orb" aria-hidden="true"></canvas>
+      </div>
+      <div class="orb-caption" aria-live="polite">
+        <p class="orb-state" id="orb-state">Connexion…</p>
+        <p class="signal"><span class="label">Signal</span><span class="signal-bar"><i id="signal-fill"></i></span><b id="signal-value">0,0 %</b></p>
+        <p class="heard" id="heard"></p>
+        <p class="said" id="said"></p>
+      </div>
+      <nav class="dock" aria-label="Commandes">
+        <button class="dock-btn" type="button" data-action="history" aria-label="Historique"><svg class="ic"><use href="#i-history"/></svg></button>
+        <button class="dock-btn" type="button" data-goto="approvals" aria-label="Validations"><svg class="ic"><use href="#i-shield"/></svg><b class="count" id="dock-approvals"></b></button>
+        <button class="dock-btn dock-mic" type="button" id="talk-btn" data-action="talk" aria-label="Parler à Spectre"><svg class="ic"><use href="#i-mic"/></svg></button>
+        <button class="dock-btn" type="button" data-goto="memory" aria-label="Mémoire"><svg class="ic"><use href="#i-brain"/></svg></button>
+        <button class="dock-btn" type="button" data-goto="settings" aria-label="Réglages"><svg class="ic"><use href="#i-gear"/></svg></button>
+      </nav>
+      <form class="orb-say" id="say-form" autocomplete="off">
+        <input type="text" id="say" placeholder="Écrire à Spectre…" aria-label="Message à Spectre">
+        <button class="icon-btn" type="submit" id="send" aria-label="Envoyer"><svg class="ic"><use href="#i-arrow"/></svg></button>
       </form>
+      <aside class="history" id="history" hidden aria-label="Historique de la conversation">
+        <header class="history-head">
+          <h2 class="label">Historique</h2>
+          <button class="icon-btn" type="button" data-action="history" aria-label="Fermer l'historique"><svg class="ic"><use href="#i-close"/></svg></button>
+        </header>
+        <ol class="transcript" id="transcript"></ol>
+      </aside>
     </section>
 
     <section class="as-view" data-view="approvals" hidden>

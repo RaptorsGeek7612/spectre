@@ -81,11 +81,19 @@ class ClaudeCodeChat(BaseChatModel):
 class MissionEngine:
     """Picks queued missions from the database and runs them one at a time."""
 
-    def __init__(self, db: Database, cli: ClaudeCLI, notify: Notify, model: str = "sonnet") -> None:
+    def __init__(
+        self,
+        db: Database,
+        cli: ClaudeCLI,
+        notify: Notify,
+        model: str = "sonnet",
+        lead_model: str = "opus",
+    ) -> None:
         self.db = db
         self.cli = cli
         self.notify = notify
-        self.model = model
+        self.model = model  # execution agents (mission steps)
+        self.lead_model = lead_model  # Spectre itself plans and reports
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -144,7 +152,7 @@ class MissionEngine:
                 self.cli,
                 f"Mission : {row['goal']}\n\nContexte :\n{context}",
                 PLANNER,
-                model=self.model,
+                model=self.lead_model,
             )
             steps_plan = [str(s) for s in extract_json(reply.text).get("steps", [])][:MAX_STEPS]
             if not steps_plan:
@@ -167,7 +175,7 @@ class MissionEngine:
             for i, d in enumerate(done)
         )
         report = one_shot(
-            self.cli, f"Objectif : {row['goal']}\n\n{summary}", REPORTER, model=self.model
+            self.cli, f"Objectif : {row['goal']}\n\n{summary}", REPORTER, model=self.lead_model
         ).text
         failed = sum(1 for d in done if not d["ok"])
         body = "Toutes les étapes sont vérifiées." if not failed else f"{failed} étape(s) à revoir."

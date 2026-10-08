@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
@@ -21,6 +22,7 @@ from spectre.assistant.config import AssistantConfig
 from spectre.assistant.db import Database
 from spectre.assistant.mcp_server import SERVER_NAME
 from spectre.assistant.memory import Memory
+from spectre.config import ASSISTANT_MODELS
 
 STRIPPED_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_WORKSPACE_ID")
 WEB_TOOLS = ("WebSearch", "WebFetch")
@@ -42,6 +44,9 @@ lieu...), retiens-le avec l'outil remember. Ne retiens pas les banalités du mom
 - Pour une tâche longue ou en plusieurs étapes, lance une mission (start_mission) et réponds \
 tout de suite que c'est en cours. Pour un texte soigné (article, lettre, rapport), lance une \
 mission kind=redaction : tes trois agents Scout, Scribe et Warden s'en chargent.
+- Tu es l'agent supérieur : tu décides, tu délègues et tu rends compte. Tes agents d'exécution \
+réalisent les étapes des missions que tu planifies, un vérificateur contrôle chaque étape, et \
+Scout, Scribe et Warden rédigent les textes soignés. C'est toi qui réponds à l'utilisateur.
 - Sois honnête quand tu ne sais pas. Sois concis : une ou deux phrases suffisent souvent.
 """
 
@@ -95,7 +100,7 @@ class ClaudeCLI:
             "--output-format",
             "json",
             "--model",
-            model,
+            ASSISTANT_MODELS.get(model, model),
             "--system-prompt",
             system,
             "--permission-mode",
@@ -175,6 +180,28 @@ def parse_reply(stdout: str, stderr: str = "") -> Reply:
 
 
 LANGUAGES = {"fr": "français", "en": "anglais"}
+LIMIT_MARKERS = ("session limit", "usage limit", "rate limit", "limit reached", "hit your limit")
+
+
+def usage_limit(text: str) -> bool:
+    """Claude Code's plan-limit notice (it comes back as the reply text, in English)."""
+    lowered = text.lower()
+    return any(marker in lowered for marker in LIMIT_MARKERS)
+
+
+def explain_limit(text: str) -> str:
+    """The limit notice as Spectre would say it, with the reset time in French if given."""
+    found = re.search(r"resets?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", text, re.IGNORECASE)
+    base = "J'ai atteint la limite d'utilisation de ton abonnement Claude"
+    if not found:
+        return base + ". Réessaie un peu plus tard."
+    hour, minutes, half = int(found[1]), found[2], (found[3] or "").lower()
+    if half == "pm" and hour < 12:
+        hour += 12
+    if half == "am" and hour == 12:
+        hour = 0
+    when = f"{hour} h" + (f" {minutes}" if minutes and minutes != "00" else "")
+    return f"{base} ; elle se réinitialise à {when}."
 
 
 class Brain:
@@ -225,7 +252,9 @@ class Brain:
         event = self.db.log_event("utterance", "user", text, channel=channel)
         session = self._session()
         reply = self.cli.ask(text, system=self.system_prompt(channel), resume=session or None)
-        if reply.is_error and session:
+        if usage_limit(reply.text):
+            reply = Reply(explain_limit(reply.text), reply.session_id, True, reply.cost_usd)
+        elif reply.is_error and session:
             # an expired or unknown session: start a fresh one
             reply = self.cli.ask(text, system=self.system_prompt(channel), resume=None)
         if reply.session_id:

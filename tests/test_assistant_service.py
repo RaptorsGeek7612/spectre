@@ -180,7 +180,7 @@ def test_api_routes(api: Client, service: AssistantService, home: Path) -> None:
     from spectre.assistant import tools
 
     assert api.json("GET", "/api/status")[1]["assistant"] is True
-    assert api.json("GET", "/api/assistant/status")[1]["brain_model"] == "sonnet"
+    assert api.json("GET", "/api/assistant/status")[1]["brain_label"] == "Opus 5.5"
     assert api.json("POST", "/api/assistant/chat", {"text": "Salut"}) == (
         200,
         {"reply": "Réponse."},
@@ -377,7 +377,7 @@ def _utterance() -> list[bytes]:
 
 
 def _loop(
-    blocks: list[bytes], stt: FakeSTT, reply: Any = None
+    blocks: list[bytes], stt: FakeSTT, reply: Any = None, ack: str = ""
 ) -> tuple[VoiceLoop, FakeTTS, list[str]]:
     states: list[str] = []
     tts = FakeTTS()
@@ -391,6 +391,7 @@ def _loop(
         lambda state, detail: states.append(state),
         play=lambda pcm, rate: plays.append(rate),
         follow_up_s=0.5,
+        ack=ack,
     )
     return voice, tts, states
 
@@ -439,9 +440,14 @@ def test_voice_ack_error_and_say(monkeypatch: pytest.MonkeyPatch) -> None:
         time.sleep(0.2)
         raise RuntimeError("panne")
 
-    voice, tts, _ = _loop([WAKE, *_utterance()], FakeSTT("fais un truc"), reply=slow)
+    voice, tts, _ = _loop(
+        [WAKE, *_utterance()], FakeSTT("fais un truc"), reply=slow, ack="Je m'en occupe."
+    )
     voice.run()
     assert tts.spoken == ["Je m'en occupe.", "Désolé, une erreur est survenue : panne"]
+    quiet, quiet_tts, _ = _loop([WAKE, *_utterance()], FakeSTT("encore"), reply=slow)
+    quiet.run()
+    assert quiet_tts.spoken == ["Désolé, une erreur est survenue : panne"]  # no filler by default
     voice.say("Rappel : pain")
     assert tts.spoken[-1] == "Rappel : pain"
 
@@ -457,3 +463,38 @@ def test_listen_helpers() -> None:
     assert not waiting.heard_speech
     assert len(chime()) == int(SAMPLE_RATE * 0.12) * 2
     assert json.dumps(Reply("a", "b", False).text) == '"a"'
+
+
+def test_pick_input_avoids_stereo_mix() -> None:
+    from spectre.assistant.voice.listen import pick_input
+
+    devices = [
+        {"name": "Mappeur de sons Microsoft - Input", "max_input_channels": 2},
+        {"name": "Mixage stéréo (Realtek(R) Audio", "max_input_channels": 2},
+        {"name": "Haut-parleurs (Realtek)", "max_input_channels": 0},
+        {"name": "Microphone Array (AMD Audio Dev", "max_input_channels": 2},
+        {"name": "Casque USB", "max_input_channels": 1},
+    ]
+    assert pick_input(devices, default=1) == 3
+    assert pick_input(devices, default=3) is None
+    assert pick_input(devices, default=4) is None
+    assert pick_input(devices, default=1, wanted="casque") == 4
+    with pytest.raises(ValueError):
+        pick_input(devices, default=1, wanted="inexistant")
+    assert pick_input(devices[:3], default=1) is None
+
+
+def test_level_events_are_throttled(
+    service: AssistantService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from spectre.assistant import service as service_mod
+
+    clock = iter([10.0, 10.01, 10.2, 10.21])
+    monkeypatch.setattr(service_mod.time, "monotonic", lambda: next(clock))
+    q = service.subscribe()
+    service.set_level(6000)  # published (full scale)
+    service.set_level(3000)  # dropped: too soon
+    service.set_level(1500)  # published
+    service.set_level(0)  # silence is always published
+    levels = [e["v"] for e in _drain(q) if e["type"] == "level"]
+    assert levels == [1.0, round(0.25**0.6, 3), 0.0]
