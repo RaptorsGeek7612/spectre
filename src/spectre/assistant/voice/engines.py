@@ -154,7 +154,7 @@ class PiperTTS:
     def __init__(
         self,
         models: Path,
-        voice: str = "fr_FR-tom-medium",
+        voice: str = "fr_FR-gilles-low",
         speaker: str = "",
         effect: str = "futuriste",
     ) -> None:

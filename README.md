@@ -137,7 +137,7 @@ Spectre est aussi un assistant personnel qui répond au nom de **Spectre** : la 
 sur le PC sous contrôle, une mémoire qui apprend, des initiatives et des missions longues. Le
 cerveau est Claude Code en mode non interactif (`claude -p`) : il passe par votre **abonnement**
 Claude, sans clé API. La voix est locale et gratuite : mot d'éveil Vosk, transcription
-faster-whisper, synthèse Piper (voix d'homme `fr_FR-tom-medium` par défaut) avec un timbre d'IA de bord :
+faster-whisper, synthèse Piper (voix d'homme `fr_FR-gilles-low` par défaut) avec un timbre d'IA de bord :
 « futuriste » (grave, harmonies décalées, résonances métalliques), « androide » (vocodeur),
 « hologramme » (chœur scintillant), « vaisseau » (discret) ou « aucun ».
 
