@@ -21,11 +21,24 @@ dependencies = [
     "langchain-anthropic>=1.5.3",
     "langgraph>=1.0",
     "python-dotenv>=1.0",
+    "mcp>=2.3",
+    "numpy>=2.0",
+]
+
+[project.optional-dependencies]
+# Local voice for the assistant: wake word (Vosk), speech-to-text (faster-whisper), voice (Piper).
+voice = [
+    "numpy>=2.0",
+    "sounddevice>=0.5",
+    "vosk>=0.3.45",
+    "faster-whisper>=1.2",
+    "piper-tts>=1.8",
 ]
 
 [project.scripts]
 spectre = "spectre.cli:main"
 spectre-web = "spectre.web.server:main"
+spectre-assistant = "spectre.assistant.app:main"
 
 [dependency-groups]
 dev = [
@@ -54,6 +67,9 @@ extend-exclude = ["lib"]  # vendored Foundry submodules (third-party code)
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+"src/spectre/assistant/db.py" = ["E501"]  # SQL schema reads better unwrapped
+
 [tool.ruff.format]
 quote-style = "double"
 
@@ -62,7 +78,16 @@ python_version = "3.11"
 strict = true
 files = ["src"]
 
+[[tool.mypy.overrides]]
+# Optional voice extra: untyped, and absent from CI.
+module = ["sounddevice", "vosk", "faster_whisper", "av", "piper", "piper.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["live: real Anthropic API calls"]
 addopts = "-m 'not live'"
+
+[tool.coverage.run]
+# Hardware glue (microphone, speakers, Win32 windows): exercised by hand, not in CI.
+omit = ["*/assistant/voice/engines.py", "*/assistant/winapi.py"]

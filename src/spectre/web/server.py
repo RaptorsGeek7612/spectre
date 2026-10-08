@@ -85,6 +85,7 @@ class App:
         self.allowed_hosts = allowed_hosts  # None = any Host header (LAN mode)
         self.cancels: dict[str, threading.Event] = {}
         self.lock = threading.Lock()
+        self.assistant: Any = None  # AssistantService when launched with `spectre-assistant`
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -207,6 +208,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def _api(self, method: str, path: str, query: dict[str, list[str]]) -> None:
         parts = path.strip("/").split("/")[1:]  # drop "api"
+        if parts and parts[0] == "assistant":
+            if self.app.assistant is None:
+                raise KeyError("assistant non activé")
+            from spectre.web.assistant_api import handle
+
+            handle(self, self.app.assistant, method, parts[1:], query)
+            return
         store = self.app.store
         match method, parts:
             case "GET", ["runs"]:
@@ -275,6 +283,7 @@ class Handler(BaseHTTPRequestHandler):
             "version": __version__,
             "auth_required": self.app.auth.enabled,
             "authenticated": authed,
+            "assistant": self.app.assistant is not None,
         }
         if authed:
             specs = load_specs()
@@ -422,11 +431,18 @@ def _finish(run: dict[str, Any], event: Event) -> None:
 
 
 def make_server(
-    host: str, port: int, *, store: Store, auth: Auth, demo_delay: float = 0.03
+    host: str,
+    port: int,
+    *,
+    store: Store,
+    auth: Auth,
+    demo_delay: float = 0.03,
+    assistant: Any = None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the HTTP server."""
     local = host in LOCAL_HOSTS
     app = App(store, auth, demo_delay=demo_delay, allowed_hosts=LOCAL_HOSTS if local else None)
+    app.assistant = assistant
     server = ThreadingHTTPServer((host, port), Handler)
     server.daemon_threads = True
     server.app = app  # type: ignore[attr-defined]

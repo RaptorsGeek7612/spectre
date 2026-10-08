@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#121315">
+<title>Spectre · Assistant</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="assistant.css">
+</head>
+<body class="assistant">
+<svg width="0" height="0" class="sr-only" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M14 7l5 5-5 5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></symbol>
+    <symbol id="mark" viewBox="0 0 64 64">
+      <clipPath id="mark-head"><circle cx="32" cy="29" r="21"/><rect x="11" y="29" width="42" height="35"/></clipPath>
+      <g class="mk" clip-path="url(#mark-head)">
+        <path class="mk-l mk-405" d="M13.1 8V50"/>
+        <path class="mk-l mk-436" d="M19.4 8V23M19.4 31V46"/>
+        <path class="mk-l mk-486 agent-scout" d="M25.7 8V23M25.7 31V53"/>
+        <path class="mk-l mk-546 agent-scribe" d="M32 8V47"/>
+        <path class="mk-l mk-589 agent-warden" d="M37.05 8V23M37.05 31V53M39.55 8V23M39.55 31V53"/>
+        <path class="mk-l mk-615" d="M44.6 8V23M44.6 31V46"/>
+        <path class="mk-l mk-656" d="M50.9 8V50"/>
+      </g>
+    </symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+  </defs>
+</svg>
+<a class="skip" href="#say">Aller à la saisie</a>
+
+<div class="app">
+  <aside id="rail" class="rail" aria-label="Navigation de l'assistant">
+    <div class="rail-axis" aria-hidden="true"></div>
+    <header class="brand">
+      <svg class="mark mark-brand" role="img" aria-label="Spectre"><use href="#mark"/></svg>
+      <span class="wordmark wordmark-sm" aria-hidden="true">SPECTRE</span>
+      <button class="icon-btn rail-close" type="button" data-action="close-drawers" aria-label="Fermer"><svg class="ic"><use href="#i-close"/></svg></button>
+    </header>
+    <nav class="as-nav" id="as-nav" aria-label="Sections">
+      <button type="button" data-view="talk" aria-current="true"><span>Conversation</span></button>
+      <button type="button" data-view="approvals"><span>Validations</span><b class="count" id="count-approvals"></b></button>
+      <button type="button" data-view="missions"><span>Missions</span><b class="count" id="count-missions"></b></button>
+      <button type="button" data-view="memory"><span>Mémoire</span><b class="count" id="count-facts"></b></button>
+      <button type="button" data-view="initiatives"><span>Initiatives</span><b class="count" id="count-initiatives"></b></button>
+      <button type="button" data-view="audit"><span>Journal</span></button>
+      <button type="button" data-view="settings"><span>Réglages</span></button>
+    </nav>
+    <footer class="rail-foot">
+      <a class="btn btn-ghost" href="/">Rédaction</a>
+      <span class="meta" id="brain-model"></span>
+    </footer>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="topbar">
+      <button class="icon-btn only-compact" type="button" data-action="open-rail" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+      <span class="topbar-title">Spectre</span>
+      <button class="icon-btn only-narrow-inspector" type="button" data-action="open-inspector" aria-label="Validations"><svg class="ic"><use href="#i-shield"/></svg></button>
+    </div>
+
+    <section class="presence" aria-live="polite">
+      <div class="continuum" aria-hidden="true"></div>
+      <svg class="mark mark-presence" id="presence-mark" aria-hidden="true"><use href="#mark"/></svg>
+      <div class="presence-text">
+        <p class="presence-state" id="presence-state">Connexion…</p>
+        <p class="presence-detail" id="presence-detail"></p>
+      </div>
+    </section>
+
+    <section class="as-view" data-view="talk" id="view-talk">
+      <ol class="transcript" id="transcript" aria-live="polite"></ol>
+      <form class="composer as-composer" id="say-form" autocomplete="off">
+        <div class="composer-field">
+          <textarea id="say" rows="1" placeholder="Parle à Spectre… (ou dis « Spectre » au micro)" aria-label="Message à Spectre"></textarea>
+        </div>
+        <div class="composer-bar">
+          <button class="btn" type="button" id="talk-btn" data-action="talk"><svg class="ic"><use href="#i-mic"/></svg><span>Parler</span></button>
+          <span class="spacer"></span>
+          <button class="btn btn-primary" type="submit" id="send"><span>Envoyer</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+        </div>
+      </form>
+    </section>
+
+    <section class="as-view" data-view="approvals" hidden>
+      <h2 class="as-h">Actions en attente de ta validation</h2>
+      <p class="meta">Spectre demande ton accord pour tout ce qui supprime, remplace, envoie ou touche au système.</p>
+      <div id="approvals-full" class="cards"></div>
+    </section>
+
+    <section class="as-view" data-view="missions" hidden>
+      <h2 class="as-h">Missions</h2>
+      <form class="inline-form" id="mission-form" autocomplete="off">
+        <input type="text" id="mission-goal" placeholder="Nouvelle mission, ex. « Compare les 3 meilleurs vélos de ville à moins de 800 € »" aria-label="Objectif de la mission">
+        <select id="mission-kind" aria-label="Type"><option value="mission">Mission</option><option value="redaction">Rédaction (Scout · Scribe · Warden)</option></select>
+        <button class="btn btn-primary" type="submit">Lancer</button>
+      </form>
+      <div id="missions" class="cards"></div>
+    </section>
+
+    <section class="as-view" data-view="memory" hidden>
+      <h2 class="as-h">Ce que Spectre sait de toi</h2>
+      <label class="search"><svg class="ic"><use href="#i-search"/></svg><input type="search" id="memory-q" placeholder="Chercher dans la mémoire…"></label>
+      <div id="facts" class="facts"></div>
+    </section>
+
+    <section class="as-view" data-view="initiatives" hidden>
+      <h2 class="as-h">Initiatives</h2>
+      <p class="meta">Rappels, briefing du matin, rapport de la nuit, missions terminées.</p>
+      <div id="initiatives" class="cards"></div>
+    </section>
+
+    <section class="as-view" data-view="audit" hidden>
+      <h2 class="as-h">Journal des actions</h2>
+      <p class="meta">Chaque action passe par le portail : niveau de risque, catégorie, décision.</p>
+      <div id="audit" class="audit"></div>
+    </section>
+
+    <section class="as-view" data-view="settings" hidden>
+      <h2 class="as-h">Réglages de l'assistant</h2>
+      <form id="settings-form" class="settings-grid" autocomplete="off"></form>
+    </section>
+  </main>
+
+  <aside id="inspector" class="inspector" aria-label="Validations">
+    <header class="inspector-head">
+      <h2 class="label">Validations</h2>
+      <button class="icon-btn inspector-close" type="button" data-action="close-drawers" aria-label="Fermer"><svg class="ic"><use href="#i-close"/></svg></button>
+    </header>
+    <div id="approvals" class="cards"></div>
+    <h2 class="label insp-sub">Initiatives récentes</h2>
+    <div id="initiatives-side" class="cards"></div>
+  </aside>
+  <div class="scrim" data-action="close-drawers" hidden></div>
+</div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<script src="assistant.js" type="module"></script>
+</body>
+</html>
