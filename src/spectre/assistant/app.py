@@ -50,7 +50,11 @@ def start_voice(service: AssistantService) -> str:  # pragma: no cover - needs a
     wake = engines.VoskWake(models, service.config.wake_word)
     stt = engines.WhisperSTT(service.config.stt_model, service.config.language)
     tts = engines.make_tts(
-        models, service.config.tts_voice, service.config.tts_speaker, service.config.tts_effect
+        models,
+        service.config.tts_voice,
+        service.config.tts_speaker,
+        service.config.tts_effect,
+        service.config.tts_pace,
     )
     tts.on_level = service.set_level
     loop = VoiceLoop(

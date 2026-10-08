@@ -39,6 +39,7 @@ class AssistantConfig:
     tts_voice: str = "fr_FR-upmc-medium"  # male French voice (also: fr_FR-gilles-low, tom-medium)
     tts_speaker: str = "pierre"  # speaker of a multi-speaker voice (fr_FR-upmc-medium)
     tts_effect: str = "futuriste"  # onboard-AI timbre: futuriste, vaisseau (subtler) or aucun
+    tts_pace: str = "naturel"  # speaking speed: pose, naturel or vif
     speak_initiatives: bool = True
     camera: bool = False  # face recognition of enrolled people (opt-in, nothing leaves the PC)
     camera_index: int = 0
