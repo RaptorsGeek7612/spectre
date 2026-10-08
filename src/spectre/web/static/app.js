@@ -1111,7 +1111,7 @@ async function boot() {
   }
   state.backend = backend;
   state.status = status;
-  $("#assistant-link").hidden = !status.assistant;
+  $("#switch-assistant").title = status.assistant ? "" : "L'assistant n'est pas lancé : double-clique sur le raccourci Spectre";
   if (status.assistant) voiceFab();
   if (status.auth_required && !status.authenticated) {
     $("#login").hidden = false;
