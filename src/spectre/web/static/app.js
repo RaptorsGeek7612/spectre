@@ -1085,6 +1085,7 @@ async function boot() {
   }
   state.backend = backend;
   state.status = status;
+  $("#assistant-link").hidden = !status.assistant;
   if (status.auth_required && !status.authenticated) {
     $("#login").hidden = false;
     $("#login-password").focus();

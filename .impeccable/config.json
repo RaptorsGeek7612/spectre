@@ -92,6 +92,15 @@
         ],
         "createdAt": "2026-10-07T21:30:01.980Z",
         "reason": "finish reviewer (independent agent) + build thread: see .impeccable/surfaces brief - direction contract: lines land and damp with one overshoot"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "src/spectre/web/static/assistant.html"
+        ],
+        "createdAt": "2026-10-08T14:40:21.313Z",
+        "reason": "build thread: emission-line bloom shared from app.css, sanctioned world grammar (finish reviewer 2026-10-08)"
       }
     ]
   }

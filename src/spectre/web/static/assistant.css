@@ -1,0 +1,144 @@
+/* Spectre assistant: same emission-line world as the writing app (app.css), plus the presence
+   band (the mark reacts to the voice state), the transcript, approval cards and memory facts. */
+
+.assistant .app { grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--insp-w); }
+
+/* ---- navigation in the rail ---- */
+.as-nav { display: grid; gap: 2px; margin-top: 8px; }
+.as-nav button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ash);
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.as-nav button::before { content: ""; position: absolute; left: -16px; top: 50%; width: 11px; height: 1px; background: var(--hair-2); }
+.as-nav button:hover { color: var(--bone); border-color: var(--hair); }
+.as-nav button[aria-current="true"] { color: var(--bone); border: 1px dashed var(--hair-2); background: var(--plate); }
+.as-nav button[aria-current="true"]::before { background: var(--l589); height: 2px; }
+.count { font-weight: 500; font-size: 0.76rem; letter-spacing: 0.04em; color: var(--l589); }
+.count:empty { display: none; }
+
+/* ---- presence band: the mark is Spectre's face ---- */
+.presence {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 3vw, 36px);
+  min-height: 188px;
+  padding: 20px clamp(16px, 3vw, 36px);
+  border-bottom: 1px solid var(--hair);
+  overflow: hidden;
+  background: var(--continuum);
+}
+.presence .continuum { position: absolute; inset: 0; opacity: 0.9; }
+.mark-presence { position: relative; width: 132px; height: 132px; flex: none; transition: opacity 0.4s var(--out), transform 0.5s var(--spring); }
+.presence-text { position: relative; min-width: 0; }
+.presence-state { margin: 0; font: 200 clamp(1.6rem, 3.4vw, 2.4rem)/1.1 var(--font-mark); letter-spacing: 0.2em; text-transform: uppercase; }
+.presence-detail { margin: 10px 0 0; max-width: 60ch; color: var(--ash); font-size: 1rem; }
+.presence-detail:empty { display: none; }
+/* state as the mark's form (same grammar as the agents' lines) */
+body[data-voice="sleeping"] .mark-presence, body[data-voice="off"] .mark-presence { opacity: 0.55; }
+body[data-voice="sleeping"] .mark-presence .mk-l, body[data-voice="off"] .mark-presence .mk-l { stroke-dasharray: 3 3; }
+body[data-voice="listening"] .mark-presence { transform: scale(1.04); }
+body[data-voice="listening"] .mark-presence .mk-l { animation: as-listen 1.1s ease-in-out infinite; }
+body[data-voice="listening"] .mark-presence .mk-436, body[data-voice="listening"] .mark-presence .mk-546 { animation-delay: 0.15s; }
+body[data-voice="listening"] .mark-presence .mk-486, body[data-voice="listening"] .mark-presence .mk-615 { animation-delay: 0.3s; }
+@keyframes as-listen { 50% { transform: scaleY(0.82); } }
+body[data-voice="thinking"] .mark-presence .mk-l { animation: mk-live 0.8s ease-in-out infinite; }
+body[data-voice="thinking"] .mark-presence .mk-546 { animation-delay: 0.2s; }
+body[data-voice="thinking"] .mark-presence .mk-589 { animation-delay: 0.4s; }
+body[data-voice="speaking"] .mark-presence .mk-l { animation: as-speak 0.45s ease-in-out infinite alternate; }
+body[data-voice="speaking"] .mark-presence .mk-486, body[data-voice="speaking"] .mark-presence .mk-615 { animation-delay: 0.12s; }
+@keyframes as-speak { from { transform: scaleY(0.88); } to { transform: scaleY(1.04); } }
+.mark-presence .mk-l { transform-box: fill-box; transform-origin: 50% 100%; }
+
+/* ---- views ---- */
+.as-view { flex: 1; padding: clamp(18px, 3vw, 36px) clamp(16px, 3vw, 36px) 32px; }
+.as-h { margin: 0 0 6px; font-weight: 500; font-size: 1.35rem; text-wrap: balance; }
+.as-view > .meta { margin: 0 0 18px; }
+#view-talk { display: flex; flex-direction: column; gap: 16px; padding-bottom: 0; }
+#view-talk[hidden] { display: none; }
+
+.transcript { flex: 1; list-style: none; margin: 0; padding: 0; display: grid; align-content: start; gap: 14px; max-width: 76ch; }
+.transcript li { position: relative; padding: 2px 0 2px 18px; }
+.transcript li::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 1.5px; background: var(--hair-2); }
+.transcript li[data-role="spectre"]::before { background: var(--l589); }
+.transcript li[data-error="true"]::before { background: var(--danger); }
+.transcript .who { display: block; font-size: 0.74rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
+.transcript .what { white-space: pre-wrap; overflow-wrap: anywhere; }
+.transcript li[data-role="spectre"] .what { color: var(--bone); }
+.transcript li[data-role="user"] .what { color: var(--ash); }
+.transcript .empty-note { color: var(--dim); }
+.as-composer { margin: 0 calc(-1 * clamp(16px, 3vw, 36px)); border-top: 1px solid var(--hair); border-bottom: 0; position: sticky; bottom: 0; }
+.as-composer textarea { min-height: 48px; }
+#talk-btn[aria-pressed="true"] { border-style: dashed; color: var(--l589); }
+
+/* ---- cards (approvals, missions, initiatives) ---- */
+.cards { display: grid; gap: 10px; }
+.card { position: relative; padding: 14px 14px 14px 20px; border: 1px solid var(--hair); background: var(--plate); }
+.card::before { content: ""; position: absolute; left: 8px; top: 14px; bottom: 14px; width: 1.5px; background: var(--tick, var(--hair-2)); }
+.card[data-level="3"], .card[data-level="4"], .card[data-level="5"] { --tick: var(--danger); }
+.card[data-level="2"] { --tick: var(--l589); }
+.card[data-status="done"] { --tick: var(--l546); }
+.card[data-status="failed"] { --tick: var(--danger); }
+.card[data-status="running"], .card[data-status="queued"] { --tick: var(--l486); }
+.card h3 { margin: 0 0 4px; font-size: 1rem; font-weight: 500; overflow-wrap: anywhere; }
+.card p { margin: 0 0 8px; color: var(--ash); font-size: 0.92rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+.card .meta { display: block; margin-bottom: 8px; }
+.card .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.card pre { margin: 6px 0 8px; padding: 8px 10px; max-height: 160px; overflow: auto; background: var(--ground); border: 1px solid var(--hair); font-size: 0.8rem; white-space: pre-wrap; color: var(--ash); }
+.card details summary { cursor: pointer; color: var(--dim); font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; }
+.empty-cards { color: var(--dim); font-size: 0.9rem; }
+.insp-sub { margin: 24px 0 10px; }
+
+/* ---- forms ---- */
+.inline-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.inline-form input { flex: 1 1 320px; min-height: 40px; padding: 0 12px; }
+.settings-grid { display: grid; gap: 14px; max-width: 640px; }
+.settings-grid label { display: grid; gap: 6px; }
+.settings-grid input, .settings-grid select { min-height: 40px; padding: 0 10px; }
+.settings-grid .help { font-size: 0.82rem; color: var(--dim); }
+
+/* ---- memory ---- */
+.facts { display: grid; gap: 2px; margin-top: 14px; max-width: 84ch; }
+.fact { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 14px; align-items: baseline; padding: 10px 6px; border-bottom: 1px solid var(--hair); }
+.fact .cat { font-size: 0.74rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--l486); min-width: 9ch; }
+.fact .claim { overflow-wrap: anywhere; }
+.fact .claim b { font-weight: 500; color: var(--bone); }
+.fact .sub { grid-column: 2 / 4; font-size: 0.78rem; color: var(--dim); }
+.fact .acts { display: flex; gap: 6px; }
+
+/* ---- audit ---- */
+.audit { display: grid; gap: 0; max-width: 100ch; }
+.audit-row { display: grid; grid-template-columns: 9ch 12ch 3ch minmax(0, 1fr); gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--hair); font-size: 0.86rem; color: var(--ash); }
+.audit-row .d-auto { color: var(--l546); }
+.audit-row .d-approval, .audit-row .d-approved { color: var(--l589); }
+.audit-row .d-refused { color: var(--danger); }
+.audit-row span:last-child { overflow-wrap: anywhere; }
+
+@media (max-width: 1279px) {
+  .assistant .app { grid-template-columns: var(--rail-w) minmax(0, 1fr); }
+}
+@media (max-width: 899px) {
+  .assistant .app { grid-template-columns: minmax(0, 1fr); }
+  .presence { min-height: 140px; }
+  .mark-presence { width: 92px; height: 92px; }
+  .audit-row { grid-template-columns: 8ch minmax(0, 1fr); }
+  .audit-row span:nth-child(3) { display: none; }
+}
+@media (max-width: 520px) {
+  .presence-state { letter-spacing: 0.12em; }
+  .fact { grid-template-columns: minmax(0, 1fr) auto; }
+  .fact .cat { grid-column: 1 / -1; }
+  .fact .sub { grid-column: 1 / -1; }
+}

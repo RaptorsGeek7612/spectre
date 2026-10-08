@@ -7,6 +7,22 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+
+- Assistant vocal `spectre-assistant` (ou `python -m spectre.assistant`), qui répond au nom de
+  Spectre. Cerveau : Claude Code `claude -p` via l'abonnement, avec reprise de session du jour.
+  Voix locale (extra `voice`) : mot d'éveil « Spectre » (Vosk), transcription faster-whisper,
+  synthèse Piper avec une voix d'homme et un timbre d'IA de bord (« futuriste », « vaisseau »), accusé « Je m'en occupe » sur les réponses longues, mots
+  d'arrêt et relance sans mot d'éveil.
+- Serveur MCP de 19 outils : heure, système, écrans, mémoire, ouverture d'applis et de pages
+  (sur l'écran choisi), fichiers (lister, lire, chercher, écrire, déplacer, supprimer, annuler),
+  rappels et missions.
+- Portail de gouvernance (risque × politique × budget), validations dans l'interface et journal
+  d'audit immuable. Écritures journalisées et annulables, corbeille propre à Spectre.
+- Mémoire qui apprend (SQLite FTS5, renforcement, remplacement, oubli, correction, miroir
+  Markdown), consolidation nocturne, briefing du matin, rappels, missions vérifiées avec rapport.
+- Page `assistant.html` dans l'univers des raies d'émission, liée depuis l'interface principale.
+
 ## [0.2.0] - 2026-10-08
 
 ### Added

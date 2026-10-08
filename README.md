@@ -131,6 +131,43 @@ Sans mot de passe, Spectre refuse de s'ouvrir au réseau : n'importe qui sur le 
 lancer des exécutions facturées sur votre clé. La clé API n'est jamais envoyée au navigateur.
 L'historique est rangé dans `~/.spectre/webui/` (modifiable avec `SPECTRE_WEBUI_STATE_DIR`).
 
+### Assistant vocal
+
+Spectre est aussi un assistant personnel qui répond au nom de **Spectre** : la voix, des actions
+sur le PC sous contrôle, une mémoire qui apprend, des initiatives et des missions longues. Le
+cerveau est Claude Code en mode non interactif (`claude -p`) : il passe par votre **abonnement**
+Claude, sans clé API. La voix est locale et gratuite : mot d'éveil Vosk, transcription
+faster-whisper, synthèse Piper (voix d'homme `fr_FR-tom-medium` par défaut) avec un timbre d'IA de bord
+« futuriste » (harmonies décalées, résonances métalliques, réverbération), réglable en
+« vaisseau », plus discret, ou « aucun ».
+
+```shell
+uv sync --extra voice                              # micro, mot d'éveil, transcription, synthèse
+uv run python -m spectre.assistant                 # interface seule (texte)
+uv run python -m spectre.assistant --voice         # dis « Spectre » pour lui parler
+```
+
+Le premier lancement avec `--voice` télécharge les modèles (environ 200 Mo) dans
+`~/.spectre/assistant/models/`. L'interface `assistant.html` affiche l'état de la voix, la
+conversation, les actions en attente de validation, les missions, la mémoire (consultable,
+corrigeable, oubliable), les initiatives, le journal d'audit et les réglages.
+
+Chaque action passe par un **portail de gouvernance** à trois axes : le niveau de risque (0
+lecture → 5 critique), la politique de la catégorie (toujours, demander, jamais) et un budget
+(20 actions par minute, 500 par jour). Le plus restrictif l'emporte. Supprimer, remplacer un
+fichier, envoyer quelque chose ou toucher au système demande votre validation ; installer un
+logiciel, payer ou modifier Spectre est refusé. Les fichiers restent dans les dossiers autorisés,
+les écritures sont journalisées et annulables (« annule »), et la suppression passe par la
+corbeille de Spectre. Les outils sont exposés au cerveau par un serveur MCP
+(`spectre.assistant.mcp_server`) qui partage la base SQLite de l'assistant.
+
+La mémoire stocke des faits datés et sourcés (sujet, prédicat, valeur), renforcés quand ils
+reviennent et remplacés quand ils changent ; une vue Markdown en lecture seule est écrite dans
+`~/.spectre/assistant/memoire/`. Chaque nuit, Spectre consolide les échanges de la veille ; chaque
+matin, il prépare un briefing (météo Open-Meteo, rappels, validations en attente). Les missions
+longues sont planifiées, exécutées étape par étape, vérifiées, puis résumées dans un rapport ;
+`kind=redaction` confie un texte soigné à Scout, Scribe et Warden.
+
 ### Bibliothèque
 
 ```python
@@ -203,6 +240,8 @@ une release quand `CHANGELOG.md` gagne une nouvelle version.
 
 ```
 src/spectre/      Package Spectre (config, llm, prompts, state, costs, nodes, graph, errors, cli)
+src/spectre/web/  Interface web (serveur, API de l'assistant, pages statiques)
+src/spectre/assistant/  Assistant vocal (cerveau, outils, gouvernance, mémoire, missions, voix)
 tests/            Tests pytest, sans réseau
 src/Voting.sol    Contrat Solidity (Foundry)
 test/             Tests Foundry unitaires + fuzz (Voting.t.sol)

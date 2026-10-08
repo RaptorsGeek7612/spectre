@@ -23,6 +23,7 @@ uv run ruff format --check . ; uv run ruff check .
 uv run mypy src
 uv run pytest -m "not live" --cov=spectre --cov-report=term-missing
 uv run python -m spectre.web             # interface web (spectre-web.exe peut être bloqué par Windows)
+uv run python -m spectre.assistant --voice   # assistant vocal (uv sync --extra voice)
 
 # Partie Foundry
 forge fmt --check ; forge build ; forge test
@@ -32,5 +33,8 @@ forge fmt --check ; forge build ; forge test
 - Le produit s'appelle **Spectre**. IDs de modèles uniquement dans `src/spectre/config.py`.
 - Jamais de `temperature`/`top_p`/`top_k` vers Sonnet 5.5 / Opus 5.5 : régler l'effort.
   Haiku 4.5 : `temperature` OK, pas d'effort. `max_tokens`, pas de prefill, pas de `budget_tokens`.
+- Assistant : modèles en alias Claude Code (`haiku`, `sonnet`, `opus`), jamais d'ID ; toute
+  action passe par `tools.execute` (portail + audit). `voice/engines.py` et `winapi.py` sont
+  exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.
