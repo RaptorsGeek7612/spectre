@@ -69,5 +69,6 @@ Total                                         0.0499 $
 | v0.1.0 | MVP linéaire, coûts, CLI, CI | Livré le 2026-10-06 |
 | v0.1.1 | Repli en cas de refus, signalement des troncatures, corrections d'audit | Livré le 2026-10-07 |
 | v0.2.0 | Interface web `spectre-web` (inspirée de Hermes WebUI) : chaîne en direct, historique, préréglages, démo, mobile | Livré le 2026-10-08 |
-| v0.3.0 | Boucle de révision, verdict structuré, streaming de la CLI | Sprint suivant |
-| v0.4.0 | Nœuds extensibles, batch, caching, évaluation | Ultérieur |
+| v0.3.0 | Assistant vocal Spectre (agent supérieur sur Opus 5.5) : voix locale, sphère HUD, actions gouvernées, mémoire, missions, reconnaissance des visages | Livré le 2026-10-08 |
+| v0.4.0 | Boucle de révision, verdict structuré, streaming de la CLI | Sprint suivant |
+| v0.5.0 | Nœuds extensibles, batch, caching, évaluation | Ultérieur |

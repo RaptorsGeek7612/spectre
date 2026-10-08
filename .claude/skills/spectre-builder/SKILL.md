@@ -28,6 +28,6 @@ Livrer `src/spectre/` (sections 3 à 9 du PDR architecture) et `pyproject.toml`.
 6. Lance `ruff format`, `ruff check`, `mypy src`. Corrige jusqu'au vert.
 
 ## Ne pas faire
-- Pas de boucle de révision (v0.3).
+- Pas de boucle de révision (v0.4).
 - Pas de suite de tests dans `tests/` (c'est le tester).
 - Pas d'appel réel à l'API Anthropic.

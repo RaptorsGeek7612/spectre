@@ -49,7 +49,7 @@ truthfully show.
   `brief`, `draft`, `final_text`, `usage` (per agent: model, input/output tokens, cost, `truncated`).
 - Server-side refusal fallbacks may make a different model answer; `usage.model` names it.
 - Errors are `SpectreError` subclasses naming the agent.
-- v0.1 pipeline is linear (no Warden → Scribe revision loop; planned for v0.3.0).
+- v0.1 pipeline is linear (no Warden → Scribe revision loop; planned for v0.4.0).
 - No accounts, no persistence of past runs decided yet (open decision).
 - Never display, log or send the API key from the UI.
 

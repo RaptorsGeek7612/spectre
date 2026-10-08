@@ -7,25 +7,39 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-08
+
 ### Added
 
 - Assistant vocal `spectre-assistant` (ou `python -m spectre.assistant`), qui répond au nom de
-  Spectre. Cerveau : Claude Code `claude -p` via l'abonnement, avec reprise de session du jour.
-  Voix locale (extra `voice`) : mot d'éveil « Spectre » (Vosk), transcription faster-whisper,
-  synthèse Piper avec une voix d'homme et un timbre d'IA de bord (futuriste, androïde vocodé, hologramme, vaisseau), accusé « Je m'en occupe » sur les réponses longues, mots
-  d'arrêt et relance sans mot d'éveil.
-- Serveur MCP de 19 outils : heure, système, écrans, mémoire, ouverture d'applis et de pages
+  Spectre. Spectre est l'agent supérieur, sur Opus 5.5 via Claude Code `claude -p` et
+  l'abonnement : il converse, planifie les missions et en rédige les rapports ; les étapes vont
+  aux agents d'exécution (Sonnet 5.5), la vérification à Haiku 4.5, la rédaction soignée à
+  Scout, Scribe et Warden. Identifiants exacts dans `config.ASSISTANT_MODELS`.
+- Voix locale (extra `voice`) : mot d'éveil « Spectre » (Vosk), transcription faster-whisper
+  `small` avec vocabulaire d'applis, synthèse Piper (voix d'homme « pierre ») avec un timbre
+  d'IA de bord (futuriste, androïde vocodé, hologramme, vaisseau), mots d'arrêt et relance sans
+  mot d'éveil. Choix automatique d'un vrai micro (jamais « Mixage stéréo »).
+- Sphère vocale façon HUD à la place du dialogue : anneau de particules qui réagit au niveau
+  sonore réel, SPECTRE qui s'assemble en particules au réveil, sous-titres, indicateurs, dock.
+- Serveur MCP de 20 outils : heure, système, écrans, mémoire, ouverture d'applis et de pages
   (sur l'écran choisi), fichiers (lister, lire, chercher, écrire, déplacer, supprimer, annuler),
-  rappels et missions.
+  rappels, missions, présence.
 - Portail de gouvernance (risque × politique × budget), validations dans l'interface et journal
   d'audit immuable. Écritures journalisées et annulables, corbeille propre à Spectre.
 - Mémoire qui apprend (SQLite FTS5, renforcement, remplacement, oubli, correction, miroir
   Markdown), consolidation nocturne, briefing du matin, rappels, missions vérifiées avec rapport.
-- Reconnaissance des visages optionnelle (extra `vision`, `--camera`) : OpenCV Zoo YuNet
-  (MIT) + SFace (Apache 2.0) + anti-fraude MiniFASNet (Apache 2.0) en local, modèles vérifiés
-  par SHA-256 ; enregistrement volontaire, empreintes seulement (aucune
-  photo), accueil au retour, présence dans le HUD, outil `who_is_there`.
+- Reconnaissance des visages optionnelle (extra `vision`, `--camera`) : OpenCV Zoo YuNet (MIT)
+  + SFace (Apache 2.0) + anti-fraude MiniFASNet (Apache 2.0) en local, modèles vérifiés par
+  SHA-256 ; enregistrement volontaire, empreintes seulement (aucune photo), accueil au retour,
+  présence dans le HUD, outil `who_is_there`.
+- La limite d'usage de l'abonnement est annoncée en français avec l'heure de réinitialisation.
 - Page `assistant.html` dans l'univers des raies d'émission, liée depuis l'interface principale.
+
+### Changed
+
+- Feuille de route : la boucle de révision et le streaming de la CLI passent en v0.4.0, les
+  nœuds extensibles, le batch, le caching et l'évaluation en v0.5.0.
 
 ## [0.2.0] - 2026-10-08
 

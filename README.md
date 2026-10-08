@@ -37,7 +37,7 @@ Le dépôt est **hybride** : il conserve aussi, issu du template
 Sonnet 5.5 et Opus 5.5 n'acceptent pas de `temperature` : leur profondeur de raisonnement se
 règle par l'**effort**. Haiku 4.5, à l'inverse, accepte `temperature` mais pas l'effort.
 
-La v0.1 est un pipeline linéaire. La boucle de révision Warden → Scribe est prévue en v0.3
+La v0.1 est un pipeline linéaire. La boucle de révision Warden → Scribe est prévue en v0.4
 (voir [docs/PDR-produit.md](docs/PDR-produit.md)).
 
 ## Installation
