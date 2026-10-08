@@ -482,3 +482,19 @@ def test_pick_input_avoids_stereo_mix() -> None:
     with pytest.raises(ValueError):
         pick_input(devices, default=1, wanted="inexistant")
     assert pick_input(devices[:3], default=1) is None
+
+
+def test_level_events_are_throttled(
+    service: AssistantService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from spectre.assistant import service as service_mod
+
+    clock = iter([10.0, 10.01, 10.2, 10.21])
+    monkeypatch.setattr(service_mod.time, "monotonic", lambda: next(clock))
+    q = service.subscribe()
+    service.set_level(6000)  # published (full scale)
+    service.set_level(3000)  # dropped: too soon
+    service.set_level(1500)  # published
+    service.set_level(0)  # silence is always published
+    levels = [e["v"] for e in _drain(q) if e["type"] == "level"]
+    assert levels == [1.0, round(0.25**0.6, 3), 0.0]

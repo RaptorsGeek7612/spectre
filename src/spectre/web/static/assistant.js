@@ -1,5 +1,7 @@
 // Spectre assistant UI. Plain ES module: live events over SSE, everything else over JSON.
 
+import { Orb } from "./orb.js";
+
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 function h(tag, attrs = {}, ...children) {
@@ -38,11 +40,30 @@ const STATES = {
 };
 let voiceAvailable = false;
 
+const orb = new Orb($("#orb"));
+const fadeTimers = {};
+function caption(id, text, ms) {
+  const el = $(id);
+  clearTimeout(fadeTimers[id]);
+  el.classList.remove("fading");
+  el.textContent = text;
+  if (ms) fadeTimers[id] = setTimeout(() => el.classList.add("fading"), ms);
+}
+function setLevel(v) {
+  orb.setLevel(v);
+  $("#signal-fill").style.width = `${(v * 100).toFixed(1)}%`;
+  $("#signal-value").textContent = `${(v * 100).toFixed(1).replace(".", ",")} %`;
+}
+
 function setState(state, detail = "") {
-  if (state === "heard") { $("#presence-detail").textContent = `« ${detail} »`; return; }
+  if (state === "heard") { $("#presence-detail").textContent = `« ${detail} »`; caption("#heard", detail, 9000); return; }
   document.body.dataset.voice = state;
+  orb.setState(state);
   const [label, hint] = STATES[state] || [state, ""];
   $("#presence-state").textContent = label;
+  $("#orb-state").textContent = state === "sleeping" && voiceAvailable ? "En veille — dis « Spectre »" : label;
+  if (state === "listening") caption("#heard", "", 0);
+  if (state !== "listening" && state !== "speaking") setLevel(0);
   $("#presence-detail").textContent = state === "speaking" ? detail : (detail || (state === "sleeping" && !voiceAvailable ? STATES.off[1] : hint));
   document.title = state === "thinking" ? "● Spectre réfléchit" : "Spectre · Assistant";
 }
@@ -200,12 +221,18 @@ async function loadStatus() {
   $("#count-initiatives").textContent = s.pending_initiatives || "";
   $("#count-facts").textContent = s.facts || "";
   $("#count-missions").textContent = s.missions_running || "";
+  $("#hud-facts").textContent = s.facts;
+  $("#hud-approvals").textContent = s.pending_approvals;
+  $("#dock-approvals").textContent = s.pending_approvals || "";
+  $("#hud-missions").textContent = s.missions_running;
+  $("#hud-brain").textContent = String(s.brain_model).toUpperCase();
   if (!document.body.dataset.voice || document.body.dataset.voice === "off") setState(s.voice);
 }
 const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: loadMissions, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: loadSettings };
 function show(view) {
   $$(".as-nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === view)));
   $$(".as-view").forEach((v) => { v.hidden = v.dataset.view !== view; });
+  document.body.dataset.view = view;
   closeDrawers();
   LOADERS[view]?.().catch((e) => toast(e.message, "error"));
   history.replaceState(null, "", `#${view}`);
@@ -216,7 +243,14 @@ function closeDrawers() { document.body.classList.remove("rail-open", "inspector
 function connect() {
   const es = new EventSource("/api/assistant/events");
   es.addEventListener("state", (e) => { const d = JSON.parse(e.data); setState(d.state, d.detail); });
-  es.addEventListener("message", (e) => { const d = JSON.parse(e.data); addLine(d.role, d.text, d.error); });
+  es.addEventListener("message", (e) => {
+    const d = JSON.parse(e.data);
+    addLine(d.role, d.text, d.error);
+    if (d.role === "spectre") caption("#said", d.text, 14000);
+    else caption("#heard", d.text, 14000);
+    loadStatus().catch(() => {});
+  });
+  es.addEventListener("level", (e) => setLevel(JSON.parse(e.data).v));
   es.addEventListener("approval", () => { loadApprovals(); toast("Spectre attend ta validation pour une action.", "warn", 6000); });
   es.addEventListener("approval_done", () => loadApprovals());
   es.addEventListener("initiative", (e) => { const d = JSON.parse(e.data); toast(`${d.title}${d.body ? ` — ${d.body}` : ""}`, "ok", 8000); loadInitiatives(); loadMissions(); });
@@ -232,6 +266,9 @@ document.addEventListener("click", (e) => {
   if (a === "open-rail") { document.body.classList.add("rail-open"); $(".scrim").hidden = false; }
   if (a === "open-inspector") { document.body.classList.add("inspector-open"); $(".scrim").hidden = false; }
   if (a === "talk") api("POST", "talk", {}).catch((err) => toast(err.message, "error"));
+  if (a === "history") { const panel = $("#history"); panel.hidden = !panel.hidden; if (!panel.hidden) loadHistory(); }
+  const goto = e.target.closest("[data-goto]")?.dataset.goto;
+  if (goto) show(goto);
 });
 $("#say-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -282,6 +319,7 @@ addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setT
 
 (async function boot() {
   drawContinuum();
+  orb.spellWord(1.8);
   try {
     await loadStatus();
     await Promise.all([loadApprovals(), loadInitiatives()]);

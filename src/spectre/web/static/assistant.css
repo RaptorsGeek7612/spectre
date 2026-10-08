@@ -66,8 +66,6 @@ body[data-voice="speaking"] .mark-presence .mk-486, body[data-voice="speaking"] 
 .as-view { flex: 1; padding: clamp(18px, 3vw, 36px) clamp(16px, 3vw, 36px) 32px; }
 .as-h { margin: 0 0 6px; font-weight: 500; font-size: 1.35rem; text-wrap: balance; }
 .as-view > .meta { margin: 0 0 18px; }
-#view-talk { display: flex; flex-direction: column; gap: 16px; padding-bottom: 0; }
-#view-talk[hidden] { display: none; }
 
 .transcript { flex: 1; list-style: none; margin: 0; padding: 0; display: grid; align-content: start; gap: 14px; max-width: 76ch; }
 .transcript li { position: relative; padding: 2px 0 2px 18px; }
@@ -128,6 +126,7 @@ body[data-voice="speaking"] .mark-presence .mk-486, body[data-voice="speaking"] 
 
 @media (max-width: 1279px) {
   .assistant .app { grid-template-columns: var(--rail-w) minmax(0, 1fr); }
+  .orb-view { height: calc(100dvh - 56px); }
 }
 @media (max-width: 899px) {
   .assistant .app { grid-template-columns: minmax(0, 1fr); }
@@ -141,4 +140,89 @@ body[data-voice="speaking"] .mark-presence .mk-486, body[data-voice="speaking"] 
   .fact { grid-template-columns: minmax(0, 1fr) auto; }
   .fact .cat { grid-column: 1 / -1; }
   .fact .sub { grid-column: 1 / -1; }
+}
+
+/* ---- the voice orb (Conversation view): Spectre's face instead of a chat log ---- */
+body[data-view="talk"] .presence { display: none; }
+.orb-view {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(260px, 1fr) auto auto auto;
+  justify-items: center;
+  gap: 10px;
+  height: 100dvh;
+  min-height: 560px;
+  padding: clamp(16px, 3vw, 32px) clamp(16px, 3vw, 36px) clamp(14px, 2vw, 22px);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in oklab, var(--l486) 9%, transparent), transparent 58%),
+    var(--ground);
+}
+#view-talk[hidden] { display: none; }
+.orb-stage { position: relative; width: 100%; height: 100%; min-height: 0; }
+.orb-stage canvas { position: absolute; inset: 0; margin: auto; display: block; }
+
+.orb-caption { display: grid; justify-items: center; gap: 6px; max-width: 64ch; text-align: center; }
+.orb-state { margin: 0; font: 200 clamp(1.4rem, 3vw, 2rem)/1.1 var(--font-mark); letter-spacing: 0.24em; text-transform: uppercase; color: var(--bone); }
+.signal { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 0.74rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); }
+.signal-bar { position: relative; width: clamp(120px, 22vw, 220px); height: 2px; background: var(--hair); overflow: hidden; }
+.signal-bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--l486); transition: width 0.08s linear; }
+.signal b { min-width: 6ch; font-weight: 500; color: var(--l486); letter-spacing: 0.06em; text-align: right; font-variant-numeric: tabular-nums; }
+.heard, .said { margin: 0; transition: opacity 0.6s var(--out); }
+.heard { color: var(--ash); font-size: 0.95rem; }
+.heard:not(:empty)::before { content: "« "; } .heard:not(:empty)::after { content: " »"; }
+.said { color: var(--bone); font-size: clamp(1rem, 1.6vw, 1.15rem); line-height: 1.5; text-wrap: balance; }
+.heard:empty, .said:empty { display: none; }
+.fading { opacity: 0; }
+
+/* HUD readouts in the four corners, like instrument labels */
+.hud { position: absolute; inset: clamp(14px, 2.4vw, 28px); pointer-events: none; }
+.hud-read { position: absolute; display: grid; gap: 2px; margin: 0; }
+.hud-read .label { color: var(--dim); }
+.hud-read b { font: 300 clamp(1.3rem, 2.4vw, 1.8rem)/1 var(--font-mark); letter-spacing: 0.08em; color: var(--l486); font-variant-numeric: tabular-nums; }
+.hud-read .unit { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
+.hud-read::before { content: ""; position: absolute; top: -8px; width: 22px; height: 1px; background: var(--l486); opacity: 0.6; }
+.hud-tl { top: 0; left: 0; } .hud-tr { top: 0; right: 0; text-align: right; justify-items: end; }
+.hud-bl { top: 44%; left: 0; } .hud-br { top: 44%; right: 0; text-align: right; justify-items: end; }
+.hud-tr::before, .hud-br::before { right: 0; }
+
+/* dock: microphone in the middle */
+.dock { display: flex; width: max-content; max-width: 100%; align-items: center; gap: clamp(8px, 2vw, 18px); padding: 8px 14px; border: 1px solid var(--hair); background: color-mix(in oklab, var(--plate) 88%, transparent); }
+.dock-btn { position: relative; display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid transparent; background: none; color: var(--ash); cursor: pointer; }
+.dock-btn:hover, .dock-btn:focus-visible { color: var(--bone); border-color: var(--hair-2); }
+.dock-btn .count { position: absolute; top: 4px; right: 2px; font-size: 0.7rem; }
+.dock-mic { width: 62px; height: 62px; border: 1px solid var(--l486); border-radius: 50%; color: var(--l486); }
+.dock-mic .ic { width: 26px; height: 26px; }
+.dock-mic[hidden] { display: grid; opacity: 0.35; pointer-events: none; }
+body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l486) 18%, transparent); }
+
+.orb-say { display: flex; align-items: center; gap: 6px; width: min(560px, 100%); border-bottom: 1px solid var(--hair-2); }
+.orb-say input { flex: 1; min-height: 42px; padding: 0 8px; border: 0; background: none; color: var(--bone); font: inherit; }
+.orb-say input:focus { outline: none; }
+.orb-say:focus-within { border-bottom-color: var(--l486); }
+
+/* conversation history, on demand */
+.history {
+  position: absolute;
+  z-index: 5;
+  inset: 0 0 0 auto;
+  width: min(440px, 100%);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: 18px 20px;
+  border-left: 1px solid var(--hair);
+  background: var(--ground);
+  overflow: auto;
+}
+.history[hidden] { display: none; }
+.history-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+
+@media (max-width: 899px) {
+  .orb-view { height: calc(100dvh - 56px); min-height: 520px; grid-template-rows: minmax(220px, 1fr) auto auto auto; }
+  .hud-read b { font-size: 1.15rem; }
+  .hud-bl, .hud-br { display: none; }
+  .dock-btn { width: 42px; height: 42px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .heard, .said, .signal-bar i { transition: none; }
 }

@@ -43,12 +43,13 @@ def start_voice(service: AssistantService) -> str:  # pragma: no cover - needs a
     print("Chargement de la voix (premier lancement : téléchargement des modèles)…", flush=True)
     device, mic_name = engines.pick_microphone(service.config.mic_device)
     print(f"Micro : {mic_name}", flush=True)
-    mic = engines.Microphone(device=device)
+    mic = engines.Microphone(device=device, on_level=service.set_level)
     wake = engines.VoskWake(models, service.config.wake_word)
     stt = engines.WhisperSTT(service.config.stt_model, service.config.language)
     tts = engines.make_tts(
         models, service.config.tts_voice, service.config.tts_speaker, service.config.tts_effect
     )
+    tts.on_level = service.set_level
     loop = VoiceLoop(
         mic,
         wake,

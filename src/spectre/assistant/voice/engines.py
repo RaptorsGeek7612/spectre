@@ -17,11 +17,13 @@ import threading
 import types
 import urllib.request
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant.voice.listen import SAMPLE_RATE
+from spectre.assistant.voice.listen import SAMPLE_RATE, rms
+
+Level = Callable[[float], None]
 
 VOSK_MODEL = "vosk-model-small-fr-0.22"
 VOSK_URL = f"https://alphacephei.com/vosk/models/{VOSK_MODEL}.zip"
@@ -43,9 +45,12 @@ def pick_microphone(wanted: str = "") -> tuple[int | None, str]:
 class Microphone:
     """16 kHz mono int16 blocks from the default input device."""
 
-    def __init__(self, block_s: float = 0.1, device: Any = None) -> None:
+    def __init__(
+        self, block_s: float = 0.1, device: Any = None, on_level: Level | None = None
+    ) -> None:
         self.block = int(SAMPLE_RATE * block_s)
         self.device = device
+        self.on_level = on_level  # RMS of each heard block, for the UI's voice orb
         self._queue: queue.Queue[bytes] = queue.Queue(maxsize=200)
         self._stream: Any = None
         self.muted = threading.Event()  # set while Spectre speaks (no self-echo)
@@ -55,8 +60,11 @@ class Microphone:
 
         def callback(indata: Any, _frames: int, _time: Any, _status: Any) -> None:
             if not self.muted.is_set():
+                block = bytes(indata)
                 with contextlib.suppress(queue.Full):
-                    self._queue.put_nowait(bytes(indata))
+                    self._queue.put_nowait(block)
+                if self.on_level is not None:
+                    self.on_level(rms(block))
 
         self._stream = sd.RawInputStream(
             samplerate=SAMPLE_RATE,
@@ -86,20 +94,30 @@ class Microphone:
             self._queue.get_nowait()
 
 
-def play_pcm(pcm: bytes, rate: int, stop: threading.Event | None = None) -> None:
-    """Play int16 mono PCM, interruptible by `stop`."""
+def play_pcm(
+    pcm: bytes, rate: int, stop: threading.Event | None = None, on_level: Level | None = None
+) -> None:
+    """Play int16 mono PCM, interruptible by `stop`; report the playing loudness to `on_level`."""
     import numpy as np
     import sounddevice as sd
 
     data = np.frombuffer(pcm, dtype=np.int16)
     sd.play(data, rate)
     duration = len(data) / rate
+    window = max(1, int(rate * 0.05))
     waited = 0.0
     while waited < duration + 0.2:
+        if on_level is not None:
+            start = int(waited * rate)
+            on_level(rms(data[start : start + window].tobytes()))
         if stop is not None and stop.wait(0.05):
             sd.stop()
             return
+        if stop is None:
+            threading.Event().wait(0.05)
         waited += 0.05
+    if on_level is not None:
+        on_level(0.0)
     sd.wait()
 
 
@@ -189,6 +207,7 @@ class PiperTTS:
         path = ensure_piper_voice(models, voice)
         self.voice = PiperVoice.load(str(path))
         self.effect = effect
+        self.on_level: Level | None = None
         speakers = getattr(self.voice.config, "speaker_id_map", None) or {}
         self.syn = SynthesisConfig(
             speaker_id=speakers.get(speaker),
@@ -205,11 +224,13 @@ class PiperTTS:
                 return
         from spectre.assistant.voice import fx
 
-        play_pcm(fx.apply(self.effect, buffer.getvalue(), rate), rate, stop)
+        play_pcm(fx.apply(self.effect, buffer.getvalue(), rate), rate, stop, self.on_level)
 
 
 class WindowsTTS:
     """The built-in Windows voice through PowerShell (no download)."""
+
+    on_level: Level | None = None  # not measurable here: the orb follows the state only
 
     def speak(self, text: str, stop: threading.Event | None = None) -> None:
         script = (

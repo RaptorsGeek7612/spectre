@@ -377,3 +377,19 @@ def test_consolidation(db: Database, tmp_path: Path) -> None:
 def test_brain_module_constants() -> None:
     assert "ANTHROPIC_API_KEY" in brain_mod.STRIPPED_ENV
     assert "ni Jarvis" in brain_mod.CORE.format(name="Spectre", user="Barth", language_name="fr")
+
+
+def test_usage_limit_is_explained_in_french(db: Database, tmp_path: Path) -> None:
+    from spectre.assistant.brain import explain_limit, usage_limit
+
+    notice = "You've hit your session limit · resets 8pm (Europe/Paris)"
+    assert usage_limit(notice) and not usage_limit("Il est midi.")
+    assert explain_limit(notice).endswith("se réinitialise à 20 h.")
+    assert explain_limit("Usage limit reached, resets at 12:30am").endswith("à 0 h 30.")
+    assert explain_limit("Usage limit reached, resets 9am").endswith("à 9 h.")
+    assert explain_limit("rate limit").endswith("Réessaie un peu plus tard.")
+    cli = FakeCLI(tmp_path, Reply(notice, "s1", False))
+    db.set_kv("brain_session", f"{datetime.now():%Y-%m-%d}|old")
+    reply = Brain(db, cli, AssistantConfig()).ask("Merci")  # type: ignore[arg-type]
+    assert reply.is_error and reply.text.startswith("J'ai atteint la limite")
+    assert len(cli.calls) == 1  # no pointless retry
