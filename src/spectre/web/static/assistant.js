@@ -51,7 +51,7 @@ function caption(id, text, ms) {
 }
 function setLevel(v) {
   orb.setLevel(v);
-  $("#signal-fill").style.width = `${(v * 100).toFixed(1)}%`;
+  $("#signal-fill").style.transform = `scaleX(${v.toFixed(3)})`;
   $("#signal-value").textContent = `${(v * 100).toFixed(1).replace(".", ",")} %`;
 }
 
