@@ -18,16 +18,19 @@ from spectre.assistant.service import AssistantService
 from spectre.assistant.vision.faces import (
     AWAY_AFTER_S,
     GONE_AFTER_S,
+    SPOOF,
     UNKNOWN,
     FaceBook,
     Presence,
     cosine,
     describe_presence,
+    is_live,
 )
 from tests.test_assistant_service import FakeVoice, _drain, api, home, service  # noqa: F401
 from tests.test_web import Client
 
 ME = [1.0, 0.0, 0.2]
+PHOTO = {"feature": [1.0, 0.0, 0.2], "live": False}
 ME_AGAIN = [0.95, 0.05, 0.25]
 SOMEONE = [0.0, 1.0, 0.0]
 
@@ -37,6 +40,10 @@ def db(tmp_path: Path) -> Iterator[Database]:
     database = Database(tmp_path / "spectre.db")
     yield database
     database.close()
+
+
+def test_is_live() -> None:
+    assert is_live(2.0, -1.0) and not is_live(-0.5, 1.5) and is_live(1.0, 1.0)
 
 
 def test_cosine() -> None:
@@ -83,38 +90,48 @@ def test_describe_presence(db: Database) -> None:
     presence = Presence(db, lambda *a: None, lambda: 0.0)
     presence.sighting([UNKNOWN])
     assert describe_presence(db).endswith(": 1 personne(s) que je ne connais pas")
-    presence.sighting(["Barth", UNKNOWN, UNKNOWN])
-    assert describe_presence(db).endswith(": Barth et 2 personne(s) que je ne connais pas")
+    presence.sighting(["Barth", UNKNOWN, UNKNOWN, SPOOF])
+    assert describe_presence(db).endswith(
+        ": Barth et 2 personne(s) que je ne connais pas"
+        " et 1 photo(s) ou écran(s) présenté(s) à la caméra"
+    )
     presence.last_seen.clear()
     presence.sighting([])
     assert describe_presence(db).endswith(": personne")
 
 
+def L(feature: list[float]) -> dict[str, Any]:  # noqa: N802 - a live face
+    return {"feature": feature, "live": True}
+
+
 class FakeCamera:
-    def __init__(self, *looks: list[list[float]]) -> None:
+    def __init__(self, *looks: list[dict[str, Any]]) -> None:
         self.looks = list(looks)
         self.stop = threading.Event()
 
-    def grab(self) -> list[list[float]]:
+    def grab(self) -> list[dict[str, Any]]:
         return self.looks.pop(0) if self.looks else []
 
 
 def test_service_faces(service: AssistantService) -> None:  # noqa: F811
     with pytest.raises(ValueError, match="caméra"):
         service.enroll_face("Barth")
-    service.attach_camera(FakeCamera([ME], [], [ME, SOMEONE], [ME_AGAIN], [ME]))
+    service.attach_camera(FakeCamera([L(ME)], [], [L(ME), L(SOMEONE)], [PHOTO], [L(ME_AGAIN)]))
     with pytest.raises(ValueError, match="bien voir"):
         service.enroll_face("Barth", samples=6, attempts=3)
-    service.attach_camera(FakeCamera(*[[ME]] * 3))
+    service.attach_camera(FakeCamera(*[[L(ME)]] * 3))
     assert service.enroll_face("Barth", samples=3) == 3
     voice = FakeVoice()
     service.attach_voice(voice)
     service.set_voice_state("sleeping")
     q = service.subscribe()
-    service.on_faces([ME_AGAIN, SOMEONE])
+    service.on_faces([L(ME_AGAIN), L(SOMEONE), PHOTO])
     events = _drain(q)
     assert {"type": "arrival", "name": "Barth", "text": "Bonjour Barth."} in events
-    assert events[-1] == {"type": "presence", "people": ["Barth"], "unknown": 1}
+    assert events[-1] == {"type": "presence", "people": ["Barth"], "unknown": 1, "spoof": 1}
+    assert service.db.one("SELECT text FROM events WHERE kind = 'spoof'")
+    service.on_faces([PHOTO])  # logged at most once a minute
+    assert len(service.db.all("SELECT id FROM events WHERE kind = 'spoof'")) == 1
     deadline = time.monotonic() + 2
     while not voice.said and time.monotonic() < deadline:
         time.sleep(0.01)
@@ -130,7 +147,7 @@ def test_service_faces(service: AssistantService) -> None:  # noqa: F811
 def test_face_routes(api: Client, service: AssistantService) -> None:  # noqa: F811
     assert api.json("GET", "/api/assistant/faces")[1] == {"camera": False, "people": []}
     assert api.json("POST", "/api/assistant/faces/enroll", {"name": "Barth"})[0] == 400
-    service.attach_camera(FakeCamera(*[[ME]] * 6))
+    service.attach_camera(FakeCamera(*[[L(ME)]] * 6))
     service.config.user_name = "Barth"
     assert api.json("POST", "/api/assistant/faces/enroll", {}) == (
         200,

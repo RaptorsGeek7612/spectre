@@ -209,9 +209,10 @@ $("#face-form").addEventListener("submit", async (e) => {
   catch (err) { toast(err.message, "error", 7000); }
   finally { btn.textContent = "Enregistrer ce visage"; loadFaces(); }
 });
-function showPresence(people, unknown) {
+function showPresence(people, unknown, spoof = 0) {
   const parts = [...people];
   if (unknown) parts.push(unknown > 1 ? `${unknown} inconnus` : "1 inconnu");
+  if (spoof) parts.push(spoof > 1 ? `${spoof} photos ou écrans` : "1 photo ou écran");
   $("#presence-line").textContent = parts.length ? `Présent : ${parts.join(", ")}` : "";
 }
 
@@ -278,7 +279,7 @@ function connect() {
     loadStatus().catch(() => {});
   });
   es.addEventListener("level", (e) => setLevel(JSON.parse(e.data).v));
-  es.addEventListener("presence", (e) => { const d = JSON.parse(e.data); showPresence(d.people, d.unknown); });
+  es.addEventListener("presence", (e) => { const d = JSON.parse(e.data); showPresence(d.people, d.unknown, d.spoof); });
   es.addEventListener("arrival", (e) => { const d = JSON.parse(e.data); caption("#said", d.text, 8000); });
   es.addEventListener("approval", () => { loadApprovals(); toast("Spectre attend ta validation pour une action.", "warn", 6000); });
   es.addEventListener("approval_done", () => loadApprovals());

@@ -165,7 +165,8 @@ corbeille de Spectre. Les outils sont exposés au cerveau par un serveur MCP
 `python -m spectre.assistant --voice --camera` : Spectre reconnaît les personnes enregistrées
 dans Réglages › Visages connus (YuNet pour la détection, licence MIT ; SFace pour la
 reconnaissance, licence Apache 2.0 ; tout tourne sur le PC). Il t'accueille quand tu reviens,
-affiche qui est présent et répond à « qui est devant l'écran ? ». Aucune photo n'est gardée :
+affiche qui est présent et répond à « qui est devant l'écran ? ». Un modèle anti-fraude (MiniFASNet,
+Apache 2.0) écarte les photos et les écrans présentés à la caméra. Aucune photo n'est gardée :
 seulement une empreinte de 128 nombres par prise, effaçable d'un clic ; les inconnus ne sont
 jamais enregistrés.
 

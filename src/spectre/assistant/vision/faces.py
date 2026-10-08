@@ -23,6 +23,14 @@ AWAY_AFTER_S: Final = 20 * 60  # back after this long away: Spectre greets you
 GONE_AFTER_S: Final = 30.0  # not seen for this long: no longer "present"
 
 
+SPOOF: Final = "fraude"  # a photo or a screen held in front of the camera
+
+
+def is_live(real_logit: float, spoof_logit: float, threshold: float = 0.0) -> bool:
+    """MiniFASNet verdict: real when the real-vs-spoof logit gap clears `threshold` (p=0.5)."""
+    return real_logit - spoof_logit >= threshold
+
+
 def cosine(a: Sequence[float], b: Sequence[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b, strict=True))
     norm = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b))
@@ -85,7 +93,7 @@ class Presence:
     def sighting(self, names: Sequence[str]) -> list[str]:
         """Record who the camera sees now; return the people currently present."""
         now = self.clock()
-        for name in set(names) - {UNKNOWN}:
+        for name in set(names) - {UNKNOWN, SPOOF}:
             previous = self.last_seen.get(name)
             if previous is None or now - previous >= AWAY_AFTER_S:
                 self.on_arrival(name, now - previous if previous is not None else 0.0)
@@ -98,6 +106,7 @@ class Presence:
                     "at": datetime.now().astimezone().isoformat(timespec="seconds"),
                     "people": present,
                     "unknown": names.count(UNKNOWN),
+                    "spoof": names.count(SPOOF),
                 }
             ),
         )
@@ -118,5 +127,7 @@ def describe_presence(db: Database) -> str:
     parts = [", ".join(people)] if people else []
     if unknown:
         parts.append(f"{unknown} personne(s) que je ne connais pas")
+    if data.get("spoof"):
+        parts.append(f"{data['spoof']} photo(s) ou écran(s) présenté(s) à la caméra")
     seen = data.get("at", "")[11:16]
     return f"devant l'écran à {seen} : " + (" et ".join(parts) if parts else "personne")

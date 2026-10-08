@@ -19,7 +19,7 @@ from spectre.assistant.governance import Gate
 from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
-from spectre.assistant.vision.faces import UNKNOWN, FaceBook, Presence
+from spectre.assistant.vision.faces import SPOOF, UNKNOWN, FaceBook, Presence
 from spectre.config import model_label
 
 Event = dict[str, Any]
@@ -59,6 +59,7 @@ class AssistantService:
         self.faces = FaceBook(self.db)
         self.presence = Presence(self.db, self._on_arrival, time.monotonic)
         self.camera: Any = None
+        self._spoof_logged_at = -1e9
         self._subscribers: list[queue.Queue[Event]] = []
         self._sub_lock = threading.Lock()
         self._busy = threading.Lock()
@@ -289,11 +290,25 @@ class AssistantService:
     def attach_camera(self, camera: Any) -> None:
         self.camera = camera
 
-    def on_faces(self, features: list[list[float]]) -> None:
-        """One camera look: identify enrolled people, update presence (no picture is kept)."""
-        names = [self.faces.identify(feature)[0] for feature in features]
+    def on_faces(self, faces: list[dict[str, Any]]) -> None:
+        """One camera look: identify live, enrolled people; flag photos and screens."""
+        names = [
+            self.faces.identify(face["feature"])[0] if face.get("live", True) else SPOOF
+            for face in faces
+        ]
         present = self.presence.sighting(names)
-        self.publish({"type": "presence", "people": present, "unknown": names.count(UNKNOWN)})
+        spoofs = names.count(SPOOF)
+        if spoofs and time.monotonic() - self._spoof_logged_at > 60:
+            self._spoof_logged_at = time.monotonic()
+            self.db.log_event("spoof", "camera", "photo ou écran présenté à la caméra")
+        self.publish(
+            {
+                "type": "presence",
+                "people": present,
+                "unknown": names.count(UNKNOWN),
+                "spoof": spoofs,
+            }
+        )
 
     def _on_arrival(self, name: str, away_s: float) -> None:
         greeting = f"Bon retour, {name}." if away_s else f"Bonjour {name}."
@@ -309,13 +324,14 @@ class AssistantService:
         shots: list[list[float]] = []
         for _ in range(attempts):
             faces = self.camera.grab()
-            if len(faces) == 1:
-                shots.append(faces[0])
+            if len(faces) == 1 and faces[0].get("live", True):  # never enroll a photo
+                shots.append(faces[0]["feature"])
                 if len(shots) >= samples:
                     break
         if len(shots) < max(2, samples // 2):
             raise ValueError(
-                "je n'ai pas réussi à bien voir ton visage : seul, de face, bien éclairé"
+                "je n'ai pas réussi à bien voir ton visage (seul, de face, bien éclairé, "
+                "et pas une photo)"
             )
         count = self.faces.enroll(name, shots)
         self.db.log_event("face_enrolled", "user", f"visage de {name} enregistré ({count} prises)")
