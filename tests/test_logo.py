@@ -49,5 +49,6 @@ def test_pages_use_the_full_logo() -> None:
     assert '<img class="mark mark-login" src="logo.svg"' in index
     assert 'src="logo.svg"' in (STATIC / "assistant.html").read_text(encoding="utf-8")
     assert '"logo.svg"' in (STATIC / "sw.js").read_text(encoding="utf-8")
+    assert 'id="voice-fab"' in index and "hidden" in index.split('id="voice-fab"')[1][:40]
     for size in (32, 180, 192, 512):
         assert (STATIC / "icons" / f"icon-{size}.png").read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"

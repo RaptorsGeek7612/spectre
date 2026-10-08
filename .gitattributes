@@ -4,3 +4,6 @@
 # Don't count the lockfiles in GitHub's language stats or line-by-line diffs
 foundry.lock linguist-generated=true
 uv.lock linguist-generated=true
+
+# Windows batch files need CRLF line endings
+*.cmd text eol=crlf
