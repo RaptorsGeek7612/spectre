@@ -10,7 +10,7 @@ Spectre est un orchestrateur multi-agents **100 % Claude** : Scout (Haiku 4.5) �
 ## Sources de vérité (lire avant de coder)
 - `docs/cahier-des-charges.md` — exigences F1–F10, NF1–NF9, critères d'acceptation.
 - `docs/PDR-architecture.md` — arborescence, signatures, état, erreurs, tests, CI. **Le respecter** ; tout écart doit être justifié dans ton rapport.
-- `docs/PDR-produit.md` — périmètre par version (v0.1 = linéaire, PAS de boucle de révision).
+- `docs/PDR-produit.md` — périmètre par version (boucle de révision Warden → Scribe depuis la v0.4, `SPECTRE_MAX_REVISIONS`).
 
 ## Dépôt hybride
 Le dépôt garde la partie **Foundry** du template d'origine (contrat `src/Voting.sol`, `test/Voting.t.sol`, `script/Voting.s.sol`, submodules `lib/`, `foundry.toml`) en **Solidity 0.8.35** (`solc_version = "0.8.35"`, `pragma solidity ^0.8.35;`). **Ne jamais supprimer ces fichiers.** Commandes : `forge fmt --check`, `forge build`, `forge test` (forge n'est pas installé localement ; la CI les exécute).

@@ -73,7 +73,8 @@ def test_warden_receives_request_and_draft() -> None:
     assert "LE BRIEF" not in human
     assert update["final_text"] == "final!"
     assert update["usage"][0]["model"] == "claude-opus-5-5"
-    assert set(update) == {"final_text", "usage"}
+    assert set(update) == {"final_text", "approved", "issues", "usage"}
+    assert update["approved"] is True and update["issues"] == []
 
 
 def test_no_assistant_prefill() -> None:

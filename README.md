@@ -37,8 +37,12 @@ Le dépôt est **hybride** : il conserve aussi, issu du template
 Sonnet 5.5 et Opus 5.5 n'acceptent pas de `temperature` : leur profondeur de raisonnement se
 règle par l'**effort**. Haiku 4.5, à l'inverse, accepte `temperature` mais pas l'effort.
 
-La v0.1 est un pipeline linéaire. La boucle de révision Warden → Scribe est prévue en v0.4
-(voir [docs/PDR-produit.md](docs/PDR-produit.md)).
+**Boucle de révision (v0.4).** Warden rend un verdict avec son texte corrigé : il approuve, ou
+renvoie le texte à Scribe avec la liste de ce qu'il faut changer quand le défaut demande une
+réécriture (partie manquante, plan inadapté, longueur très éloignée de la demande). Scribe
+réécrit, Warden relit de nouveau, dans la limite de `SPECTRE_MAX_REVISIONS` tours (1 par
+défaut, 0 pour la chaîne linéaire de la v0.1). Si le texte n'est toujours pas validé, Spectre
+livre la meilleure version de Warden et signale les points restants.
 
 ## Installation
 
@@ -62,6 +66,8 @@ uv run spectre "Explique la relativité restreinte en trois paragraphes simples"
 uv run spectre "Explique la relativité restreinte simplement" --costs   # + tableau des coûts (stderr)
 uv run spectre --file demande.txt                                      # demande lue depuis un fichier
 uv run spectre "Rédige un court article sur LangGraph" --json          # résultat complet en JSON (stdout)
+uv run spectre "Écris une lettre de motivation" --stream               # le travail des agents en direct (stderr)
+uv run spectre "Résume ce rapport" --revisions 2                        # jusqu'à 2 tours de révision
 uv run spectre --version
 ```
 
@@ -80,7 +86,9 @@ Total                                         0.0499 $
 | `request` (positionnel) | La demande |
 | `--file PATH` | Lit la demande depuis un fichier (exclusif avec le positionnel) |
 | `--costs` | Affiche le tableau des coûts sur stderr |
-| `--json` | Écrit le résultat (`brief`, `draft`, `final_text`, `usage`, `total_cost_usd`) en JSON sur stdout |
+| `--json` | Écrit le résultat (`brief`, `draft`, `final_text`, `approved`, `issues`, `revisions`, `usage`, `total_cost_usd`) en JSON sur stdout |
+| `--stream` | Affiche en direct sur stderr ce qu'écrit chaque agent, tour de révision compris ; le texte final reste sur stdout (sauf dans un terminal, où il vient d'être affiché) |
+| `--revisions N` | Tours de révision Warden → Scribe au plus, de 0 à 5 (défaut : `SPECTRE_MAX_REVISIONS`, sinon 1) |
 | `--version` | Affiche la version |
 
 Codes de sortie : `0` succès, `1` erreur Spectre/API (dont clé absente), `2` erreur d'usage,
@@ -241,6 +249,7 @@ from spectre import run
 result = run("Explique la relativité restreinte simplement")
 print(result.final_text)
 print(f"{result.total_cost_usd:.4f} $")
+print(result.approved, result.revisions, result.issues)  # verdict de Warden
 for record in result.usage:
     print(record["agent"], record["model"], record["input_tokens"], record["output_tokens"])
 ```
@@ -263,6 +272,7 @@ Chaque agent (`SCOUT`, `SCRIBE`, `WARDEN`) est surchargeable par variable d'envi
 | `SPECTRE_TIMEOUT` | Délai d'attente d'un appel HTTP, en secondes (défaut `600`) | `SPECTRE_TIMEOUT=900` |
 | `SPECTRE_MAX_RETRIES` | Nombre de nouvelles tentatives sur 429, 5xx ou erreur réseau (défaut `4`) | `SPECTRE_MAX_RETRIES=2` |
 | `SPECTRE_FALLBACKS` | Repli automatique en cas de refus (défaut activé ; `0` pour désactiver) | `SPECTRE_FALLBACKS=0` |
+| `SPECTRE_MAX_REVISIONS` | Tours de révision Warden → Scribe au plus, de 0 à 5 (défaut `1` ; `0` = chaîne linéaire) | `SPECTRE_MAX_REVISIONS=2` |
 | `SPECTRE_WEBUI_PASSWORD` | Mot de passe de l'interface web (obligatoire avec `--host 0.0.0.0`) | `SPECTRE_WEBUI_PASSWORD=...` |
 | `SPECTRE_WEBUI_STATE_DIR` | Dossier de l'historique et des réglages de l'interface web | `SPECTRE_WEBUI_STATE_DIR=D:/spectre` |
 

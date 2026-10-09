@@ -216,6 +216,34 @@ def load_client_settings(env: Mapping[str, str] | None = None) -> ClientSettings
     return settings
 
 
+DEFAULT_MAX_REVISIONS: Final = 1  # Warden -> Scribe rounds; 0 = the v0.1 linear chain
+MAX_REVISIONS_LIMIT: Final = 5  # each round costs a Scribe and a Warden call
+
+
+def load_max_revisions(env: Mapping[str, str] | None = None) -> int:
+    """Revision rounds allowed when Warden rejects the draft (`SPECTRE_MAX_REVISIONS`)."""
+    source = os.environ if env is None else env
+    raw = source.get("SPECTRE_MAX_REVISIONS", "").strip()
+    if not raw:
+        return DEFAULT_MAX_REVISIONS
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ConfigurationError(
+            f"SPECTRE_MAX_REVISIONS doit être un entier, reçu {raw!r}"
+        ) from None
+    return check_max_revisions(value, "SPECTRE_MAX_REVISIONS")
+
+
+def check_max_revisions(value: int, source: str = "max_revisions") -> int:
+    """`value` if it is within 0..MAX_REVISIONS_LIMIT, else ConfigurationError."""
+    if not 0 <= value <= MAX_REVISIONS_LIMIT:
+        raise ConfigurationError(
+            f"{source} doit être compris entre 0 et {MAX_REVISIONS_LIMIT}, reçu {value}"
+        )
+    return value
+
+
 _BOOL_VALUES: Final[Mapping[str, bool]] = {
     "1": True,
     "true": True,

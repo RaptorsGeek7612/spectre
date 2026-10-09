@@ -11,15 +11,17 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from spectre import __version__
-from spectre.config import has_api_key, load_env
+from spectre.config import MAX_REVISIONS_LIMIT, check_max_revisions, has_api_key, load_env
 from spectre.costs import format_cost_table
-from spectre.errors import SpectreError
-from spectre.graph import run
+from spectre.errors import ConfigurationError, SpectreError
+from spectre.graph import SpectreResult, run
+from spectre.web.pipeline import stream_run
 
 EXIT_OK = 0
 EXIT_ERROR = 1
 EXIT_USAGE = 2
 EXIT_INTERRUPTED = 130  # 128 + SIGINT, the shell convention for Ctrl+C
+LABELS = {"scout": "Scout", "scribe": "Scribe", "warden": "Warden"}
 
 
 def _force_utf8() -> None:
@@ -46,6 +48,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--json", action="store_true", help="écrit le résultat complet en JSON sur stdout"
     )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="affiche en direct le travail de chaque agent sur stderr",
+    )
+    parser.add_argument(
+        "--revisions",
+        type=int,
+        metavar="N",
+        help=f"tours de révision Warden → Scribe au plus, de 0 à {MAX_REVISIONS_LIMIT} "
+        "(défaut : SPECTRE_MAX_REVISIONS, sinon 1)",
+    )
     parser.add_argument("--version", action="version", version=f"spectre {__version__}")
     return parser
 
@@ -65,7 +79,42 @@ def _read_request(parser: argparse.ArgumentParser, args: argparse.Namespace) -> 
         parser.error("aucune demande fournie (argument positionnel ou --file)")
     if not text.strip():
         parser.error("la demande est vide")
+    if args.revisions is not None:
+        try:
+            check_max_revisions(args.revisions, "--revisions")
+        except ConfigurationError as exc:
+            parser.error(str(exc))
     return text
+
+
+def _stream(request: str, max_revisions: int | None) -> SpectreResult:
+    """Run the pipeline, writing each agent's work to stderr as it is produced."""
+    err = sys.stderr
+    for event in stream_run(request, demo=False, max_revisions=max_revisions):
+        kind = event["type"]
+        if kind == "agent_start":
+            revision = event.get("revision")
+            suffix = f" (révision {revision})" if revision else ""
+            err.write(f"\n── {LABELS[event['agent']]}{suffix} ──\n")
+        elif kind == "token":
+            err.write(event["text"])
+        elif kind == "agent_done":
+            err.write("\n")
+        elif kind == "error":
+            raise SpectreError(event["message"], agent=event.get("agent"))
+        elif kind == "done":
+            err.flush()
+            return SpectreResult(
+                brief=event["brief"],
+                draft=event["draft"],
+                final_text=event["final_text"],
+                usage=list(event["usage"]),
+                approved=event["approved"],
+                issues=list(event["issues"]),
+                revisions=event["revisions"],
+            )
+        err.flush()
+    raise SpectreError("le flux s'est arrêté avant la fin")  # pragma: no cover - defensive
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -84,7 +133,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return EXIT_ERROR
 
     try:
-        result = run(request)
+        if args.stream:
+            result = _stream(request, args.revisions)
+        else:
+            result = run(request, max_revisions=args.revisions)
     except SpectreError as exc:
         print(f"Erreur : {exc}", file=sys.stderr)
         return EXIT_ERROR
@@ -94,8 +146,15 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.json:
         print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
-    else:
-        print(result.final_text)
+    elif not (args.stream and sys.stdout.isatty() and sys.stderr.isatty()):
+        print(result.final_text)  # streamed to the same terminal: already on screen
+    if not result.approved:
+        points = " ; ".join(result.issues)
+        print(
+            f"Avertissement : Warden n'a pas validé le texte après {result.revisions} "
+            f"révision(s). Points restants : {points}",
+            file=sys.stderr,
+        )
     if args.costs:
         print(format_cost_table(result.usage), file=sys.stderr)
     return EXIT_OK

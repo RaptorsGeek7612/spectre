@@ -1,8 +1,9 @@
-"""LangGraph pipeline (Scout -> Scribe -> Warden) and the `run` entry point."""
+"""LangGraph pipeline (Scout -> Scribe -> Warden, with Warden -> Scribe revision rounds)
+and the `run` entry point."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -10,7 +11,15 @@ from langchain_core.language_models import BaseChatModel
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from spectre.config import AGENT_NAMES, has_api_key, load_client_settings, load_env, load_specs
+from spectre.config import (
+    AGENT_NAMES,
+    check_max_revisions,
+    has_api_key,
+    load_client_settings,
+    load_env,
+    load_max_revisions,
+    load_specs,
+)
 from spectre.costs import total_cost
 from spectre.errors import MissingAPIKeyError
 from spectre.llm import make_chat_model
@@ -28,6 +37,9 @@ class SpectreResult:
     draft: str
     final_text: str
     usage: list[UsageRecord] = field(default_factory=list)
+    approved: bool = True
+    issues: list[str] = field(default_factory=list)
+    revisions: int = 0
 
     @property
     def total_cost_usd(self) -> float | None:
@@ -40,18 +52,36 @@ class SpectreResult:
             "brief": self.brief,
             "draft": self.draft,
             "final_text": self.final_text,
+            "approved": self.approved,
+            "issues": list(self.issues),
+            "revisions": self.revisions,
             "usage": [dict(record) for record in self.usage],
             "total_cost_usd": self.total_cost_usd,
         }
 
 
-def build_graph(models: Mapping[str, BaseChatModel] | None = None) -> SpectreGraph:
+def revision_router(max_revisions: int) -> Callable[[SpectreState], str]:
+    """After Warden: back to Scribe while the draft is rejected and rounds remain, else end."""
+
+    def route(state: SpectreState) -> str:
+        if state.get("approved") is False and state.get("revisions", 0) < max_revisions:
+            return "scribe"
+        return END
+
+    return route
+
+
+def build_graph(
+    models: Mapping[str, BaseChatModel] | None = None, *, max_revisions: int | None = None
+) -> SpectreGraph:
     """Compile the Spectre graph.
 
     `models` maps agent names ("scout", "scribe", "warden") to chat models (e.g. fakes
     for tests). Missing agents get a `ChatAnthropic` built from `spectre.config`; in that
-    case `.env` is loaded and ANTHROPIC_API_KEY must be set.
+    case `.env` is loaded and ANTHROPIC_API_KEY must be set. `max_revisions` caps the
+    Warden -> Scribe rounds (default: `SPECTRE_MAX_REVISIONS`, else 1; 0 = linear chain).
     """
+    rounds = load_max_revisions() if max_revisions is None else check_max_revisions(max_revisions)
     provided = dict(models or {})
     unknown = sorted(set(provided) - set(AGENT_NAMES))
     if unknown:
@@ -79,19 +109,27 @@ def build_graph(models: Mapping[str, BaseChatModel] | None = None) -> SpectreGra
     builder.add_edge(START, "scout")
     builder.add_edge("scout", "scribe")
     builder.add_edge("scribe", "warden")
-    builder.add_edge("warden", END)
+    builder.add_conditional_edges("warden", revision_router(rounds), ["scribe", END])
     return builder.compile(name="spectre")
 
 
-def run(request: str, *, models: Mapping[str, BaseChatModel] | None = None) -> SpectreResult:
+def run(
+    request: str,
+    *,
+    models: Mapping[str, BaseChatModel] | None = None,
+    max_revisions: int | None = None,
+) -> SpectreResult:
     """Run the full pipeline on `request` and return a SpectreResult."""
     if not request or not request.strip():
         raise ValueError("la demande est vide")
-    graph = build_graph(models)
-    state = graph.invoke({"request": request.strip(), "usage": []})
+    graph = build_graph(models, max_revisions=max_revisions)
+    state = graph.invoke({"request": request.strip(), "usage": [], "revisions": 0})
     return SpectreResult(
         brief=state["brief"],
         draft=state["draft"],
         final_text=state["final_text"],
         usage=list(state["usage"]),
+        approved=state.get("approved", True),
+        issues=list(state.get("issues", [])),
+        revisions=state.get("revisions", 0),
     )

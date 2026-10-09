@@ -12,7 +12,7 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
 ## À lire avant de travailler
 - `docs/cahier-des-charges.md` — exigences et critères d'acceptation.
 - `docs/PDR-architecture.md` — arborescence, signatures, état, erreurs, tests, CI (à respecter).
-- `docs/PDR-produit.md` — périmètre par version (v0.1 linéaire, pas de boucle de révision).
+- `docs/PDR-produit.md` — périmètre par version (boucle de révision Warden → Scribe depuis la v0.4).
 - Skills : `.claude/skills/spectre-conventions` (socle commun, à charger en premier), puis
   selon le rôle `spectre-builder`, `spectre-tester`, `spectre-devops`, `spectre-reviewer`.
 

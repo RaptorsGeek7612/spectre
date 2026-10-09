@@ -7,6 +7,24 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-09
+
+### Added
+
+- Verdict de Warden : après son texte corrigé, Warden écrit `=== VERDICT ===` et un objet
+  JSON `{"approved": ..., "issues": [...]}` (`spectre.verdict`). Un verdict absent ou illisible
+  vaut approbation : le texte n'est jamais perdu.
+- Boucle de révision : si Warden rejette le texte, Scribe le réécrit avec la liste des points à
+  changer, puis Warden relit de nouveau, dans la limite de `SPECTRE_MAX_REVISIONS` tours (1 par
+  défaut, de 0 à 5). `run(..., max_revisions=)` et `build_graph(..., max_revisions=)`.
+- `SpectreResult.approved`, `.issues` et `.revisions`, aussi dans `--json`. Un avertissement
+  sur stderr signale un texte non validé après le dernier tour.
+- CLI : `--stream` affiche en direct sur stderr le travail de chaque agent, tours de révision
+  compris (sans la ligne du verdict) ; `--revisions N`.
+- Interface web : les tours de révision s'affichent (Scribe et Warden repartent d'un texte
+  vide, avec un message), les coûts additionnent tous les tours et la ligne du verdict n'est
+  jamais diffusée.
+
 ## [0.3.8] - 2026-10-09
 
 ### Fixed

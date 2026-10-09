@@ -200,11 +200,17 @@ Jobs :
   ajout d'un second badge `coverage-python.json` calculé de la même façon depuis le `lcov.info` de pytest.
 - `release` : dépend de `test` **et** `python` ; logique CHANGELOG inchangée.
 
-## 12. Évolution v0.4 (prévue)
+## 12. Évolution v0.4 (livrée)
 
-- Warden renvoie un verdict structuré (`with_structured_output`) `{approved, issues, final_text}`.
-- Arête conditionnelle `warden → scribe` si `approved == False` et `revisions < MAX_REVISIONS`.
-- Champ d'état `revisions: int`. Aucun changement d'API publique incompatible.
+- Warden renvoie son texte corrigé puis un verdict `{approved, issues}` après la ligne
+  `=== VERDICT ===` (`spectre/verdict.py`, voir ADR 7). Un verdict absent ou illisible vaut
+  approbation.
+- Arête conditionnelle `warden → scribe` si `approved == False` et `revisions < max_revisions`
+  (`SPECTRE_MAX_REVISIONS`, 1 par défaut, de 0 à 5) ; Scribe reçoit alors la version précédente
+  et les points à changer, et incrémente `revisions`.
+- Champs d'état `approved: bool`, `issues: list[str]`, `revisions: int` ; `SpectreResult` les
+  expose. Aucun changement d'API publique incompatible (`max_revisions` est optionnel).
+- CLI `--stream` (réutilise `spectre.web.pipeline.stream_run`) et `--revisions N`.
 
 ## 13. Décisions (ADR courtes)
 
@@ -213,6 +219,7 @@ Jobs :
 | 1 | Effort plutôt que temperature sur Sonnet/Opus | Imposé par l'API (temperature → 400) |
 | 2 | Injection des modèles dans `build_graph` | Tests sans réseau, flexibilité |
 | 3 | Reducer additif pour `usage` | Chaque nœud ajoute sa ligne sans écraser |
-| 4 | Pas de streaming en v0.1 | `max_tokens` ≤ 16 000 reste sous les timeouts HTTP (600 s) ; l'interface web (v0.2) diffuse déjà les tokens ; streaming de la CLI en v0.4 |
+| 4 | Pas de streaming en v0.1 | `max_tokens` ≤ 16 000 reste sous les timeouts HTTP (600 s) ; l'interface web (v0.2) diffuse déjà les tokens ; la CLI aussi depuis la v0.4 (`--stream`) |
 | 5 | `uv` + `pyproject.toml` | Remplace `forge` ; lock reproductible |
 | 6 | Noms d'agents Scout/Scribe/Warden | Rôles explicites, indépendants des modèles |
+| 7 | Verdict en texte (`=== VERDICT ===` + JSON) plutôt que `with_structured_output` | Fonctionne avec tous les modèles pilotés par Spectre (Claude Code CLI, démo, faux modèles), garde le streaming du texte avant le verdict, et ne perd jamais le texte si le verdict manque |
