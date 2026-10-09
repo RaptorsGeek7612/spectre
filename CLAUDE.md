@@ -18,6 +18,9 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
 - Skill (assistant, mémoire & relation) : `spectre-memoire` — comment Spectre apprend à connaître
   l'utilisateur, s'adapte via la couche `persona` et pose des questions avec tact. À charger dès
   que Spectre converse ou manipule la mémoire.
+- Skills (savoirs & création) : `spectre-savoirs` (maths, sciences, physique, biologie,
+  astronomie — rigueur, vérification, niveaux de certitude ; l'astrologie n'est pas une science)
+  et `spectre-creation` (romans, films, clips, manga — métier narratif/visuel, sans plagiat).
 - Skills (capacités labo, conteneurs Docker à `C:\Users\sherp\labs`) : `labs-biometrie`
   (visage/voix/empreintes), `labs-securite` (suite Kali — cibles autorisées uniquement),
   `labs-media` (FFmpeg/OpenCV/MoviePy). Usage apprentissage/labo.
