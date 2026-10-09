@@ -13,8 +13,11 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
 - `docs/cahier-des-charges.md` — exigences et critères d'acceptation.
 - `docs/PDR-architecture.md` — arborescence, signatures, état, erreurs, tests, CI (à respecter).
 - `docs/PDR-produit.md` — périmètre par version (boucle de révision Warden → Scribe depuis la v0.4).
-- Skills : `.claude/skills/spectre-conventions` (socle commun, à charger en premier), puis
-  selon le rôle `spectre-builder`, `spectre-tester`, `spectre-devops`, `spectre-reviewer`.
+- Skills (pipeline de dev) : `.claude/skills/spectre-conventions` (socle commun, à charger en
+  premier), puis selon le rôle `spectre-builder`, `spectre-tester`, `spectre-devops`, `spectre-reviewer`.
+- Skills (capacités labo, conteneurs Docker à `C:\Users\sherp\labs`) : `labs-biometrie`
+  (visage/voix/empreintes), `labs-securite` (suite Kali — cibles autorisées uniquement),
+  `labs-media` (FFmpeg/OpenCV/MoviePy). Usage apprentissage/labo.
 
 ## Commandes (Windows : `uv run`, pas d'activation de venv)
 ```shell
