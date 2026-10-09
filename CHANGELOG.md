@@ -24,7 +24,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 - Page Rédaction sur téléphone : le bouton micro flottant ne recouvre plus le contenu (il est
   masqué ; l'icône de l'en-tête mène déjà à l'assistant, et ce bouton faisait écouter le PC, pas
-  le téléphone) ; le préréglage « Qualité max » n'est plus coupé.
+  le téléphone) ; le préréglage « Qualité max » n'est plus coupé quand la place le permet.
+- Le bouton « Exposer » ne dépasse plus de l'écran sur les téléphones étroits ou avec un texte
+  agrandi : le menu des préréglages se resserre à sa place, et sous 380 px la flèche disparaît.
 
 ## [0.3.5] - 2026-10-09
 
