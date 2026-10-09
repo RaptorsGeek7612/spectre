@@ -678,3 +678,23 @@ def test_lan_mode_serves_any_host(tmp_path: Path) -> None:
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_extra_hosts_behind_a_relay(tmp_path: Path) -> None:
+    store = Store(tmp_path / "state")
+    server = server_mod.make_server(
+        "127.0.0.1",
+        0,
+        store=store,
+        auth=Auth("pw", tmp_path / "k"),
+        extra_hosts=["PC.tailnet.ts.net.", " "],
+    )
+    try:
+        assert server.app.allowed_hosts == {  # type: ignore[attr-defined]
+            "127.0.0.1",
+            "localhost",
+            "::1",
+            "pc.tailnet.ts.net",
+        }
+    finally:
+        server.server_close()

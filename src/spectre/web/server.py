@@ -13,7 +13,7 @@ import socket
 import sys
 import threading
 import webbrowser
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -438,10 +438,13 @@ def make_server(
     auth: Auth,
     demo_delay: float = 0.03,
     assistant: Any = None,
+    extra_hosts: Iterable[str] = (),
 ) -> ThreadingHTTPServer:
-    """Build (but do not start) the HTTP server."""
+    """Build (but do not start) the HTTP server. `extra_hosts` are Host names accepted on a
+    local address, for a reverse proxy such as `tailscale serve` (use them with a password)."""
     local = host in LOCAL_HOSTS
-    app = App(store, auth, demo_delay=demo_delay, allowed_hosts=LOCAL_HOSTS if local else None)
+    allowed = LOCAL_HOSTS | {h.strip().rstrip(".").lower() for h in extra_hosts if h.strip()}
+    app = App(store, auth, demo_delay=demo_delay, allowed_hosts=allowed if local else None)
     app.assistant = assistant
     server = ThreadingHTTPServer((host, port), Handler)
     server.daemon_threads = True

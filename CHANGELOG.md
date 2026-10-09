@@ -7,6 +7,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-10-09
+
+### Added
+
+- Accès depuis le téléphone, de partout, par Tailscale : quand Tailscale est installé et qu'un
+  mot de passe est défini, `tools\spectre-assistant.cmd` publie Spectre en HTTPS sur le réseau
+  privé (`tailscale serve`) sans rien ouvrir sur Internet. Le délai est limité : si Serve n'est
+  pas encore activé, Spectre démarre en local seulement.
+- `--allow-host NOM` (`spectre-assistant`) : nom d'hôte accepté derrière un relais, en plus de
+  localhost ; un mot de passe est alors obligatoire.
+- `tools\spectre-password.cmd` choisit le mot de passe de l'interface (variable utilisateur
+  `SPECTRE_WEBUI_PASSWORD`), sans l'écrire dans le dépôt.
+
 ## [0.3.5] - 2026-10-09
 
 ### Added

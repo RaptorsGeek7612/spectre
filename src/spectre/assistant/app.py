@@ -31,6 +31,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--host", default="127.0.0.1", help="adresse d'écoute (défaut 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8765, help="port de l'interface (défaut 8765)")
+    parser.add_argument(
+        "--allow-host",
+        action="append",
+        default=[],
+        metavar="NOM",
+        help="nom d'hôte accepté derrière un relais (ex. tailscale serve) ; exige un mot de passe",
+    )
     parser.add_argument("--dir", type=Path, help="dossier des données de l'assistant")
     parser.add_argument("--no-browser", action="store_true", help="n'ouvre pas le navigateur")
     parser.add_argument("--version", action="version", version=f"spectre-assistant {__version__}")
@@ -110,7 +117,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     from spectre.web.store import Store
 
     password = os.environ.get(PASSWORD_ENV, "").strip() or None
-    if args.host not in LOCAL_HOSTS and password is None:
+    if (args.host not in LOCAL_HOSTS or args.allow_host) and password is None:
         print(
             f"Erreur : définissez {PASSWORD_ENV} avant d'ouvrir l'assistant au réseau.",
             file=sys.stderr,
@@ -126,6 +133,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             store=store,
             auth=Auth(password, store.root / "secret.key"),
             assistant=service,
+            extra_hosts=args.allow_host,
         )
     except OSError as exc:
         print(

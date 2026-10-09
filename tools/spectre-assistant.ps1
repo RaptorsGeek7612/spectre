@@ -19,6 +19,27 @@ if (Test-Spectre) {
 # events; disable its handler so Python decides how to shut down.
 $env:FOR_DISABLE_CONSOLE_CTRL_HANDLER = "1"
 $extra = ($args | ForEach-Object { "`"$_`"" }) -join " "
+
+# Access from the phone, anywhere: when Tailscale is installed and a password is set
+# (tools\spectre-password.cmd), publish Spectre on the private tailnet over HTTPS with
+# `tailscale serve` (nothing is opened to the Internet) and accept its host name.
+if (-not $env:SPECTRE_WEBUI_PASSWORD) {
+    $env:SPECTRE_WEBUI_PASSWORD = [Environment]::GetEnvironmentVariable("SPECTRE_WEBUI_PASSWORD", "User")
+}
+$tailscale = (Get-Command tailscale -ErrorAction SilentlyContinue).Source
+if (-not $tailscale -and (Test-Path "$env:ProgramFiles\Tailscale\tailscale.exe")) {
+    $tailscale = "$env:ProgramFiles\Tailscale\tailscale.exe"  # PATH not refreshed yet
+}
+if ($tailscale -and $env:SPECTRE_WEBUI_PASSWORD) {
+    try {
+        $name = ((& $tailscale status --json | ConvertFrom-Json).Self.DNSName).TrimEnd(".")
+        # `serve` waits forever while HTTPS/Serve is not enabled on the tailnet: give it 10 s.
+        $serve = Start-Process -FilePath $tailscale -ArgumentList "serve", "--bg", "http://127.0.0.1:8765" `
+            -WindowStyle Hidden -PassThru
+        if (-not $serve.WaitForExit(10000)) { $serve.Kill() }
+        elseif ($name -and $serve.ExitCode -eq 0) { $extra = "--allow-host $name $extra" }
+    } catch { }  # Tailscale stopped or logged out: Spectre stays local
+}
 $command = "uv run python -m spectre.assistant --voice --camera --no-browser $extra >> `"$log`" 2>&1"
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $command -WorkingDirectory $repo -WindowStyle Hidden
 
