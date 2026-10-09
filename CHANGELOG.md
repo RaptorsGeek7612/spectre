@@ -7,6 +7,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-10-09
+
+### Fixed
+
+- Barre de la page Assistant sur téléphone : avec le bouton caméra, le micro n'était plus au
+  centre (six boutons). La caméra passe à gauche du micro et le bouclier des validations, déjà
+  présent dans l'en-tête, quitte la barre : cinq boutons, micro au centre.
+
 ## [0.3.7] - 2026-10-09
 
 ### Added
