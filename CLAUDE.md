@@ -15,6 +15,9 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
 - `docs/PDR-produit.md` — périmètre par version (boucle de révision Warden → Scribe depuis la v0.4).
 - Skills (pipeline de dev) : `.claude/skills/spectre-conventions` (socle commun, à charger en
   premier), puis selon le rôle `spectre-builder`, `spectre-tester`, `spectre-devops`, `spectre-reviewer`.
+- Skill (assistant, mémoire & relation) : `spectre-memoire` — comment Spectre apprend à connaître
+  l'utilisateur, s'adapte via la couche `persona` et pose des questions avec tact. À charger dès
+  que Spectre converse ou manipule la mémoire.
 - Skills (capacités labo, conteneurs Docker à `C:\Users\sherp\labs`) : `labs-biometrie`
   (visage/voix/empreintes), `labs-securite` (suite Kali — cibles autorisées uniquement),
   `labs-media` (FFmpeg/OpenCV/MoviePy). Usage apprentissage/labo.
