@@ -241,6 +241,58 @@ ChatGPT et Mistral n'ont que les outils de Spectre (par MCP, donc le même porta
 et la recherche web ; le shell de Codex tourne dans son bac à sable en lecture seule.
 `chatgpt_model` et `mistral_model` choisissent le modèle (vide = celui par défaut).
 
+### Plusieurs demandes d'un coup : `spectre batch`
+
+```shell
+uv run spectre batch demandes.txt                 # API Message Batches : 50 % moins cher, asynchrone
+uv run spectre batch demandes.txt --direct        # tout de suite, une par une, prix normal
+uv run spectre batch demandes.jsonl --out resultats.jsonl --revisions 2
+```
+
+Une demande par ligne, ou du JSON Lines avec un identifiant (`{"id": "lettre", "request": "..."}`),
+voir [examples/demandes.example.txt](examples/demandes.example.txt). Par défaut, l'API Message
+Batches traite chaque étape en un seul lot pour toutes les demandes (tous les Scout, puis tous
+les Scribe, puis tous les Warden, puis les tours de révision) : chaque appel coûte moitié prix,
+mais un lot peut prendre de quelques minutes à quelques heures. L'avancement est enregistré
+après chaque étape : relancer la même commande reprend là où elle s'était arrêtée (les lots déjà
+envoyés continuent côté serveur). Les résultats arrivent en JSON Lines (texte final, verdict,
+coûts, erreur éventuelle). Le repli automatique après un refus n'existe pas en lot : une demande
+refusée est signalée en échec.
+
+### Évaluer Spectre : `spectre eval`
+
+```shell
+uv run spectre eval cas.jsonl                     # contrôles automatiques
+uv run spectre eval cas.jsonl --judge             # + critères notés par un juge (modèle de Warden, effort bas)
+uv run spectre eval cas.jsonl --demo              # vérifie le fichier de cas, sans clé ni coût
+```
+
+Chaque cas donne une demande, des contrôles gratuits (`min_words`, `max_words`, `include`,
+`exclude`, `approved`, `max_cost_usd`) et, en option, des critères en langage courant notés par
+un juge avec `--judge` ; voir [examples/cas.example.jsonl](examples/cas.example.jsonl). Le
+rapport donne, par cas, le résultat, le nombre de mots, le coût et les échecs ; le code de sortie
+vaut 1 si un cas échoue, ce qui permet de l'utiliser en intégration continue (`--json` pour le
+détail).
+
+### Ajouter un agent sans coder : `spectre-agents.toml`
+
+Un fichier `spectre-agents.toml` dans le dossier courant (ou `SPECTRE_AGENTS_FILE`) ajoute des
+agents à la chaîne, après Scout, Scribe ou Warden : chacun lit un texte (brief, brouillon ou
+texte final), l'envoie avec ses consignes à son modèle et le réécrit. Par exemple un traducteur
+après Warden, ou un styliste entre Scribe et Warden (il repasse alors à chaque tour de
+révision) ; voir [examples/spectre-agents.example.toml](examples/spectre-agents.example.toml).
+Ils s'appliquent à la ligne de commande, à `spectre batch` et à la bibliothèque ; l'interface web
+les exécute aussi mais n'affiche que Scout, Scribe et Warden.
+
+### Mise en cache des prompts
+
+`SPECTRE_PROMPT_CACHE=on` marque la partie que Scribe et Warden relisent à chaque tour (la
+demande, et le brief pour Scribe) pour qu'un tour de révision la lise depuis le cache (5 à 10 %
+du prix). Elle est **désactivée par défaut** : l'entrée de cache est écrite au premier tour avec
+25 % de surcoût et ne rapporte que si Warden renvoie le texte, ce qui n'est rentable que pour de
+longues demandes (au moins quelques milliers de caractères) souvent révisées. Les tokens lus et
+écrits en cache apparaissent dans `--costs` et sont comptés au bon prix dans tous les cas.
+
 ### Bibliothèque
 
 ```python
@@ -272,6 +324,8 @@ Chaque agent (`SCOUT`, `SCRIBE`, `WARDEN`) est surchargeable par variable d'envi
 | `SPECTRE_TIMEOUT` | Délai d'attente d'un appel HTTP, en secondes (défaut `600`) | `SPECTRE_TIMEOUT=900` |
 | `SPECTRE_MAX_RETRIES` | Nombre de nouvelles tentatives sur 429, 5xx ou erreur réseau (défaut `4`) | `SPECTRE_MAX_RETRIES=2` |
 | `SPECTRE_FALLBACKS` | Repli automatique en cas de refus (défaut activé ; `0` pour désactiver) | `SPECTRE_FALLBACKS=0` |
+| `SPECTRE_PROMPT_CACHE` | Mise en cache des prompts de Scribe et Warden (défaut désactivé ; `on` pour l'activer) | `SPECTRE_PROMPT_CACHE=on` |
+| `SPECTRE_AGENTS_FILE` | Fichier des agents ajoutés (défaut : `spectre-agents.toml` dans le dossier courant) | `SPECTRE_AGENTS_FILE=D:/agents.toml` |
 | `SPECTRE_MAX_REVISIONS` | Tours de révision Warden → Scribe au plus, de 0 à 5 (défaut `1` ; `0` = chaîne linéaire) | `SPECTRE_MAX_REVISIONS=2` |
 | `SPECTRE_WEBUI_PASSWORD` | Mot de passe de l'interface web (obligatoire avec `--host 0.0.0.0`) | `SPECTRE_WEBUI_PASSWORD=...` |
 | `SPECTRE_WEBUI_STATE_DIR` | Dossier de l'historique et des réglages de l'interface web | `SPECTRE_WEBUI_STATE_DIR=D:/spectre` |

@@ -22,15 +22,15 @@ from spectre.config import (
 )
 from spectre.costs import total_cost
 from spectre.errors import ConfigurationError, MissingAPIKeyError, SpectreError
-from spectre.graph import build_graph
+from spectre.graph import build_graph, next_step, pipeline_steps
 from spectre.llm import make_chat_model
+from spectre.plugins import load_extra_agents
 from spectre.state import UsageRecord
 from spectre.verdict import VerdictFilter
 from spectre.web.demo import DemoChatModel
 
 # Only these per-agent overrides may come from the browser (presets).
 _OVERRIDE_KEY = re.compile(r"^SPECTRE_(SCOUT|SCRIBE|WARDEN)_(MODEL|MAX_TOKENS|EFFORT)$")
-_OUTPUT_KEY = {"scout": "brief", "scribe": "draft", "warden": "final_text"}
 
 Event = dict[str, Any]
 
@@ -78,19 +78,21 @@ def stream_run(
     delay: float = 0.0,
     models: Mapping[str, BaseChatModel] | None = None,
     max_revisions: int | None = None,
+    include_extras: bool = False,
 ) -> Iterator[Event]:
     """Yield `agent_start`, `token`, `agent_done`, then `done` (or `error` / `cancelled`).
 
     After a rejection by Warden, Scribe and Warden run again: their `agent_start` then carry
-    `revision` (1, 2...). Warden's tokens never include its verdict line.
+    `revision` (1, 2...). Warden's tokens never include its verdict line. Agents added in
+    `spectre-agents.toml` run too (not in demo mode); their events are only sent when
+    `include_extras` is set, since the web UI draws the three core agents.
     """
     cancel = cancel or threading.Event()
     outputs: dict[str, str] = {}
     usage: list[UsageRecord] = []
     durations: dict[str, float] = {}
     verdict: dict[str, Any] = {"approved": True, "issues": [], "revisions": 0}
-    order = list(AGENT_NAMES)
-    current: str | None = order[0]
+    current: str | None = AGENT_NAMES[0]
     hide_verdict = VerdictFilter()
     started = time.monotonic()
     try:
@@ -100,7 +102,14 @@ def stream_run(
         rounds = (
             load_max_revisions() if max_revisions is None else check_max_revisions(max_revisions)
         )
-        graph = build_graph(resolved, max_revisions=rounds)
+        extras = [] if demo else load_extra_agents()
+        writes = {step.name: step.writes for step in pipeline_steps(extras)}
+        order = list(writes)
+
+        def shown(agent: str) -> bool:
+            return include_extras or agent in AGENT_NAMES
+
+        graph = build_graph(resolved, max_revisions=rounds, extra_agents=extras)
         yield {"type": "agent_start", "agent": current}
         stream = graph.stream(
             {"request": request.strip(), "usage": [], "revisions": 0},
@@ -112,14 +121,16 @@ def stream_run(
             if mode == "messages":
                 message, meta = cast(tuple[Any, dict[str, Any]], chunk)
                 text = str(getattr(message, "text", "") or "")
-                if text and meta.get("langgraph_node") == current:
+                if text and current is not None and meta.get("langgraph_node") == current:
+                    if not shown(current):
+                        continue
                     if current == "warden":
                         text = hide_verdict.feed(text)
                     if text:
                         yield {"type": "token", "agent": current, "text": text}
                 continue
             for node, update in cast(dict[str, dict[str, Any]], chunk).items():
-                if node not in _OUTPUT_KEY or not update:  # pragma: no cover - defensive
+                if node not in writes or not update:  # pragma: no cover - defensive
                     continue
                 if node == "warden":
                     rest = hide_verdict.flush()
@@ -129,7 +140,7 @@ def stream_run(
                     verdict["approved"] = update.get("approved", True)
                     verdict["issues"] = list(update.get("issues", []))
                 verdict["revisions"] = update.get("revisions", verdict["revisions"])
-                outputs[_OUTPUT_KEY[node]] = update[_OUTPUT_KEY[node]]
+                outputs[writes[node]] = update[writes[node]]
                 records = list(update.get("usage", []))
                 usage.extend(records)
                 now = time.monotonic()
@@ -139,15 +150,16 @@ def stream_run(
                 done: Event = {
                     "type": "agent_done",
                     "agent": node,
-                    "text": outputs[_OUTPUT_KEY[node]],
+                    "text": outputs[writes[node]],
                     "usage": records[0] if records else None,
                     "seconds": elapsed,
                 }
                 if node == "warden":
                     done["approved"], done["issues"] = verdict["approved"], verdict["issues"]
-                yield done
-                current = _next_agent(node, verdict, rounds)
-                if current is not None:
+                if shown(node):
+                    yield done
+                current = next_step(order, node, verdict, rounds)
+                if current is not None and shown(current):
                     start: Event = {"type": "agent_start", "agent": current}
                     if current != "scout" and verdict["approved"] is False:
                         start["revision"] = verdict["revisions"] + (current == "scribe")
@@ -164,17 +176,6 @@ def stream_run(
         }
         return
     yield {"type": "done", **_partial(outputs, usage, durations), **verdict}
-
-
-def _next_agent(node: str, verdict: Mapping[str, Any], rounds: int) -> str | None:
-    """The agent that runs after `node` (the graph's own routing, seen from the stream)."""
-    if node == "scout":
-        return "scribe"
-    if node == "scribe":
-        return "warden"
-    if verdict["approved"] is False and verdict["revisions"] < rounds:
-        return "scribe"
-    return None
 
 
 def _partial(

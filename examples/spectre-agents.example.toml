@@ -1,0 +1,22 @@
+# Agents ajoutés à Spectre sans écrire de code. Copiez ce fichier en `spectre-agents.toml`
+# dans le dossier où vous lancez Spectre (ou indiquez son chemin dans SPECTRE_AGENTS_FILE).
+# Chaque [[agent]] lit un texte de la chaîne (brief, draft ou final_text), l'envoie avec ses
+# consignes à son modèle et réécrit le texte avec sa réponse.
+
+# Un traducteur après Warden : le texte final est livré en anglais.
+[[agent]]
+name = "traducteur"
+after = "warden"                 # scout, scribe ou warden
+prompt = "Traduis le texte en anglais, fidèlement, sans rien ajouter ni commenter."
+reads = "final_text"             # par défaut : le texte qu'il écrit
+writes = "final_text"
+max_tokens = 8000                # par défaut 8000
+effort = "low"                   # low, medium, high, xhigh, max (pas avec Haiku)
+# model = "..."                  # identifiant exact ; par défaut, le modèle de Scribe
+
+# Un correcteur de style entre Scribe et Warden (dans la boucle de révision).
+# [[agent]]
+# name = "styliste"
+# after = "scribe"
+# prompt = "Rends le brouillon plus vivant et plus concis, sans changer le fond."
+# writes = "draft"

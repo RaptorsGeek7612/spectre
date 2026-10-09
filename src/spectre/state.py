@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import operator
-from typing import Annotated, TypedDict
+from typing import Annotated, NotRequired, TypedDict
 
 
 class UsageRecord(TypedDict):
     """Token usage and cost of one agent call.
 
     `model` is the model that actually answered (a fallback model after a refusal);
-    `truncated` is True when the answer stopped at `max_tokens`.
+    `truncated` is True when the answer stopped at `max_tokens`. `input_tokens` counts every
+    input token; `cache_read_tokens` / `cache_write_tokens` are the part served from / written
+    to the prompt cache (absent in records made before v0.5).
     """
 
     agent: str
@@ -19,6 +21,8 @@ class UsageRecord(TypedDict):
     output_tokens: int
     cost_usd: float | None
     truncated: bool
+    cache_read_tokens: NotRequired[int]
+    cache_write_tokens: NotRequired[int]
 
 
 class SpectreState(TypedDict, total=False):

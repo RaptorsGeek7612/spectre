@@ -1,0 +1,5 @@
+# Une demande par ligne pour `spectre batch` (les lignes vides et les # sont ignorées).
+# En JSON Lines, chaque ligne peut aussi porter un identifiant : {"id": "lettre", "request": "..."}
+Écris un haïku sur la pluie d'automne.
+Explique en trois phrases ce qu'est une blockchain, pour un enfant de 10 ans.
+{"id": "resiliation", "request": "Rédige une lettre courte de résiliation d'abonnement à une salle de sport."}

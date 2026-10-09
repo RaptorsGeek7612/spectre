@@ -60,16 +60,39 @@ def scout_input(request: str) -> str:
 
 def scribe_input(request: str, brief: str, previous: str = "", issues: Sequence[str] = ()) -> str:
     """Human message sent to Scribe (with Warden's requests on a revision round)."""
-    message = f"<demande>\n{request}\n</demande>\n\n<brief>\n{brief}\n</brief>"
-    if previous and issues:
-        points = "\n".join(f"- {issue}" for issue in issues)
-        message += (
-            f"\n\n<version_precedente>\n{previous}\n</version_precedente>"
-            f"\n\n<corrections_demandees>\n{points}\n</corrections_demandees>"
-        )
-    return message
+    return scribe_context(request, brief) + scribe_revision(previous, issues)
+
+
+def scribe_context(request: str, brief: str) -> str:
+    """The part of Scribe's message that every round repeats (the cacheable prefix)."""
+    return f"<demande>\n{request}\n</demande>\n\n<brief>\n{brief}\n</brief>"
+
+
+def scribe_revision(previous: str, issues: Sequence[str]) -> str:
+    """What a revision round adds: the previous version and Warden's requests."""
+    if not (previous and issues):
+        return ""
+    points = "\n".join(f"- {issue}" for issue in issues)
+    return (
+        f"\n\n<version_precedente>\n{previous}\n</version_precedente>"
+        f"\n\n<corrections_demandees>\n{points}\n</corrections_demandees>"
+    )
 
 
 def warden_input(request: str, draft: str) -> str:
     """Human message sent to Warden."""
-    return f"<demande>\n{request}\n</demande>\n\n<brouillon>\n{draft}\n</brouillon>"
+    return request_block(request) + draft_block(draft)
+
+
+def request_block(request: str) -> str:
+    """The request as the first block of a message (the cacheable prefix)."""
+    return f"<demande>\n{request}\n</demande>\n\n"
+
+
+def draft_block(draft: str) -> str:
+    return f"<brouillon>\n{draft}\n</brouillon>"
+
+
+def extra_input(request: str, text: str) -> str:
+    """Human message sent to an agent added by the user (`spectre-agents.toml`)."""
+    return request_block(request) + f"<texte>\n{text}\n</texte>"

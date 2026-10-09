@@ -42,6 +42,8 @@ def test_scout_sends_system_and_request() -> None:
             "output_tokens": 200,
             "cost_usd": pytest.approx(0.002),
             "truncated": False,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
         }
     ]
     assert set(update) == {"brief", "usage"}
