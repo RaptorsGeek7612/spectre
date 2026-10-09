@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import array
+import io
 import math
+import wave
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -67,6 +69,17 @@ class UtteranceDetector:
 
     def audio(self) -> bytes:
         return b"".join(self.chunks)
+
+
+def to_wav(pcm: bytes, rate: int) -> bytes:
+    """Mono int16 PCM as a WAV file (what a browser can decode and play)."""
+    out = io.BytesIO()
+    with wave.open(out, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(rate)
+        wav.writeframes(pcm[: len(pcm) - len(pcm) % 2])
+    return out.getvalue()
 
 
 def chime(freq: float = 880.0, seconds: float = 0.12, volume: float = 0.25) -> bytes:

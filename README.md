@@ -164,6 +164,26 @@ Tailscale demande d'activer Serve et HTTPS pour votre réseau (un lien dans sa c
 d'administration). Sans Tailscale ou sans mot de passe, Spectre reste joignable depuis le PC
 seulement.
 
+**Toujours joignable.** Spectre ne tourne que sur le PC : PC éteint ou en veille, le téléphone
+n'a plus rien à afficher. Pour qu'il reste joignable, laissez le PC allumé sur secteur (veille
+désactivée sur secteur, fermer l'écran ne fait rien) et démarrez Spectre avec la session :
+raccourci vers `powershell -File tools\spectre-assistant.ps1 --silent` dans le dossier
+Démarrage de Windows (`shell:startup`).
+
+**Parler à Spectre depuis le téléphone.** Sur la page Assistant ouverte depuis le téléphone, le
+bouton micro enregistre avec le micro **du téléphone** (et non plus celui du PC) : il s'arrête
+tout seul après une pause, Spectre transcrit la phrase sur le PC (faster-whisper), répond, et sa
+voix (Piper, avec son timbre) est jouée sur le téléphone ; rien n'est joué sur le PC. Il faut que
+Spectre tourne avec la voix (`--voice`) et que le navigateur du téléphone ait le droit d'utiliser
+le micro (HTTPS, fourni par Tailscale).
+
+**La caméra du téléphone.** Quand la reconnaissance des visages est active sur le PC, un bouton
+caméra apparaît dans la barre de la page Assistant ouverte depuis le téléphone. Il envoie une
+image toutes les 2 secondes, que Spectre analyse comme celles de sa propre caméra (les
+personnes enregistrées et vivantes deviennent présentes, les photos et écrans sont écartés). Un
+petit aperçu montre ce qui est filmé ; la caméra s'arrête quand on retouche le bouton ou qu'on
+quitte la page. Aucune image n'est gardée.
+
 Le premier lancement avec `--voice` télécharge les modèles (environ 200 Mo) dans
 `~/.spectre/assistant/models/`. L'interface `assistant.html` affiche l'état de la voix, la
 conversation, les actions en attente de validation, les missions, la mémoire (consultable,

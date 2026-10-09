@@ -15,6 +15,7 @@
 <body class="assistant">
 <svg width="0" height="0" class="sr-only" aria-hidden="true" focusable="false">
   <defs>
+    <symbol id="i-cam" viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></symbol>
     <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M14 7l5 5-5 5"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
@@ -115,10 +116,12 @@
         <p class="heard" id="heard"></p>
         <p class="said" id="said"></p>
       </div>
+      <video class="cam-preview" id="cam-preview" muted playsinline hidden aria-label="Ce que voit la caméra du téléphone"></video>
       <nav class="dock" aria-label="Commandes">
         <button class="dock-btn" type="button" data-action="history" aria-label="Historique"><svg class="ic"><use href="#i-history"/></svg></button>
         <button class="dock-btn" type="button" data-goto="approvals" aria-label="Validations"><svg class="ic"><use href="#i-shield"/></svg><b class="count" id="dock-approvals"></b></button>
         <button class="dock-btn dock-mic" type="button" id="talk-btn" data-action="talk" aria-label="Parler à Spectre"><svg class="ic"><use href="#i-mic"/></svg></button>
+        <button class="dock-btn" type="button" id="cam-btn" data-action="camera" aria-label="Me montrer à Spectre (caméra du téléphone)" aria-pressed="false" hidden><svg class="ic"><use href="#i-cam"/></svg></button>
         <button class="dock-btn" type="button" data-goto="memory" aria-label="Mémoire"><svg class="ic"><use href="#i-brain"/></svg></button>
         <button class="dock-btn" type="button" data-goto="settings" aria-label="Réglages"><svg class="ic"><use href="#i-gear"/></svg></button>
       </nav>

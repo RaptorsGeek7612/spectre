@@ -157,3 +157,40 @@ def test_face_routes(api: Client, service: AssistantService) -> None:  # noqa: F
     assert people["camera"] and people["people"][0]["name"] == "Barth"
     assert api.json("POST", "/api/assistant/faces/Barth/forget", {}) == (200, {"removed": 6})
     assert api.json("POST", "/api/assistant/faces/Barth/forget", {})[0] == 404
+
+
+class PhoneCamera(FakeCamera):
+    """A camera whose engine reads JPEG pictures sent by the phone."""
+
+    def __init__(self, *looks: list[dict[str, Any]]) -> None:
+        super().__init__(*looks)
+        self.engine = self
+        self.pictures: list[bytes] = []
+
+    def embeddings_jpeg(self, data: bytes) -> list[dict[str, Any]]:
+        if data == b"illisible":
+            raise ValueError("image illisible")
+        self.pictures.append(data)
+        return self.grab()
+
+
+def test_remote_frame(service: AssistantService) -> None:  # noqa: F811
+    with pytest.raises(ValueError, match="reconnaissance des visages"):
+        service.remote_frame(b"jpeg")
+    service.attach_camera(PhoneCamera(*[[L(ME)]] * 3, [L(ME_AGAIN), L(SOMEONE)]))
+    assert service.enroll_face("Barth", samples=3) == 3
+    with pytest.raises(ValueError, match="vide"):
+        service.remote_frame(b"")
+    assert service.remote_frame(b"jpeg") == {"faces": 2, "present": ["Barth"]}
+    assert service.camera.pictures == [b"jpeg"]
+    with pytest.raises(ValueError, match="illisible"):
+        service.remote_frame(b"illisible")
+
+
+def test_frame_route(api: Client, service: AssistantService) -> None:  # noqa: F811
+    headers = {"Content-Type": "image/jpeg"}
+    status, _, body = api.request("POST", "/api/assistant/frame", raw=b"jpeg", headers=headers)
+    assert status == 400 and "reconnaissance" in json.loads(body)["error"]
+    service.attach_camera(PhoneCamera([L(SOMEONE)]))
+    status, _, body = api.request("POST", "/api/assistant/frame", raw=b"jpeg", headers=headers)
+    assert status == 200 and json.loads(body) == {"faces": 1, "present": []}

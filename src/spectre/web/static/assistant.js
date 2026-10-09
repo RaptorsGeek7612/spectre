@@ -33,12 +33,16 @@ const date = (iso) => { try { return new Date(iso).toLocaleString("fr-FR", { dat
 
 const STATES = {
   off: ["Voix coupée", "Écris ci-dessous, ou relance Spectre avec la voix activée pour lui parler."],
-  sleeping: ["En veille", "Dis « Spectre » pour me parler."],
+  sleeping: ["En veille", ""],
   listening: ["J'écoute…", ""],
   thinking: ["Je réfléchis…", ""],
   speaking: ["Je parle", ""],
 };
 let voiceAvailable = false;
+// Opened from another device (the phone, through Tailscale): the microphone button records on
+// this device instead of making the PC listen, and Spectre's answer is played here.
+const REMOTE = !["127.0.0.1", "localhost", "::1", "[::1]"].includes(location.hostname);
+const SLEEP_HINT = REMOTE ? "Touche le micro pour me parler." : "Dis « Spectre » pour me parler.";
 
 const orb = new Orb($("#orb"));
 const fadeTimers = {};
@@ -59,9 +63,10 @@ function setState(state, detail = "") {
   if (state === "heard") { $("#presence-detail").textContent = `« ${detail} »`; caption("#heard", detail, 9000); return; }
   document.body.dataset.voice = state;
   orb.setState(state);
-  const [label, hint] = STATES[state] || [state, ""];
+  const [label, base] = STATES[state] || [state, ""];
+  const hint = state === "sleeping" ? SLEEP_HINT : base;
   $("#presence-state").textContent = label;
-  $("#orb-state").textContent = state === "sleeping" && voiceAvailable ? "En veille — dis « Spectre »" : label;
+  $("#orb-state").textContent = state === "sleeping" && voiceAvailable ? (REMOTE ? "En veille — touche le micro" : "En veille — dis « Spectre »") : label;
   if (state === "listening") caption("#heard", "", 0);
   if (state !== "listening" && state !== "speaking") setLevel(0);
   $("#presence-detail").textContent = state === "speaking" ? detail : (detail || (state === "sleeping" && !voiceAvailable ? STATES.off[1] : hint));
@@ -248,6 +253,7 @@ async function loadStatus() {
   voiceAvailable = s.voice_available;
   $("#brain-model").textContent = `cerveau : ${s.brain_label || s.brain_model}`;
   $("#talk-btn").hidden = !voiceAvailable;
+  $("#cam-btn").hidden = !(REMOTE && s.camera);  // the PC's own camera already watches the PC
   $("#count-approvals").textContent = s.pending_approvals || "";
   $("#count-initiatives").textContent = s.pending_initiatives || "";
   $("#count-facts").textContent = s.facts || "";
@@ -270,6 +276,139 @@ function show(view) {
   history.replaceState(null, "", `#${view}`);
 }
 function closeDrawers() { document.body.classList.remove("rail-open", "inspector-open"); $(".scrim").hidden = true; }
+
+/* ---- voice from this device (phone): record here, Spectre transcribes and answers aloud here ---- */
+const rec = { ctx: null, stream: null, node: null, chunks: [], active: false, busy: false };
+async function deviceTalk() {
+  if (rec.busy) return;
+  if (rec.active) { finishRecording(); return; }  // a second tap stops early
+  try {
+    rec.ctx = rec.ctx || new AudioContext();
+    await rec.ctx.resume();  // inside the tap, so the answer may play later
+    rec.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch {
+    toast("Autorise le micro dans le navigateur pour parler à Spectre depuis cet appareil.", "error", 7000);
+    return;
+  }
+  const source = rec.ctx.createMediaStreamSource(rec.stream);
+  rec.node = rec.ctx.createScriptProcessor(4096, 1, 1);
+  rec.chunks = [];
+  rec.active = true;
+  const started = performance.now();
+  let spoke = 0, lastVoice = 0;
+  rec.node.onaudioprocess = (e) => {
+    if (!rec.active) return;
+    const data = e.inputBuffer.getChannelData(0);
+    rec.chunks.push(new Float32Array(data));
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    const level = Math.sqrt(sum / data.length);
+    setLevel(Math.min(1, level * 8));
+    const now = performance.now();
+    if (level > 0.02) { spoke = spoke || now; lastVoice = now; }
+    // stops after a pause, if nothing is said, or after 25 s
+    if ((spoke && now - lastVoice > 1300) || (!spoke && now - started > 7000) || now - started > 25000) finishRecording();
+  };
+  source.connect(rec.node);
+  rec.node.connect(rec.ctx.destination);  // outputs silence; needed for the node to run
+  setState("listening");
+}
+function toPcm16(chunks, rate) {
+  // downsample to 16 kHz by averaging, then 16-bit: what Spectre's speech recognition expects
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const all = new Float32Array(total);
+  let at = 0;
+  for (const c of chunks) { all.set(c, at); at += c.length; }
+  const ratio = rate / 16000;
+  const out = new Int16Array(Math.floor(total / ratio));
+  for (let i = 0; i < out.length; i++) {
+    const from = Math.floor(i * ratio), to = Math.min(total, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    for (let j = from; j < to; j++) sum += all[j];
+    const v = Math.max(-1, Math.min(1, sum / Math.max(1, to - from)));
+    out[i] = v < 0 ? v * 32768 : v * 32767;
+  }
+  return out;
+}
+async function finishRecording() {
+  if (!rec.active) return;
+  rec.active = false;
+  rec.node?.disconnect();
+  rec.stream?.getTracks().forEach((t) => t.stop());
+  const pcm = toPcm16(rec.chunks, rec.ctx.sampleRate);
+  if (pcm.length < 8000) { setState("sleeping"); return; }  // under half a second
+  rec.busy = true;
+  setState("thinking");
+  try {
+    const res = await fetch("/api/assistant/voice", { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/octet-stream" }, body: pcm.buffer });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (!data.heard) toast("Je n'ai rien entendu. Réessaie en parlant près du téléphone.", "warn");
+    else if (data.audio) await playWav(data.audio);
+  } catch (err) {
+    toast(err.message, "error", 7000);
+  } finally {
+    rec.busy = false;
+    setState("sleeping");
+  }
+}
+async function playWav(b64) {
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const buffer = await rec.ctx.decodeAudioData(bytes.buffer);
+  const src = rec.ctx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(rec.ctx.destination);
+  setState("speaking");
+  await new Promise((resolve) => { src.onended = resolve; src.start(); });
+}
+
+/* ---- camera of this device (phone): a picture every 2 s, analysed by Spectre like its own ---- */
+const cam = { stream: null, timer: null, canvas: document.createElement("canvas"), sending: false };
+async function deviceCamera() {
+  if (cam.stream) { stopCamera(); return; }
+  try {
+    cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+  } catch {
+    toast("Autorise la caméra dans le navigateur pour que Spectre te reconnaisse depuis cet appareil.", "error", 7000);
+    return;
+  }
+  const video = $("#cam-preview");
+  video.srcObject = cam.stream;
+  video.hidden = false;
+  await video.play().catch(() => {});
+  $("#cam-btn").setAttribute("aria-pressed", "true");
+  cam.timer = setInterval(sendFrame, 2000);
+  toast("Caméra du téléphone active : Spectre regarde qui est là. Retouche le bouton pour l'arrêter.");
+}
+function stopCamera() {
+  clearInterval(cam.timer);
+  cam.stream?.getTracks().forEach((t) => t.stop());
+  cam.stream = null;
+  const video = $("#cam-preview");
+  video.srcObject = null;
+  video.hidden = true;
+  $("#cam-btn").setAttribute("aria-pressed", "false");
+}
+async function sendFrame() {
+  const video = $("#cam-preview");
+  if (cam.sending || !video.videoWidth) return;
+  cam.sending = true;
+  try {
+    const scale = Math.min(1, 640 / video.videoWidth);
+    cam.canvas.width = Math.round(video.videoWidth * scale);
+    cam.canvas.height = Math.round(video.videoHeight * scale);
+    cam.canvas.getContext("2d").drawImage(video, 0, 0, cam.canvas.width, cam.canvas.height);
+    const blob = await new Promise((resolve) => cam.canvas.toBlob(resolve, "image/jpeg", 0.75));
+    const res = await fetch("/api/assistant/frame", { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "image/jpeg" }, body: blob });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      stopCamera();
+      toast(data.error || `HTTP ${res.status}`, "error", 7000);
+    }
+  } catch { /* a lost picture: the next one follows */ }
+  finally { cam.sending = false; }
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden && cam.stream) stopCamera(); });
 
 /* ---- live events ---- */
 function connect() {
@@ -299,7 +438,11 @@ document.addEventListener("click", (e) => {
   if (a === "close-drawers") closeDrawers();
   if (a === "open-rail") { document.body.classList.add("rail-open"); $(".scrim").hidden = false; }
   if (a === "open-inspector") { document.body.classList.add("inspector-open"); $(".scrim").hidden = false; }
-  if (a === "talk") api("POST", "talk", {}).catch((err) => toast(err.message, "error"));
+  if (a === "camera") deviceCamera();
+  if (a === "talk") {
+    if (REMOTE) deviceTalk();
+    else api("POST", "talk", {}).catch((err) => toast(err.message, "error"));
+  }
   if (a === "history") { const panel = $("#history"); panel.hidden = !panel.hidden; if (!panel.hidden) loadHistory(); }
   const goto = e.target.closest("[data-goto]")?.dataset.goto;
   if (goto) show(goto);

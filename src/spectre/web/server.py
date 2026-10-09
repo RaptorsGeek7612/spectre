@@ -136,6 +136,13 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("le corps de la requête doit être un objet JSON")
         return data
 
+    def _raw_body(self) -> bytes:
+        """The request body as bytes (audio from the phone), within MAX_BODY."""
+        length = int(self.headers.get("Content-Length") or 0)
+        if length > MAX_BODY:
+            raise BodyTooLarge("requête trop volumineuse (2 Mo maximum)")
+        return self.rfile.read(length) if length else b""
+
     def _cookie(self) -> str | None:
         cookie = SimpleCookie(self.headers.get("Cookie") or "")
         morsel = cookie.get(COOKIE_NAME)
