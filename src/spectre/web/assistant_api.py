@@ -31,6 +31,8 @@ def handle(
         case "POST", ["chat"]:
             data = body()
             handler._json(200, {"reply": service.chat(str(data.get("text", "")), "text")})
+        case "POST", ["voice"]:
+            handler._json(200, service.remote_voice(handler._raw_body()))
         case "POST", ["talk"]:
             service.push_to_talk()
             handler._json(200, {"ok": True})

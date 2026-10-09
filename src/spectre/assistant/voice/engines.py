@@ -172,11 +172,17 @@ class WhisperSTT:
 
         self.language = language
         self.model = WhisperModel(model_size, device="cpu", compute_type="int8")
+        self.lock = threading.Lock()  # the PC microphone and the phone may speak at once
 
     def transcribe(self, pcm: bytes) -> str:
         import numpy as np
 
-        audio = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
+        samples = np.frombuffer(pcm[: len(pcm) - len(pcm) % 2], dtype=np.int16)
+        audio = samples.astype(np.float32) / 32768.0
+        with self.lock:
+            return self._transcribe(audio)
+
+    def _transcribe(self, audio: Any) -> str:
         segments, _info = self.model.transcribe(
             audio,
             language=self.language,
@@ -215,19 +221,27 @@ class PiperTTS:
             length_scale=fx.length_scale(effect, pace),  # chosen speed, offsets the deepening
             noise_w_scale=0.7,  # steadier rhythm between syllables: a smoother flow
         )
+        self.lock = threading.Lock()
 
-    def speak(self, text: str, stop: threading.Event | None = None) -> None:
+    def render(self, text: str, stop: threading.Event | None = None) -> tuple[bytes, int] | None:
+        """The finished voice (with its timbre) as int16 PCM and its rate, without playing it."""
         from spectre.assistant.voice import fx
 
         sentences: list[bytes] = []
         rate = 22050
-        for chunk in self.voice.synthesize(text, syn_config=self.syn):
-            rate = chunk.sample_rate
-            sentences.append(chunk.audio_int16_bytes)
-            if stop is not None and stop.is_set():
-                return
+        with self.lock:
+            for chunk in self.voice.synthesize(text, syn_config=self.syn):
+                rate = chunk.sample_rate
+                sentences.append(chunk.audio_int16_bytes)
+                if stop is not None and stop.is_set():
+                    return None
         pcm = fx.join_sentences(sentences, rate)
-        play_pcm(fx.apply(self.effect, pcm, rate), rate, stop, self.on_level)
+        return fx.apply(self.effect, pcm, rate), rate
+
+    def speak(self, text: str, stop: threading.Event | None = None) -> None:
+        rendered = self.render(text, stop)
+        if rendered is not None:
+            play_pcm(rendered[0], rendered[1], stop, self.on_level)
 
 
 class WindowsTTS:

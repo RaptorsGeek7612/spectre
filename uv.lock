@@ -2309,7 +2309,7 @@ wheels = [
 
 [[package]]
 name = "spectre"
-version = "0.3.6"
+version = "0.3.7"
 source = { editable = "." }
 dependencies = [
     { name = "langchain-anthropic" },

@@ -3,6 +3,7 @@ and publishes live events (state, messages, approvals, initiatives) to the web U
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import queue
 import threading
@@ -20,6 +21,7 @@ from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
 from spectre.assistant.vision.faces import SPOOF, UNKNOWN, FaceBook, Presence
+from spectre.assistant.voice.listen import SAMPLE_RATE, to_wav
 from spectre.config import model_label
 
 Event = dict[str, Any]
@@ -285,6 +287,25 @@ class AssistantService:
 
     def voice_reply(self, text: str) -> str:
         return self.chat(text, channel="voice")
+
+    def remote_voice(self, pcm: bytes) -> Event:
+        """A turn spoken into another device (the phone, 16 kHz mono int16): Spectre transcribes
+        it with its own speech recognition, answers, and returns its voice as a WAV to play
+        there; nothing is played on the PC."""
+        if self.voice is None:
+            raise ValueError("la voix n'est pas active (lance Spectre avec la voix)")
+        if len(pcm) < SAMPLE_RATE:  # under half a second: nothing was said
+            return {"heard": "", "reply": "", "audio": ""}
+        text = str(self.voice.stt.transcribe(pcm)).strip()
+        if not text:
+            return {"heard": "", "reply": "", "audio": ""}
+        reply = self.chat(text, channel="voice")
+        audio = ""
+        render = getattr(self.voice.tts, "render", None)  # the Windows fallback voice cannot
+        rendered = render(reply) if reply and render else None
+        if rendered:
+            audio = base64.b64encode(to_wav(*rendered)).decode("ascii")
+        return {"heard": text, "reply": reply, "audio": audio}
 
     # ---- vision (opt-in) -------------------------------------------------------------------
 

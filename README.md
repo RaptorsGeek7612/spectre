@@ -164,6 +164,13 @@ Tailscale demande d'activer Serve et HTTPS pour votre réseau (un lien dans sa c
 d'administration). Sans Tailscale ou sans mot de passe, Spectre reste joignable depuis le PC
 seulement.
 
+**Parler à Spectre depuis le téléphone.** Sur la page Assistant ouverte depuis le téléphone, le
+bouton micro enregistre avec le micro **du téléphone** (et non plus celui du PC) : il s'arrête
+tout seul après une pause, Spectre transcrit la phrase sur le PC (faster-whisper), répond, et sa
+voix (Piper, avec son timbre) est jouée sur le téléphone ; rien n'est joué sur le PC. Il faut que
+Spectre tourne avec la voix (`--voice`) et que le navigateur du téléphone ait le droit d'utiliser
+le micro (HTTPS, fourni par Tailscale).
+
 Le premier lancement avec `--voice` télécharge les modèles (environ 200 Mo) dans
 `~/.spectre/assistant/models/`. L'interface `assistant.html` affiche l'état de la voix, la
 conversation, les actions en attente de validation, les missions, la mémoire (consultable,

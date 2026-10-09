@@ -33,12 +33,16 @@ const date = (iso) => { try { return new Date(iso).toLocaleString("fr-FR", { dat
 
 const STATES = {
   off: ["Voix coupée", "Écris ci-dessous, ou relance Spectre avec la voix activée pour lui parler."],
-  sleeping: ["En veille", "Dis « Spectre » pour me parler."],
+  sleeping: ["En veille", ""],
   listening: ["J'écoute…", ""],
   thinking: ["Je réfléchis…", ""],
   speaking: ["Je parle", ""],
 };
 let voiceAvailable = false;
+// Opened from another device (the phone, through Tailscale): the microphone button records on
+// this device instead of making the PC listen, and Spectre's answer is played here.
+const REMOTE = !["127.0.0.1", "localhost", "::1", "[::1]"].includes(location.hostname);
+const SLEEP_HINT = REMOTE ? "Touche le micro pour me parler." : "Dis « Spectre » pour me parler.";
 
 const orb = new Orb($("#orb"));
 const fadeTimers = {};
@@ -59,9 +63,10 @@ function setState(state, detail = "") {
   if (state === "heard") { $("#presence-detail").textContent = `« ${detail} »`; caption("#heard", detail, 9000); return; }
   document.body.dataset.voice = state;
   orb.setState(state);
-  const [label, hint] = STATES[state] || [state, ""];
+  const [label, base] = STATES[state] || [state, ""];
+  const hint = state === "sleeping" ? SLEEP_HINT : base;
   $("#presence-state").textContent = label;
-  $("#orb-state").textContent = state === "sleeping" && voiceAvailable ? "En veille — dis « Spectre »" : label;
+  $("#orb-state").textContent = state === "sleeping" && voiceAvailable ? (REMOTE ? "En veille — touche le micro" : "En veille — dis « Spectre »") : label;
   if (state === "listening") caption("#heard", "", 0);
   if (state !== "listening" && state !== "speaking") setLevel(0);
   $("#presence-detail").textContent = state === "speaking" ? detail : (detail || (state === "sleeping" && !voiceAvailable ? STATES.off[1] : hint));
@@ -271,6 +276,91 @@ function show(view) {
 }
 function closeDrawers() { document.body.classList.remove("rail-open", "inspector-open"); $(".scrim").hidden = true; }
 
+/* ---- voice from this device (phone): record here, Spectre transcribes and answers aloud here ---- */
+const rec = { ctx: null, stream: null, node: null, chunks: [], active: false, busy: false };
+async function deviceTalk() {
+  if (rec.busy) return;
+  if (rec.active) { finishRecording(); return; }  // a second tap stops early
+  try {
+    rec.ctx = rec.ctx || new AudioContext();
+    await rec.ctx.resume();  // inside the tap, so the answer may play later
+    rec.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch {
+    toast("Autorise le micro dans le navigateur pour parler à Spectre depuis cet appareil.", "error", 7000);
+    return;
+  }
+  const source = rec.ctx.createMediaStreamSource(rec.stream);
+  rec.node = rec.ctx.createScriptProcessor(4096, 1, 1);
+  rec.chunks = [];
+  rec.active = true;
+  const started = performance.now();
+  let spoke = 0, lastVoice = 0;
+  rec.node.onaudioprocess = (e) => {
+    if (!rec.active) return;
+    const data = e.inputBuffer.getChannelData(0);
+    rec.chunks.push(new Float32Array(data));
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    const level = Math.sqrt(sum / data.length);
+    setLevel(Math.min(1, level * 8));
+    const now = performance.now();
+    if (level > 0.02) { spoke = spoke || now; lastVoice = now; }
+    // stops after a pause, if nothing is said, or after 25 s
+    if ((spoke && now - lastVoice > 1300) || (!spoke && now - started > 7000) || now - started > 25000) finishRecording();
+  };
+  source.connect(rec.node);
+  rec.node.connect(rec.ctx.destination);  // outputs silence; needed for the node to run
+  setState("listening");
+}
+function toPcm16(chunks, rate) {
+  // downsample to 16 kHz by averaging, then 16-bit: what Spectre's speech recognition expects
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const all = new Float32Array(total);
+  let at = 0;
+  for (const c of chunks) { all.set(c, at); at += c.length; }
+  const ratio = rate / 16000;
+  const out = new Int16Array(Math.floor(total / ratio));
+  for (let i = 0; i < out.length; i++) {
+    const from = Math.floor(i * ratio), to = Math.min(total, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    for (let j = from; j < to; j++) sum += all[j];
+    const v = Math.max(-1, Math.min(1, sum / Math.max(1, to - from)));
+    out[i] = v < 0 ? v * 32768 : v * 32767;
+  }
+  return out;
+}
+async function finishRecording() {
+  if (!rec.active) return;
+  rec.active = false;
+  rec.node?.disconnect();
+  rec.stream?.getTracks().forEach((t) => t.stop());
+  const pcm = toPcm16(rec.chunks, rec.ctx.sampleRate);
+  if (pcm.length < 8000) { setState("sleeping"); return; }  // under half a second
+  rec.busy = true;
+  setState("thinking");
+  try {
+    const res = await fetch("/api/assistant/voice", { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/octet-stream" }, body: pcm.buffer });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (!data.heard) toast("Je n'ai rien entendu. Réessaie en parlant près du téléphone.", "warn");
+    else if (data.audio) await playWav(data.audio);
+  } catch (err) {
+    toast(err.message, "error", 7000);
+  } finally {
+    rec.busy = false;
+    setState("sleeping");
+  }
+}
+async function playWav(b64) {
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const buffer = await rec.ctx.decodeAudioData(bytes.buffer);
+  const src = rec.ctx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(rec.ctx.destination);
+  setState("speaking");
+  await new Promise((resolve) => { src.onended = resolve; src.start(); });
+}
+
 /* ---- live events ---- */
 function connect() {
   const es = new EventSource("/api/assistant/events");
@@ -299,7 +389,10 @@ document.addEventListener("click", (e) => {
   if (a === "close-drawers") closeDrawers();
   if (a === "open-rail") { document.body.classList.add("rail-open"); $(".scrim").hidden = false; }
   if (a === "open-inspector") { document.body.classList.add("inspector-open"); $(".scrim").hidden = false; }
-  if (a === "talk") api("POST", "talk", {}).catch((err) => toast(err.message, "error"));
+  if (a === "talk") {
+    if (REMOTE) deviceTalk();
+    else api("POST", "talk", {}).catch((err) => toast(err.message, "error"));
+  }
   if (a === "history") { const panel = $("#history"); panel.hidden = !panel.hidden; if (!panel.hidden) loadHistory(); }
   const goto = e.target.closest("[data-goto]")?.dataset.goto;
   if (goto) show(goto);

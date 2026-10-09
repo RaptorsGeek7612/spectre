@@ -7,6 +7,18 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-10-09
+
+### Added
+
+- Voix depuis le téléphone : sur la page Assistant ouverte depuis un autre appareil, le bouton
+  micro enregistre avec le micro de cet appareil (arrêt automatique après une pause, 25 s au
+  plus), Spectre transcrit et répond, et sa voix est jouée sur l'appareil, pas sur le PC.
+  Nouvelle route `POST /api/assistant/voice` (PCM 16 kHz mono 16 bits, réponse avec le texte
+  entendu, la réponse et un WAV).
+- `PiperTTS.render()` produit la voix sans la jouer ; la reconnaissance et la synthèse sont
+  protégées par un verrou, car le micro du PC et le téléphone peuvent parler en même temps.
+
 ## [0.3.6] - 2026-10-09
 
 ### Added

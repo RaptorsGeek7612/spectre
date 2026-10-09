@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import array
+import base64
 import http.client
+import io
 import json
 import runpy
 import sys
 import threading
 import time
+import wave
 from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -20,7 +24,7 @@ from spectre.assistant.brain import Reply
 from spectre.assistant.config import AssistantConfig
 from spectre.assistant.service import AssistantService
 from spectre.assistant.voice import loop as loop_mod
-from spectre.assistant.voice.listen import SAMPLE_RATE, UtteranceDetector, chime, rms
+from spectre.assistant.voice.listen import SAMPLE_RATE, UtteranceDetector, chime, rms, to_wav
 from spectre.assistant.voice.loop import VoiceLoop
 from spectre.web import assistant_api
 from spectre.web import server as server_mod
@@ -509,3 +513,56 @@ def test_main_allow_host_behind_a_relay(
     assert app_mod.main(args) == 0
     server = launcher["servers"][0]
     assert server.kw["extra_hosts"] == ["pc.tailnet.ts.net"] and server.kw["auth"].enabled
+
+
+# ---- voice from the phone -----------------------------------------------------------------
+
+
+class PhoneVoice(FakeVoice):
+    """A voice stack whose recognition and synthesis are fakes."""
+
+    def __init__(self, heard: str = "Quelle heure est-il ?", render: bool = True) -> None:
+        super().__init__()
+        self.stt = SimpleNamespace(transcribe=lambda pcm: heard)
+        self.tts = SimpleNamespace(render=lambda text: (b"\x01\x00" * 100, 22050))
+        if not render:
+            self.tts = SimpleNamespace()  # the Windows fallback voice cannot render
+
+
+def test_remote_voice(service: AssistantService) -> None:
+    pcm = b"\x00\x10" * SAMPLE_RATE  # one second
+    with pytest.raises(ValueError, match="voix"):
+        service.remote_voice(pcm)
+    service.attach_voice(PhoneVoice())
+    empty = {"heard": "", "reply": "", "audio": ""}
+    assert service.remote_voice(b"\x00" * 100) == empty  # too short
+    out = service.remote_voice(pcm)
+    assert out["heard"] == "Quelle heure est-il ?" and out["reply"] == "Réponse."
+    wav = base64.b64decode(out["audio"])
+    assert wav[:4] == b"RIFF" and wav[8:12] == b"WAVE"
+    assert service.history()[-2]["text"] == "Quelle heure est-il ?"
+    service.attach_voice(PhoneVoice(heard="  "))
+    assert service.remote_voice(pcm) == empty
+    service.attach_voice(PhoneVoice(render=False))
+    out = service.remote_voice(pcm)
+    assert out["reply"] == "Réponse." and out["audio"] == ""
+
+
+def test_api_voice_route(api: Client, service: AssistantService) -> None:
+    pcm = b"\x00\x10" * SAMPLE_RATE
+    headers = {"Content-Type": "application/octet-stream"}
+    status, _, body = api.request("POST", "/api/assistant/voice", raw=pcm, headers=headers)
+    assert status == 400 and "voix" in json.loads(body)["error"]
+    service.attach_voice(PhoneVoice())
+    status, _, body = api.request("POST", "/api/assistant/voice", raw=pcm, headers=headers)
+    assert status == 200 and json.loads(body)["heard"] == "Quelle heure est-il ?"
+    status, _, _ = api.request("POST", "/api/assistant/voice", raw=b"", headers=headers)
+    assert status == 200
+    big = {**headers, "Content-Length": str(server_mod.MAX_BODY + 2)}  # announced, not sent
+    assert api.request("POST", "/api/assistant/voice", raw=b"x", headers=big)[0] == 413
+
+
+def test_to_wav() -> None:
+    wav = to_wav(b"\x01\x00\x02\x00\x03", 16000)  # the odd byte is dropped
+    with wave.open(io.BytesIO(wav)) as reader:
+        assert reader.getframerate() == 16000 and reader.getnframes() == 2
