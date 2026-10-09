@@ -20,7 +20,10 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
   que Spectre converse ou manipule la mémoire.
 - Skills (savoirs & création) : `spectre-savoirs` (maths, sciences, physique, biologie,
   astronomie — rigueur, vérification, niveaux de certitude ; l'astrologie n'est pas une science)
-  et `spectre-creation` (romans, films, clips, manga — métier narratif/visuel, sans plagiat).
+  et `spectre-creation` (romans, films, clips, manga — métier narratif/visuel, sans plagiat ;
+  œuvres-repères dans `references.md`).
+- Skill (divertissement) : `spectre-astrologie` — astrologie comme fait culturel/ludique,
+  jamais comme science ni base de décision.
 - Skills (capacités labo, conteneurs Docker à `C:\Users\sherp\labs`) : `labs-biometrie`
   (visage/voix/empreintes), `labs-securite` (suite Kali — cibles autorisées uniquement),
   `labs-media` (FFmpeg/OpenCV/MoviePy). Usage apprentissage/labo.

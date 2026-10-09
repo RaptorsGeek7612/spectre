@@ -51,6 +51,11 @@ des lois : l'expérimentation se justifie si elle sert le propos.
   trompeuse d'une personne réelle ; prudence avec les marques et œuvres protégées.
 - Pour les ressources (musique, images, polices), privilégie le **libre / sous licence claire**.
 
+## Œuvres-repères
+Pour des exemples reconnus par medium (roman, film, clip, manga), chacun avec la leçon de métier
+à en tirer, voir **`references.md`** dans ce dossier. À utiliser comme points de comparaison, pas
+comme modèles à décalquer.
+
 > En bref : trouve le désir et le conflit, fais que chaque scène change quelque chose, raconte par
 > l'image et le sous-texte, démarre un manga par le name, un clip par la chanson — et crée sans
 > copier.
