@@ -27,6 +27,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   le téléphone) ; le préréglage « Qualité max » n'est plus coupé quand la place le permet.
 - Le bouton « Exposer » ne dépasse plus de l'écran sur les téléphones étroits ou avec un texte
   agrandi : le menu des préréglages se resserre à sa place, et sous 380 px la flèche disparaît.
+- Un seul micro sur téléphone : celui de l'en-tête (vers l'assistant) ; le bouton de dictée est
+  masqué sous 900 px, le clavier du téléphone ayant déjà le sien.
 
 ## [0.3.5] - 2026-10-09
 

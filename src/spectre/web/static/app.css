@@ -767,6 +767,9 @@ dialog::backdrop { background: rgb(8 8 10 / 0.6); }
   /* on a phone the floating button covered the page and made the PC listen, not the phone;
      the header icon already leads to the assistant */
   .voice-fab { display: none; }
+  /* one microphone only: the header one opens the assistant; for dictation the phone keyboard
+     has its own */
+  #mic-btn { display: none; }
   .composer .select-inline .label { display: none; }
   .btn { min-height: 44px; }
   .icon-btn { width: 44px; height: 44px; }
