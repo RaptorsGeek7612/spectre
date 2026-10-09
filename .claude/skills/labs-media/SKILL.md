@@ -1,6 +1,6 @@
 ---
 name: labs-media
-description: Piloter les frameworks multimédia locaux (FFmpeg, OpenCV, Pillow, MoviePy 2.x, scikit-image) du conteneur Docker lab-media, pour traiter/convertir des images et des vidéos et faire du montage. Charger quand une mission demande de la manipulation d'image, de vidéo ou du montage.
+description: Piloter les frameworks multimédia locaux (FFmpeg, OpenCV, Pillow, MoviePy 2.x, scikit-image) du conteneur Docker lab-media, pour traiter/convertir des images et des vidéos et faire du montage. À CHARGER AUTOMATIQUEMENT, sans attendre de demande explicite, dès qu'une mission touche la manipulation d'image, de vidéo ou le montage.
 ---
 
 # labs-media — image / vidéo / montage

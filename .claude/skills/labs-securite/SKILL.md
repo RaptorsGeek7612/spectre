@@ -1,6 +1,6 @@
 ---
 name: labs-securite
-description: Piloter la suite de sécurité Kali locale (nmap, metasploit, burpsuite, sqlmap, nuclei, ffuf, hydra, hashcat, netexec…) du conteneur Docker lab-secu, pour apprentissage et tests autorisés. Charger quand une mission demande de la reconnaissance réseau/web ou du test d'intrusion. STRICTEMENT limité aux cibles possédées ou explicitement autorisées.
+description: Piloter la suite de sécurité Kali locale (nmap, metasploit, burpsuite, sqlmap, nuclei, ffuf, hydra, hashcat, netexec…) du conteneur Docker lab-secu, pour apprentissage et tests autorisés. À CHARGER AUTOMATIQUEMENT, sans attendre de demande explicite, dès qu'une mission touche la reconnaissance réseau/web ou le test d'intrusion. STRICTEMENT limité aux cibles possédées ou explicitement autorisées.
 ---
 
 # labs-securite — suite Kali (labo / tests autorisés)

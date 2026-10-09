@@ -1,6 +1,6 @@
 ---
 name: labs-biometrie
-description: Piloter les frameworks de biométrie locaux (reconnaissance faciale, vocale, empreintes) du conteneur Docker lab-biometrie. Charger quand une mission demande de comparer/vérifier des visages, des voix ou des empreintes digitales. Usage labo/apprentissage, données possédées ou autorisées uniquement.
+description: Piloter les frameworks de biométrie locaux (reconnaissance faciale, vocale, empreintes) du conteneur Docker lab-biometrie. À CHARGER AUTOMATIQUEMENT, sans attendre de demande explicite, dès qu'une mission touche la comparaison/vérification de visages, de voix ou d'empreintes digitales. Usage labo/apprentissage, données possédées ou autorisées uniquement.
 ---
 
 # labs-biometrie — reconnaissance visage / voix / empreintes

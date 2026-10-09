@@ -18,6 +18,9 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
 - Skills (capacités labo, conteneurs Docker à `C:\Users\sherp\labs`) : `labs-biometrie`
   (visage/voix/empreintes), `labs-securite` (suite Kali — cibles autorisées uniquement),
   `labs-media` (FFmpeg/OpenCV/MoviePy). Usage apprentissage/labo.
+  **Chargement automatique** : dès qu'une mission touche la biométrie (visage/voix/empreinte),
+  la sécurité réseau/web (autorisée) ou le multimédia (image/vidéo/montage), charger d'office
+  le skill `labs-*` correspondant **avant d'agir**, sans attendre de demande explicite.
 
 ## Commandes (Windows : `uv run`, pas d'activation de venv)
 ```shell
