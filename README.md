@@ -183,6 +183,25 @@ matin, il prépare un briefing (météo Open-Meteo, rappels, validations en atte
 longues sont planifiées, exécutées étape par étape, vérifiées, puis résumées dans un rapport ;
 `kind=redaction` confie un texte soigné à Scout, Scribe et Warden.
 
+**Agents d'exécution des missions : Claude, ChatGPT ou Mistral.** Spectre (Opus) planifie, un
+vérificateur Haiku contrôle chaque étape et Spectre rédige le rapport ; les étapes elles-mêmes
+peuvent être confiées à Claude (Sonnet, Opus ou Haiku), à **ChatGPT** via Codex CLI
+(`codex exec`, sur votre compte ChatGPT : `codex login`) ou à **Mistral** via Mistral Vibe
+(`vibe -p`, avec votre compte Le Chat ou une clé `MISTRAL_API_KEY` dans
+`~/.spectre/assistant/vibe/.env`). Choisissez dans Réglages › Agents d'exécution des missions
+(`mission_model` : `sonnet`, `opus`, `haiku`, `chatgpt` ou `mistral`), ou pour une seule mission :
+« lance une mission avec ChatGPT » (`start_mission` avec `agent=chatgpt` ou `agent=mistral`).
+Chacun a sa spécialité, et Spectre choisit l'agent selon le sujet de la mission : **ChatGPT**
+pour les images, la vidéo et le multimédia, **Mistral** pour la cybersécurité et les tests
+d'intrusion (seulement sur vos systèmes ou avec une autorisation écrite), Claude pour le reste.
+Chaque sous-agent porte un nom : **Gétro** (Sonnet) exécute par défaut, **Kaïto** (Haiku)
+vérifie chaque étape, **Kyra** (ChatGPT) gère le multimédia et **Syfer** (Mistral) la
+cybersécurité. Les noms servent aussi à choisir l'agent (« lance une mission avec Syfer ») et
+apparaissent dans les étapes et les rapports.
+ChatGPT et Mistral n'ont que les outils de Spectre (par MCP, donc le même portail de gouvernance)
+et la recherche web ; le shell de Codex tourne dans son bac à sable en lecture seule.
+`chatgpt_model` et `mistral_model` choisissent le modèle (vide = celui par défaut).
+
 ### Bibliothèque
 
 ```python

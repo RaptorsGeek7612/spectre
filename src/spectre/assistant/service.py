@@ -270,6 +270,7 @@ class AssistantService:
         self.config.update(changes)
         self.config.save(self.root)
         self.gate.auto_max_level = self.config.auto_max_level
+        self.missions.model = self.config.mission_model
         return self.config.__dict__.copy()
 
     # ---- voice -----------------------------------------------------------------------------

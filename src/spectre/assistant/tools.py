@@ -14,6 +14,7 @@ from typing import Any
 
 from spectre.assistant import actions
 from spectre.assistant.actions import ActionContext, ActionError
+from spectre.assistant.config import agent_name, resolve_agent
 from spectre.assistant.db import now_iso
 from spectre.assistant.governance import Gate, Level
 from spectre.assistant.memory import Memory
@@ -57,18 +58,24 @@ def _forget(ctx: ActionContext, fact_id: int) -> str:
     return f"oublié : #{fact['id']} {fact['subject']} {fact['predicate']} {fact['value']}"
 
 
-def _start_mission(ctx: ActionContext, goal: str, kind: str = "mission") -> str:
+def _start_mission(ctx: ActionContext, goal: str, kind: str = "mission", agent: str = "") -> str:
     if not goal.strip():
         raise ActionError("objectif de mission vide")
     if kind not in ("mission", "redaction"):
         kind = "mission"
+    plan: dict[str, str] = {"kind": kind}
+    chosen = resolve_agent(agent)
+    if chosen:
+        plan["agent"] = chosen
     stamp = now_iso()
     mid = ctx.db.execute(
         "INSERT INTO missions(ts, goal, status, plan, updated_at) VALUES(?, ?, 'queued', ?, ?)",
-        (stamp, goal.strip(), json.dumps({"kind": kind}), stamp),
+        (stamp, goal.strip(), json.dumps(plan), stamp),
     )
+    who = f", confiée à {agent_name(chosen)}" if chosen and chosen != "claude" else ""
     return (
-        f"mission #{mid} lancée en arrière-plan : {goal.strip()} (je te préviens quand c'est fini)"
+        f"mission #{mid} lancée en arrière-plan{who} : {goal.strip()} "
+        "(je te préviens quand c'est fini)"
     )
 
 
@@ -185,7 +192,11 @@ TOOLS: dict[str, Tool] = {
         Tool(
             "start_mission",
             "Lancer une mission longue en arrière-plan (plan, étapes vérifiées, "
-            "rapport). kind=redaction pour un texte soigné rédigé par Scout, Scribe et Warden.",
+            "rapport). kind=redaction pour un texte soigné rédigé par Scout, Scribe et Warden. "
+            "agent : qui exécute les étapes, par son nom ou son modèle. Kyra (chatgpt) pour les "
+            "images, vidéos et le multimédia ; Syfer (mistral) pour la cybersécurité et les tests "
+            "d'intrusion autorisés ; Gétro (sonnet) ou Kaïto (haiku, rapide) pour le reste ; "
+            "vide = le réglage.",
             Level.WRITE,
             "mission",
             _start_mission,

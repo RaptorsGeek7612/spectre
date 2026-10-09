@@ -33,7 +33,10 @@ forge fmt --check ; forge build ; forge test
 - Le produit s'appelle **Spectre**. IDs de modèles uniquement dans `src/spectre/config.py`.
 - Jamais de `temperature`/`top_p`/`top_k` vers Sonnet 5.5 / Opus 5.5 : régler l'effort.
   Haiku 4.5 : `temperature` OK, pas d'effort. `max_tokens`, pas de prefill, pas de `budget_tokens`.
-- Assistant : modèles en alias Claude Code (`haiku`, `sonnet`, `opus`), jamais d'ID ; toute
+- Assistant : modèles en alias Claude Code (`haiku`, `sonnet`, `opus`), jamais d'ID ; agents
+  d'exécution des missions externes possibles : `chatgpt` (Codex CLI, `assistant/codex.py`) et
+  `mistral` (Vibe CLI, `assistant/mistral.py`), toujours avec les seuls outils MCP de Spectre ;
+  noms des sous-agents dans `assistant/config.py` (`AGENT_NAMES` : Gétro, Kaïto, Kyra, Syfer) ; toute
   action passe par `tools.execute` (portail + audit). `voice/engines.py` et `winapi.py` sont
   exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
