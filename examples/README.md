@@ -24,6 +24,14 @@ uv run spectre "Rédige un court article sur LangGraph" --json > resultat.json
 SPECTRE_WARDEN_EFFORT=max uv run spectre "Relis ce contrat de prestation" --costs
 ```
 
+## Spectre — lots, évaluation, agents ajoutés
+
+```shell
+uv run spectre batch examples/demandes.example.txt --direct     # trois demandes, une par une
+uv run spectre eval examples/cas.example.jsonl --demo           # vérifie le fichier de cas
+cp examples/spectre-agents.example.toml spectre-agents.toml     # ajoute un traducteur après Warden
+```
+
 ## Spectre — bibliothèque
 
 ```python

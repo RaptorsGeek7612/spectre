@@ -48,6 +48,8 @@ def test_usage_from_message() -> None:
         "output_tokens": 3000,
         "cost_usd": pytest.approx(0.034),
         "truncated": False,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
     }
 
 

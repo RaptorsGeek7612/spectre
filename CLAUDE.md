@@ -23,6 +23,8 @@ uv run ruff format --check . ; uv run ruff check .
 uv run mypy src                  # si Windows bloque mypy : uv run python -m mypy --no-native-parser src
 uv run pytest -m "not live" --cov=spectre --cov-report=term-missing
 uv run python -m spectre.web             # interface web (spectre-web.exe peut être bloqué par Windows)
+uv run spectre batch demandes.txt       # lots (API Message Batches) ; --direct pour un par un
+uv run spectre eval cas.jsonl --demo    # évaluation ; --judge pour les critères
 uv run python -m spectre.assistant --voice   # assistant vocal (uv sync --extra voice)
 
 # Partie Foundry

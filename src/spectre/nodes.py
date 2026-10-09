@@ -1,4 +1,4 @@
-"""LangGraph node factories for Scout, Scribe and Warden."""
+"""LangGraph node factories: one generic node per `Step` (Scout, Scribe, Warden, added agents)."""
 
 from __future__ import annotations
 
@@ -14,16 +14,8 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from spectre.config import DEFAULT_SPECS
 from spectre.costs import usage_from_message
 from spectre.errors import AgentRefusalError, EmptyOutputError, SpectreError
-from spectre.prompts import (
-    SCOUT_PROMPT,
-    SCRIBE_PROMPT,
-    WARDEN_PROMPT,
-    scout_input,
-    scribe_input,
-    warden_input,
-)
 from spectre.state import SpectreState, UsageRecord
-from spectre.verdict import parse_verdict
+from spectre.steps import SCOUT, SCRIBE, WARDEN, Step
 
 logger = logging.getLogger("spectre")
 
@@ -41,7 +33,8 @@ def _resolve_model_name(agent: str, model: BaseChatModel, model_name: str | None
     attr = getattr(model, "model", None)
     if isinstance(attr, str) and attr:
         return attr
-    return DEFAULT_SPECS[agent].model
+    default = DEFAULT_SPECS.get(agent)
+    return default.model if default else "inconnu"
 
 
 def _call_agent(
@@ -79,59 +72,36 @@ def _call_agent(
     return text, usage_from_message(agent, served_by, ai, truncated=truncated)
 
 
+def make_node(
+    step: Step, model: BaseChatModel, model_name: str | None = None, *, cache: bool = False
+) -> NodeFn:
+    """A LangGraph node running `step` with `model` (prompt caching on Scribe/Warden if `cache`)."""
+
+    name = _resolve_model_name(step.name, model, model_name)
+
+    def node(state: SpectreState) -> dict[str, Any]:
+        messages = [SystemMessage(step.prompt), HumanMessage(step.build(state, cache))]
+        answer, usage = _call_agent(step.name, model, name, messages)
+        return {**step.apply(state, answer), "usage": [usage]}
+
+    node.__name__ = step.name
+    return node
+
+
 def make_scout_node(model: BaseChatModel, model_name: str | None = None) -> NodeFn:
     """Scout: request -> brief."""
-
-    name = _resolve_model_name("scout", model, model_name)
-
-    def scout(state: SpectreState) -> dict[str, Any]:
-        messages = [SystemMessage(SCOUT_PROMPT), HumanMessage(scout_input(state["request"]))]
-        brief, usage = _call_agent("scout", model, name, messages)
-        return {"brief": brief, "usage": [usage]}
-
-    return scout
+    return make_node(SCOUT, model, model_name)
 
 
-def make_scribe_node(model: BaseChatModel, model_name: str | None = None) -> NodeFn:
+def make_scribe_node(
+    model: BaseChatModel, model_name: str | None = None, *, cache: bool = False
+) -> NodeFn:
     """Scribe: request + brief -> draft; after a rejection, rewrites with Warden's issues."""
-
-    name = _resolve_model_name("scribe", model, model_name)
-
-    def scribe(state: SpectreState) -> dict[str, Any]:
-        revising = state.get("approved") is False
-        human = scribe_input(
-            state["request"],
-            state["brief"],
-            state.get("final_text", "") if revising else "",
-            state.get("issues", []) if revising else (),
-        )
-        messages = [SystemMessage(SCRIBE_PROMPT), HumanMessage(human)]
-        draft, usage = _call_agent("scribe", model, name, messages)
-        update: dict[str, Any] = {"draft": draft, "usage": [usage]}
-        if revising:
-            update["revisions"] = state.get("revisions", 0) + 1
-        return update
-
-    return scribe
+    return make_node(SCRIBE, model, model_name, cache=cache)
 
 
-def make_warden_node(model: BaseChatModel, model_name: str | None = None) -> NodeFn:
+def make_warden_node(
+    model: BaseChatModel, model_name: str | None = None, *, cache: bool = False
+) -> NodeFn:
     """Warden: request + draft -> final_text and a verdict (approved, issues)."""
-
-    name = _resolve_model_name("warden", model, model_name)
-
-    def warden(state: SpectreState) -> dict[str, Any]:
-        human = warden_input(state["request"], state["draft"])
-        messages = [SystemMessage(WARDEN_PROMPT), HumanMessage(human)]
-        answer, usage = _call_agent("warden", model, name, messages)
-        verdict = parse_verdict(answer)
-        if not verdict.text:
-            raise EmptyOutputError("warden")
-        return {
-            "final_text": verdict.text,
-            "approved": verdict.approved,
-            "issues": verdict.issues,
-            "usage": [usage],
-        }
-
-    return warden
+    return make_node(WARDEN, model, model_name, cache=cache)

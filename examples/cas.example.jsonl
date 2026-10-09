@@ -1,0 +1,2 @@
+{"id": "haiku", "request": "Écris un haïku sur la pluie d'automne.", "checks": {"max_words": 25, "approved": true}, "criteria": ["Le texte a trois vers", "Il évoque l'automne et la pluie"]}
+{"id": "resiliation", "request": "Rédige une lettre courte de résiliation d'abonnement à une salle de sport.", "checks": {"min_words": 60, "max_words": 250, "include": ["résiliation"], "max_cost_usd": 0.10}, "criteria": ["Le ton est poli et ferme", "La lettre demande une confirmation écrite"]}

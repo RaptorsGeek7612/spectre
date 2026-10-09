@@ -3,7 +3,7 @@ and the `run` entry point."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -13,18 +13,22 @@ from langgraph.graph.state import CompiledStateGraph
 
 from spectre.config import (
     AGENT_NAMES,
+    AgentSpec,
     check_max_revisions,
     has_api_key,
     load_client_settings,
     load_env,
     load_max_revisions,
+    load_prompt_cache,
     load_specs,
 )
 from spectre.costs import total_cost
 from spectre.errors import MissingAPIKeyError
 from spectre.llm import make_chat_model
-from spectre.nodes import make_scout_node, make_scribe_node, make_warden_node
+from spectre.nodes import make_node
+from spectre.plugins import ExtraAgent, load_extra_agents
 from spectre.state import SpectreState, UsageRecord
+from spectre.steps import CORE_STEPS, Step
 
 SpectreGraph = CompiledStateGraph[SpectreState, None, SpectreState, SpectreState]
 
@@ -60,56 +64,91 @@ class SpectreResult:
         }
 
 
-def revision_router(max_revisions: int) -> Callable[[SpectreState], str]:
-    """After Warden: back to Scribe while the draft is rejected and rounds remain, else end."""
+def pipeline_steps(extras: Sequence[ExtraAgent] = ()) -> list[Step]:
+    """The agents in running order: each core agent, then the extras placed after it."""
+    order: list[Step] = []
+    for name in AGENT_NAMES:
+        order.append(CORE_STEPS[name])
+        order.extend(extra.step for extra in extras if extra.after == name)
+    return order
+
+
+def next_step(
+    order: Sequence[str], node: str, state: Mapping[str, Any], max_revisions: int
+) -> str | None:
+    """The agent after `node` (None at the end): back to Scribe while Warden rejects the text
+    and rounds remain, else the next one in `order`."""
+    if (
+        node == "warden"
+        and state.get("approved") is False
+        and state.get("revisions", 0) < max_revisions
+    ):
+        return "scribe"
+    position = order.index(node)
+    return order[position + 1] if position + 1 < len(order) else None
+
+
+def revision_router(
+    max_revisions: int, order: Sequence[str] = AGENT_NAMES
+) -> Callable[[SpectreState], str]:
+    """After Warden: back to Scribe while the draft is rejected and rounds remain, else on."""
 
     def route(state: SpectreState) -> str:
-        if state.get("approved") is False and state.get("revisions", 0) < max_revisions:
-            return "scribe"
-        return END
+        return next_step(order, "warden", state, max_revisions) or END
 
     return route
 
 
 def build_graph(
-    models: Mapping[str, BaseChatModel] | None = None, *, max_revisions: int | None = None
+    models: Mapping[str, BaseChatModel] | None = None,
+    *,
+    max_revisions: int | None = None,
+    extra_agents: Sequence[ExtraAgent] | None = None,
+    prompt_cache: bool | None = None,
 ) -> SpectreGraph:
     """Compile the Spectre graph.
 
-    `models` maps agent names ("scout", "scribe", "warden") to chat models (e.g. fakes
-    for tests). Missing agents get a `ChatAnthropic` built from `spectre.config`; in that
-    case `.env` is loaded and ANTHROPIC_API_KEY must be set. `max_revisions` caps the
+    `models` maps agent names ("scout", "scribe", "warden", and added agents) to chat models
+    (e.g. fakes for tests). Missing agents get a `ChatAnthropic` built from `spectre.config`;
+    in that case `.env` is loaded and ANTHROPIC_API_KEY must be set. `max_revisions` caps the
     Warden -> Scribe rounds (default: `SPECTRE_MAX_REVISIONS`, else 1; 0 = linear chain).
+    `extra_agents` defaults to `spectre-agents.toml`; `prompt_cache` to `SPECTRE_PROMPT_CACHE`.
     """
     rounds = load_max_revisions() if max_revisions is None else check_max_revisions(max_revisions)
+    extras = list(load_extra_agents() if extra_agents is None else extra_agents)
+    cache = load_prompt_cache() if prompt_cache is None else prompt_cache
+    steps = pipeline_steps(extras)
+    order = [step.name for step in steps]
     provided = dict(models or {})
-    unknown = sorted(set(provided) - set(AGENT_NAMES))
+    unknown = sorted(set(provided) - set(order))
     if unknown:
-        raise ValueError(f"agents inconnus : {', '.join(unknown)} (attendus : {AGENT_NAMES})")
+        raise ValueError(f"agents inconnus : {', '.join(unknown)} (attendus : {', '.join(order)})")
 
-    missing = [name for name in AGENT_NAMES if name not in provided]
+    missing = [name for name in order if name not in provided]
     resolved: dict[str, BaseChatModel] = dict(provided)
-    specs = {}
+    specs: dict[str, AgentSpec] = {extra.name: extra.spec for extra in extras}
     if missing:
         load_env()  # before load_specs() so SPECTRE_* overrides in .env are honoured
-        specs = load_specs()
+        specs.update(load_specs())
         if not has_api_key():
             raise MissingAPIKeyError()
         settings = load_client_settings()
         for name in missing:
             resolved[name] = make_chat_model(specs[name], settings)
 
-    # Injected models: pricing uses their `.model` attribute, else the configured ID.
-    names = {name: (None if name in provided else specs[name].model) for name in AGENT_NAMES}
-
     builder = StateGraph(SpectreState)
-    builder.add_node("scout", make_scout_node(resolved["scout"], names["scout"]))
-    builder.add_node("scribe", make_scribe_node(resolved["scribe"], names["scribe"]))
-    builder.add_node("warden", make_warden_node(resolved["warden"], names["warden"]))
-    builder.add_edge(START, "scout")
-    builder.add_edge("scout", "scribe")
-    builder.add_edge("scribe", "warden")
-    builder.add_conditional_edges("warden", revision_router(rounds), ["scribe", END])
+    for step in steps:
+        # Injected models: pricing uses their `.model` attribute, else the configured ID.
+        priced = None if step.name in provided else specs[step.name].model
+        builder.add_node(step.name, make_node(step, resolved[step.name], priced, cache=cache))
+    builder.add_edge(START, order[0])
+    for current, following in zip(order, order[1:], strict=False):
+        if current != "warden":
+            builder.add_edge(current, following)
+    after_warden = order[order.index("warden") + 1 :]
+    builder.add_conditional_edges(
+        "warden", revision_router(rounds, order), ["scribe", *after_warden[:1], END]
+    )
     return builder.compile(name="spectre")
 
 
@@ -118,11 +157,15 @@ def run(
     *,
     models: Mapping[str, BaseChatModel] | None = None,
     max_revisions: int | None = None,
+    extra_agents: Sequence[ExtraAgent] | None = None,
+    prompt_cache: bool | None = None,
 ) -> SpectreResult:
-    """Run the full pipeline on `request` and return a SpectreResult."""
+    """Run the full pipeline on `request` and return a SpectreResult (see `build_graph`)."""
     if not request or not request.strip():
         raise ValueError("la demande est vide")
-    graph = build_graph(models, max_revisions=max_revisions)
+    graph = build_graph(
+        models, max_revisions=max_revisions, extra_agents=extra_agents, prompt_cache=prompt_cache
+    )
     state = graph.invoke({"request": request.strip(), "usage": [], "revisions": 0})
     return SpectreResult(
         brief=state["brief"],

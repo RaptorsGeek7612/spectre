@@ -7,6 +7,31 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-09
+
+### Added
+
+- `spectre batch FICHIER` : plusieurs demandes d'un coup. Par défaut via l'API Message Batches
+  (50 % moins cher, asynchrone) avec un lot par étape pour toutes les demandes, reprise
+  automatique après une interruption (état enregistré après chaque étape) ; `--direct` les
+  traite tout de suite une par une. Résultats en JSON Lines.
+- `spectre eval CAS` : évaluation sur des cas de test, contrôles automatiques (mots, termes
+  présents ou absents, validation par Warden, coût maximal) et, avec `--judge`, critères notés
+  par un juge ; rapport, `--json`, code de sortie 1 si un cas échoue, `--demo` sans clé.
+- Agents branchables sans code : `spectre-agents.toml` (ou `SPECTRE_AGENTS_FILE`) ajoute des
+  agents après Scout, Scribe ou Warden, qui lisent et réécrivent un texte de la chaîne.
+- Mise en cache des prompts (`SPECTRE_PROMPT_CACHE`, désactivée par défaut) : la partie que
+  Scribe et Warden relisent à chaque tour de révision est marquée pour le cache.
+- Coûts : tokens lus et écrits en cache comptés au bon prix (lecture 0,10 à 0,20 $/M, écriture
+  1,25 × l'entrée), remise de 50 % des lots, colonnes « Cache » dans `--costs` quand il sert.
+- Exemples : `examples/spectre-agents.example.toml`, `demandes.example.txt`,
+  `cas.example.jsonl`.
+
+### Changed
+
+- Les nœuds sont génériques (`spectre.steps.Step` + `nodes.make_node`) : ce que lit et écrit
+  chaque agent est décrit une seule fois et partagé par le graphe et le mode lots.
+
 ## [0.4.0] - 2026-10-09
 
 ### Added

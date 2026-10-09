@@ -57,10 +57,15 @@ class AgentSpec:
 
 @dataclass(frozen=True)
 class ModelPrice:
-    """Price in USD per million tokens."""
+    """Price in USD per million tokens (cache writes: CACHE_WRITE_FACTOR x input)."""
 
     input_per_mtok: float
     output_per_mtok: float
+    cache_read_per_mtok: float
+
+
+CACHE_WRITE_FACTOR: Final = 1.25  # 5-minute cache entries
+BATCH_FACTOR: Final = 0.5  # the Message Batches API halves every token price
 
 
 @dataclass(frozen=True)
@@ -90,13 +95,13 @@ DEFAULT_SPECS: Final[Mapping[str, AgentSpec]] = {
 }
 
 PRICING: Final[Mapping[str, ModelPrice]] = {
-    "claude-haiku-4-5": ModelPrice(input_per_mtok=1.0, output_per_mtok=5.0),
-    "claude-sonnet-5-5": ModelPrice(input_per_mtok=2.0, output_per_mtok=10.0),
-    "claude-opus-5-5": ModelPrice(input_per_mtok=4.0, output_per_mtok=20.0),
+    "claude-haiku-4-5": ModelPrice(1.0, 5.0, cache_read_per_mtok=0.10),
+    "claude-sonnet-5-5": ModelPrice(2.0, 10.0, cache_read_per_mtok=0.20),
+    "claude-opus-5-5": ModelPrice(4.0, 20.0, cache_read_per_mtok=0.20),
     # Possible server-side fallback targets.
-    "claude-sonnet-5": ModelPrice(input_per_mtok=2.0, output_per_mtok=10.0),
-    "claude-opus-5": ModelPrice(input_per_mtok=5.0, output_per_mtok=25.0),
-    "claude-opus-4-8": ModelPrice(input_per_mtok=5.0, output_per_mtok=25.0),
+    "claude-sonnet-5": ModelPrice(2.0, 10.0, cache_read_per_mtok=0.20),
+    "claude-opus-5": ModelPrice(5.0, 25.0, cache_read_per_mtok=0.50),
+    "claude-opus-4-8": ModelPrice(5.0, 25.0, cache_read_per_mtok=0.50),
 }
 
 
@@ -242,6 +247,24 @@ def check_max_revisions(value: int, source: str = "max_revisions") -> int:
             f"{source} doit être compris entre 0 et {MAX_REVISIONS_LIMIT}, reçu {value}"
         )
     return value
+
+
+def load_prompt_cache(env: Mapping[str, str] | None = None) -> bool:
+    """Prompt caching on Scribe/Warden (`SPECTRE_PROMPT_CACHE`, off by default).
+
+    A cache entry is written on the first round and only pays off when a revision round reads
+    it back: worth it for long requests that Warden often sends back, a 25% surcharge on the
+    request otherwise.
+    """
+    source = os.environ if env is None else env
+    raw = source.get("SPECTRE_PROMPT_CACHE", "").strip().lower()
+    if not raw:
+        return False
+    if raw not in _BOOL_VALUES:
+        raise ConfigurationError(
+            f"SPECTRE_PROMPT_CACHE doit valoir 1/0, true/false ou on/off, reçu {raw!r}"
+        )
+    return _BOOL_VALUES[raw]
 
 
 _BOOL_VALUES: Final[Mapping[str, bool]] = {

@@ -212,7 +212,21 @@ Jobs :
   expose. Aucun changement d'API publique incompatible (`max_revisions` est optionnel).
 - CLI `--stream` (réutilise `spectre.web.pipeline.stream_run`) et `--revisions N`.
 
-## 13. Décisions (ADR courtes)
+## 13. Évolution v0.5 (livrée)
+
+- `spectre/steps.py` : un `Step` par agent (prompt, message construit depuis l'état, mise à jour
+  de l'état depuis la réponse) ; `nodes.make_node(step, model)` est le seul nœud. Le graphe et
+  `spectre batch` partagent ces définitions.
+- `spectre/plugins.py` : agents ajoutés par `spectre-agents.toml` (après scout, scribe ou warden ;
+  lisent et écrivent brief, draft ou final_text). `graph.pipeline_steps()` donne l'ordre,
+  `graph.next_step()` le routage (révision comprise), utilisé aussi par l'interface web et les lots.
+- `spectre/batch.py` : mode lots, un Message Batch par étape, état JSON pour la reprise ;
+  `--direct` réutilise `run()`.
+- `spectre/evaluation.py` : cas JSON Lines, contrôles, juge optionnel, rapport.
+- Cache : blocs `cache_control` sur le préfixe partagé de Scribe et Warden (ADR 8) ;
+  `UsageRecord.cache_read_tokens` / `cache_write_tokens`, prix dans `config.PRICING`.
+
+## 14. Décisions (ADR courtes)
 
 | # | Décision | Raison |
 |---|---|---|
@@ -223,3 +237,5 @@ Jobs :
 | 5 | `uv` + `pyproject.toml` | Remplace `forge` ; lock reproductible |
 | 6 | Noms d'agents Scout/Scribe/Warden | Rôles explicites, indépendants des modèles |
 | 7 | Verdict en texte (`=== VERDICT ===` + JSON) plutôt que `with_structured_output` | Fonctionne avec tous les modèles pilotés par Spectre (Claude Code CLI, démo, faux modèles), garde le streaming du texte avant le verdict, et ne perd jamais le texte si le verdict manque |
+| 8 | Cache des prompts désactivé par défaut | L'écriture coûte 25 % de plus et n'est relue qu'au tour de révision ; les prompts système (quelques centaines de tokens) sont sous le seuil de 512 tokens. Rentable seulement pour de longues demandes souvent révisées |
+| 9 | Lots : une Message Batch par étape | La chaîne est séquentielle par demande ; regrouper chaque étape garde la remise de 50 % et ne coûte qu'un lot par étape, la révision et les agents ajoutés compris |

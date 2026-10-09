@@ -72,4 +72,4 @@ Total                                         0.0499 $
 | v0.3.0 | Assistant vocal Spectre (agent supérieur sur Opus 5.5) : voix locale, sphère HUD, actions gouvernées, mémoire, missions, reconnaissance des visages | Livré le 2026-10-08 |
 | v0.3.x | Agents d'exécution Kyra (ChatGPT) et Syfer (Mistral), accès et voix depuis le téléphone (Tailscale) | Livré le 2026-10-09 |
 | v0.4.0 | Boucle de révision, verdict structuré, streaming de la CLI | Livré le 2026-10-09 |
-| v0.5.0 | Nœuds extensibles, batch, caching, évaluation | Ultérieur |
+| v0.5.0 | Nœuds extensibles (`spectre-agents.toml`), batch (API Message Batches), caching, évaluation | Livré le 2026-10-09 |
