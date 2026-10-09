@@ -313,6 +313,7 @@ def test_main_errors(
 ) -> None:
     root = ["--dir", str(tmp_path / "a")]
     assert app_mod.main([*root, "--host", "0.0.0.0"]) == 2
+    assert app_mod.main([*root, "--allow-host", "pc.tailnet.ts.net"]) == 2  # needs a password
 
     def refuse(*a: Any, **kw: Any) -> Any:
         raise OSError("port pris")
@@ -498,3 +499,13 @@ def test_level_events_are_throttled(
     service.set_level(0)  # silence is always published
     levels = [e["v"] for e in _drain(q) if e["type"] == "level"]
     assert levels == [1.0, round(0.25**0.6, 3), 0.0]
+
+
+def test_main_allow_host_behind_a_relay(
+    launcher: dict[str, Any], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("SPECTRE_WEBUI_PASSWORD", "secret")
+    args = ["--dir", str(tmp_path / "a"), "--allow-host", "pc.tailnet.ts.net", "--no-browser"]
+    assert app_mod.main(args) == 0
+    server = launcher["servers"][0]
+    assert server.kw["extra_hosts"] == ["pc.tailnet.ts.net"] and server.kw["auth"].enabled

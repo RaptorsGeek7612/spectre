@@ -153,6 +153,17 @@ interface s'ouvre ; `tools\spectre-stop.cmd` l'arrête. Journal : `~/.spectre/as
 Le sélecteur « Rédaction | Assistant », sous le logo, passe d'un espace à l'autre. Depuis la page d'accueil, le bouton « Parler à Spectre »
 (en bas à droite) le fait écouter sans le mot d'éveil.
 
+**Depuis le téléphone, partout.** Installez [Tailscale](https://tailscale.com) sur le PC et sur
+le téléphone, avec le même compte (gratuit pour un usage personnel), puis choisissez un mot de
+passe en double-cliquant sur `tools\spectre-password.cmd`. Au lancement suivant,
+`tools\spectre-assistant.cmd` publie Spectre sur votre réseau privé Tailscale en HTTPS
+(`tailscale serve`, rien n'est ouvert sur Internet) et l'ouvre à ce nom
+(`--allow-host <pc>.<tailnet>.ts.net`). Sur le téléphone, ouvrez
+`https://<pc>.<tailnet>.ts.net/assistant.html` et entrez le mot de passe. La première fois,
+Tailscale demande d'activer Serve et HTTPS pour votre réseau (un lien dans sa console
+d'administration). Sans Tailscale ou sans mot de passe, Spectre reste joignable depuis le PC
+seulement.
+
 Le premier lancement avec `--voice` télécharge les modèles (environ 200 Mo) dans
 `~/.spectre/assistant/models/`. L'interface `assistant.html` affiche l'état de la voix, la
 conversation, les actions en attente de validation, les missions, la mémoire (consultable,

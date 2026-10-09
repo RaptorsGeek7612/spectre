@@ -764,8 +764,12 @@ dialog::backdrop { background: rgb(8 8 10 / 0.6); }
     padding: 10px 12px max(10px, env(safe-area-inset-bottom));
   }
   .composer textarea { min-height: 52px; font-size: 1rem; }
-  .voice-fab { bottom: 168px; padding-right: 8px; }
-  .voice-fab .voice-label { display: none; }
+  /* on a phone the floating button covered the page and made the PC listen, not the phone;
+     the header icon already leads to the assistant */
+  .voice-fab { display: none; }
+  /* one microphone only: the header one opens the assistant; for dictation the phone keyboard
+     has its own */
+  #mic-btn { display: none; }
   .composer .select-inline .label { display: none; }
   .btn { min-height: 44px; }
   .icon-btn { width: 44px; height: 44px; }
@@ -784,7 +788,11 @@ dialog::backdrop { background: rgb(8 8 10 / 0.6); }
   .agent-status { font-size: 0.74rem; }
   .switch .label { display: none; }
   .composer-bar { flex-wrap: nowrap; }
-  .composer-bar .select-inline select { max-width: 98px; }
+  /* the row never overflows: only the preset menu gives way (up to 128 px, « Qualité max »
+     fits when there is room), the send button always stays whole */
+  .composer-bar > * { flex-shrink: 0; }
+  .composer-bar .select-inline { flex: 0 1 128px; min-width: 64px; }
+  .composer-bar .select-inline select { width: 100%; min-width: 0; }
   .composer-bar .icon-btn { width: 40px; }
   .axis-unit { display: none; }
   .composer-bar .btn { padding: 0 12px 0 16px; letter-spacing: 0.14em; }
@@ -795,6 +803,10 @@ dialog::backdrop { background: rgb(8 8 10 / 0.6); }
   .plate-title { font-size: 1.3rem; }
   .plate-body { padding: 16px; }
   .wordmark { --wm-track: 0.3em; }
+}
+@media (max-width: 380px) {
+  .composer-bar .btn .ic { display: none; }  /* « Exposer » alone on the narrowest phones */
+  .composer-bar .btn { padding: 0 14px; }
 }
 @media (hover: none) {
   .run-more { opacity: 1; }

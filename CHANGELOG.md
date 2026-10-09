@@ -7,6 +7,29 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-10-09
+
+### Added
+
+- Accès depuis le téléphone, de partout, par Tailscale : quand Tailscale est installé et qu'un
+  mot de passe est défini, `tools\spectre-assistant.cmd` publie Spectre en HTTPS sur le réseau
+  privé (`tailscale serve`) sans rien ouvrir sur Internet. Le délai est limité : si Serve n'est
+  pas encore activé, Spectre démarre en local seulement.
+- `--allow-host NOM` (`spectre-assistant`) : nom d'hôte accepté derrière un relais, en plus de
+  localhost ; un mot de passe est alors obligatoire.
+- `tools\spectre-password.cmd` choisit le mot de passe de l'interface (variable utilisateur
+  `SPECTRE_WEBUI_PASSWORD`), sans l'écrire dans le dépôt.
+
+### Fixed
+
+- Page Rédaction sur téléphone : le bouton micro flottant ne recouvre plus le contenu (il est
+  masqué ; l'icône de l'en-tête mène déjà à l'assistant, et ce bouton faisait écouter le PC, pas
+  le téléphone) ; le préréglage « Qualité max » n'est plus coupé quand la place le permet.
+- Le bouton « Exposer » ne dépasse plus de l'écran sur les téléphones étroits ou avec un texte
+  agrandi : le menu des préréglages se resserre à sa place, et sous 380 px la flèche disparaît.
+- Un seul micro sur téléphone : celui de l'en-tête (vers l'assistant) ; le bouton de dictée est
+  masqué sous 900 px, le clavier du téléphone ayant déjà le sien.
+
 ## [0.3.5] - 2026-10-09
 
 ### Added
