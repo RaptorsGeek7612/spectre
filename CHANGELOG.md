@@ -20,6 +20,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 - `tools\spectre-password.cmd` choisit le mot de passe de l'interface (variable utilisateur
   `SPECTRE_WEBUI_PASSWORD`), sans l'écrire dans le dépôt.
 
+### Fixed
+
+- Page Rédaction sur téléphone : le bouton micro flottant ne recouvre plus le contenu (il est
+  masqué ; l'icône de l'en-tête mène déjà à l'assistant, et ce bouton faisait écouter le PC, pas
+  le téléphone) ; le préréglage « Qualité max » n'est plus coupé.
+
 ## [0.3.5] - 2026-10-09
 
 ### Added

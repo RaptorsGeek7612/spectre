@@ -764,8 +764,9 @@ dialog::backdrop { background: rgb(8 8 10 / 0.6); }
     padding: 10px 12px max(10px, env(safe-area-inset-bottom));
   }
   .composer textarea { min-height: 52px; font-size: 1rem; }
-  .voice-fab { bottom: 168px; padding-right: 8px; }
-  .voice-fab .voice-label { display: none; }
+  /* on a phone the floating button covered the page and made the PC listen, not the phone;
+     the header icon already leads to the assistant */
+  .voice-fab { display: none; }
   .composer .select-inline .label { display: none; }
   .btn { min-height: 44px; }
   .icon-btn { width: 44px; height: 44px; }
@@ -784,7 +785,7 @@ dialog::backdrop { background: rgb(8 8 10 / 0.6); }
   .agent-status { font-size: 0.74rem; }
   .switch .label { display: none; }
   .composer-bar { flex-wrap: nowrap; }
-  .composer-bar .select-inline select { max-width: 98px; }
+  .composer-bar .select-inline select { max-width: 128px; }  /* « Qualité max » fits */
   .composer-bar .icon-btn { width: 40px; }
   .axis-unit { display: none; }
   .composer-bar .btn { padding: 0 12px 0 16px; letter-spacing: 0.14em; }
