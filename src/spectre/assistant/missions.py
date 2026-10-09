@@ -24,12 +24,14 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 
 from spectre.assistant.brain import ClaudeCLI, extract_json, one_shot
 from spectre.assistant.codex import CodexCLI
+from spectre.assistant.config import AGENT_CHOICES, agent_name
 from spectre.assistant.db import Database, now_iso
 from spectre.assistant.memory import Memory
 from spectre.assistant.mistral import VibeCLI
 
 MAX_STEPS = 6
 EXTERNAL: dict[str, Any] = {"chatgpt": CodexCLI, "mistral": VibeCLI}  # non-Claude agents
+AGENTS = AGENT_CHOICES
 Notify = Callable[[str, str, str], object]  # (kind, title, body)
 
 PLANNER = """\
@@ -39,7 +41,8 @@ l'ordre. Chaque étape doit pouvoir être réalisée avec : recherche web, lectu
 fichiers dans le dossier de travail, mémoire, ouverture d'applis ou de pages."""
 
 WORKER = """\
-Tu es Spectre et tu exécutes UNE étape d'une mission en arrière-plan, avec tes outils. \
+Tu es {name}, un agent d'exécution de Spectre (l'assistant personnel de l'utilisateur), et tu \
+exécutes UNE étape d'une mission en arrière-plan, avec tes outils. \
 Travaille dans le dossier courant. Termine par un compte rendu factuel de ce que tu as \
 réellement fait et obtenu (fichiers créés, sources). N'invente rien."""
 
@@ -59,7 +62,8 @@ preuve et sa correction.""",
 }
 
 VERIFIER = """\
-Tu vérifies si une étape de mission est réellement accomplie, d'après son compte rendu. \
+Tu es Kaïto, le vérificateur de Spectre. Tu vérifies si une étape de mission est réellement \
+accomplie, d'après son compte rendu. \
 « Existe » ou « a été tenté » ne suffit pas : l'objectif de l'étape doit être atteint. \
 Réponds UNIQUEMENT par un objet JSON : {"ok": true|false, "note": "explication courte"}."""
 
@@ -195,7 +199,8 @@ class MissionEngine:
             done.append(outcome)
             self._set(row["id"], steps=json.dumps(done, ensure_ascii=False))
         summary = "\n\n".join(
-            f"Étape {i + 1} : {d['step']}\nRésultat : {d['result']}\nVérification : "
+            f"Étape {i + 1} ({agent_name(d.get('agent', ''))}) : {d['step']}\n"
+            f"Résultat : {d['result']}\nVérification ({agent_name('haiku')}) : "
             f"{'OK' if d['ok'] else 'NON'} — {d['note']}"
             for i, d in enumerate(done)
         )
@@ -208,7 +213,7 @@ class MissionEngine:
 
     def _worker(self, agent: str) -> tuple[Any, str]:
         """Who executes a step: the mission's own choice, else the `mission_model` setting."""
-        name = agent if agent in ("claude", *EXTERNAL) else self.model
+        name = agent if agent in AGENTS else self.model
         if name == "claude":  # Claude asked for one mission while the setting names another
             name = "sonnet" if self.model in EXTERNAL else self.model
         if name not in EXTERNAL:
@@ -223,7 +228,9 @@ class MissionEngine:
         previous = "\n".join(f"- {d['step']} → {d['result'][:400]}" for d in done) or "(aucune)"
         prompt = f"Mission : {goal}\nÉtapes déjà faites :\n{previous}\n\nÉtape à faire : {step}"
         worker, model = self._worker(agent)
-        system = f"{WORKER}\n\n{SPECIALTIES[model]}" if model in SPECIALTIES else WORKER
+        system = WORKER.format(name=agent_name(model))
+        if model in SPECIALTIES:
+            system += f"\n\n{SPECIALTIES[model]}"
         note, ok, result = "", False, ""
         for attempt in range(2):
             extra = f"\n\nTentative précédente insuffisante : {note}" if attempt else ""
@@ -238,7 +245,14 @@ class MissionEngine:
                 ok, note = False, "vérification illisible"
             if ok:
                 break
-        return {"step": step, "result": result, "ok": ok, "note": note, "agent": model}
+        return {
+            "step": step,
+            "result": result,
+            "ok": ok,
+            "note": note,
+            "agent": model,
+            "name": agent_name(model),
+        }
 
     # ---- persistence -----------------------------------------------------------------------
 

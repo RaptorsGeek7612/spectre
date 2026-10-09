@@ -19,6 +19,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   `start_mission` accepte `agent=claude|chatgpt|mistral`, et chaque étape note quel agent l'a faite.
 - Spécialités : ChatGPT pour les images, la vidéo et le multimédia ; Mistral pour la cybersécurité
   et les tests d'intrusion (cadre autorisé uniquement). Spectre choisit l'agent selon le sujet.
+- Les sous-agents ont un nom : Gétro (Sonnet), Kaïto (Haiku, le vérificateur), Kyra (ChatGPT) et
+  Syfer (Mistral). `start_mission` accepte le nom (sans tenir compte des majuscules ni des
+  accents) ; les étapes, les rapports et l'interface affichent qui a fait quoi.
 
 ### Fixed
 

@@ -194,6 +194,10 @@ peuvent être confiées à Claude (Sonnet, Opus ou Haiku), à **ChatGPT** via Co
 Chacun a sa spécialité, et Spectre choisit l'agent selon le sujet de la mission : **ChatGPT**
 pour les images, la vidéo et le multimédia, **Mistral** pour la cybersécurité et les tests
 d'intrusion (seulement sur vos systèmes ou avec une autorisation écrite), Claude pour le reste.
+Chaque sous-agent porte un nom : **Gétro** (Sonnet) exécute par défaut, **Kaïto** (Haiku)
+vérifie chaque étape, **Kyra** (ChatGPT) gère le multimédia et **Syfer** (Mistral) la
+cybersécurité. Les noms servent aussi à choisir l'agent (« lance une mission avec Syfer ») et
+apparaissent dans les étapes et les rapports.
 ChatGPT et Mistral n'ont que les outils de Spectre (par MCP, donc le même portail de gouvernance)
 et la recherche web ; le shell de Codex tourne dans son bac à sable en lecture seule.
 `chatgpt_model` et `mistral_model` choisissent le modèle (vide = celui par défaut).

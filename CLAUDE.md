@@ -35,7 +35,8 @@ forge fmt --check ; forge build ; forge test
   Haiku 4.5 : `temperature` OK, pas d'effort. `max_tokens`, pas de prefill, pas de `budget_tokens`.
 - Assistant : modèles en alias Claude Code (`haiku`, `sonnet`, `opus`), jamais d'ID ; agents
   d'exécution des missions externes possibles : `chatgpt` (Codex CLI, `assistant/codex.py`) et
-  `mistral` (Vibe CLI, `assistant/mistral.py`), toujours avec les seuls outils MCP de Spectre ; toute
+  `mistral` (Vibe CLI, `assistant/mistral.py`), toujours avec les seuls outils MCP de Spectre ;
+  noms des sous-agents dans `assistant/config.py` (`AGENT_NAMES` : Gétro, Kaïto, Kyra, Syfer) ; toute
   action passe par `tools.execute` (portail + audit). `voice/engines.py` et `winapi.py` sont
   exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).

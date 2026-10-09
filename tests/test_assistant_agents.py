@@ -14,7 +14,7 @@ import pytest
 from spectre.assistant import codex, missions, mistral, tools
 from spectre.assistant.brain import Reply
 from spectre.assistant.codex import CodexCLI, find_codex
-from spectre.assistant.config import AssistantConfig
+from spectre.assistant.config import AssistantConfig, agent_name, resolve_agent
 from spectre.assistant.db import Database
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.mistral import VibeCLI, vibe_command
@@ -190,12 +190,17 @@ def test_mission_steps_by_chatgpt_setting(db: Database, tmp_path: Path) -> None:
     assert gpt.calls[0]["tools"] is True and gpt.calls[0]["model"] == "chatgpt"
     assert claude.calls[0]["model"] == "haiku"  # the verifier stays Claude
     assert _steps(db, mid)[0]["agent"] == "chatgpt"
-    assert "multimédia" in gpt.calls[0]["system"]  # ChatGPT's specialty
+    assert gpt.calls[0]["system"].startswith("Tu es Kyra,")  # ChatGPT's name...
+    assert "multimédia" in gpt.calls[0]["system"]  # ...and specialty
+    assert _steps(db, mid)[0]["name"] == "Kyra"
+    report_prompt = claude.calls[1]["prompt"]
+    assert "Étape 1 (Kyra)" in report_prompt and "Vérification (Kaïto)" in report_prompt
+    assert claude.calls[0]["system"].startswith("Tu es Kaïto,")  # the verifier
     # agent=claude for one mission overrides the setting (Sonnet stands in for "chatgpt")
     mid = _queue(db, {"kind": "mission", "steps": ["unique"], "agent": "claude"})
     engine.run_next()
     assert _steps(db, mid)[0]["agent"] == "sonnet" and len(gpt.calls) == 1
-    assert claude.calls[2]["system"] == missions.WORKER  # Claude: no specialty added
+    assert claude.calls[2]["system"] == missions.WORKER.format(name="Gétro")  # no specialty
 
 
 def test_mission_agent_override_and_lazy_creation(
@@ -221,7 +226,8 @@ def test_mission_agent_override_and_lazy_creation(
         "agent": "mistral",
     }
     assert _steps(db, mid)[0]["agent"] == "mistral"
-    assert "autorisation écrite" in engine.agents["mistral"].calls[0]["system"]  # its specialty
+    system = engine.agents["mistral"].calls[0]["system"]
+    assert system.startswith("Tu es Syfer,") and "autorisation écrite" in system
     # an unknown agent falls back to the setting
     claude.replies += ["fait", '{"ok": true}', "rapport"]
     mid = _queue(db, {"kind": "mission", "steps": ["b"], "agent": "gemini"})
@@ -233,10 +239,35 @@ def test_start_mission_records_the_agent(db: Database, tmp_path: Path) -> None:
     ctx = tools.make_context(db, tmp_path, [str(tmp_path)])
     for agent, expected in (
         ("chatgpt", "chatgpt"),
-        ("mistral", "mistral"),
+        ("Kyra", "chatgpt"),
+        ("SYFER", "mistral"),
+        ("Getro", "sonnet"),
+        ("kaïto", "haiku"),
         ("claude", "claude"),
         ("gemini", None),
     ):
-        mid = int(tools._start_mission(ctx, "Résumer", agent=agent).split("#")[1].split()[0])
+        answer = tools._start_mission(ctx, "Résumer", agent=agent)
+        mid = int(answer.split("#")[1].split()[0])
         row = db.one("SELECT plan FROM missions WHERE id = ?", (mid,))
         assert row and json.loads(row["plan"]).get("agent") == expected
+        assert ("confiée à" in answer) == (expected not in (None, "claude"))
+    assert "confiée à Syfer" in tools._start_mission(ctx, "Audit", agent="mistral")
+
+
+def test_agent_names() -> None:
+    assert [agent_name(m) for m in ("sonnet", "haiku", "chatgpt", "mistral", "opus")] == [
+        "Gétro",
+        "Kaïto",
+        "Kyra",
+        "Syfer",
+        "Spectre",
+    ]
+    assert agent_name("autre") == "autre" and resolve_agent("  ") == ""
+
+
+def test_mission_by_haiku_named_agent(db: Database, tmp_path: Path) -> None:
+    claude = FakeCLI(tmp_path, "fait vite", '{"ok": true}', "rapport")
+    engine = MissionEngine(db, claude, lambda *a: None, model="sonnet")  # type: ignore[arg-type]
+    mid = _queue(db, {"kind": "mission", "steps": ["vite"], "agent": "haiku"})
+    engine.run_next()
+    assert claude.calls[0]["model"] == "haiku" and _steps(db, mid)[0]["name"] == "Kaïto"

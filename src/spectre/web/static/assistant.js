@@ -123,7 +123,7 @@ async function loadMissions() {
     return h("article", { class: "card", "data-status": m.status },
       h("h3", {}, m.goal),
       h("span", { class: "meta" }, `#${m.id} · ${MSTATUS[m.status] || m.status} · ${date(m.updated_at)}`),
-      steps.length ? h("p", {}, steps.map((s, i) => `${s.ok ? "✓" : "✗"} ${i + 1}. ${s.step}`).join("\n")) : null,
+      steps.length ? h("p", {}, steps.map((s, i) => `${s.ok ? "✓" : "✗"} ${i + 1}. ${s.step}${s.name ? ` — ${s.name}` : ""}`).join("\n")) : null,
       m.error ? h("p", {}, `Erreur : ${m.error}`) : null,
       m.report ? h("details", {}, h("summary", {}, "Rapport"), h("pre", {}, m.report)) : null);
   }) : [h("p", { class: "empty-cards" }, "Aucune mission. Demande-en une à Spectre ou lance-la ici.")]));
@@ -177,11 +177,12 @@ async function loadAudit() {
 }
 
 /* ---- settings ---- */
+const AGENT_NAMES = { sonnet: "Gétro", haiku: "Kaïto", chatgpt: "Kyra", mistral: "Syfer", opus: "Spectre" };
 const FIELDS = [
   ["user_name", "Ton prénom", "text", "Spectre l'utilise pour s'adresser à toi."],
   ["city", "Ta ville", "text", "Pour la météo du briefing."],
   ["brain_model", "Spectre, l'agent supérieur", ["opus", "sonnet", "haiku"], "opus = Opus 5.5 : le plus capable ; il planifie aussi les missions et rédige leurs rapports."],
-  ["mission_model", "Agents d'exécution des missions", ["sonnet", "opus", "haiku", "chatgpt", "mistral"], "sonnet = Sonnet 5.5 ; haiku = Haiku 4.5, plus rapide ; chatgpt = ChatGPT via Codex (compte ChatGPT) ; mistral = Mistral via Vibe (compte Le Chat). Quoi qu'il en soit, Spectre confie d'office le multimédia à ChatGPT et la cybersécurité à Mistral."],
+  ["mission_model", "Agents d'exécution des missions", ["sonnet", "opus", "haiku", "chatgpt", "mistral"], "Gétro = Sonnet 5.5 ; Kaïto = Haiku 4.5, plus rapide (il vérifie aussi chaque étape) ; Kyra = ChatGPT via Codex (compte ChatGPT) ; Syfer = Mistral via Vibe (compte Le Chat). Quoi qu'il en soit, Spectre confie d'office le multimédia à Kyra et la cybersécurité à Syfer."],
   ["chatgpt_model", "Modèle ChatGPT", "text", "Vide = le modèle par défaut de Codex pour ton compte ChatGPT (par exemple gpt-5.5)."],
   ["mistral_model", "Modèle Mistral", "text", "Vide = le modèle par défaut de Vibe (mistral-medium-3.5). Vibe utilise ton compte Le Chat, ou une clé MISTRAL_API_KEY dans ~/.spectre/assistant/vibe/.env."],
   ["briefing_hour", "Heure du briefing", "number", "Le briefing du matin apparaît à partir de cette heure."],
@@ -224,7 +225,7 @@ async function loadSettings() {
   const form = $("#settings-form");
   form.replaceChildren(...FIELDS.map(([key, label, type, help]) => {
     let input;
-    if (Array.isArray(type)) input = h("select", { name: key }, ...type.map((o) => h("option", { value: o, selected: cfg[key] === o }, o)));
+    if (Array.isArray(type)) input = h("select", { name: key }, ...type.map((o) => h("option", { value: o, selected: cfg[key] === o }, key === "mission_model" && AGENT_NAMES[o] ? `${AGENT_NAMES[o]} (${o})` : o)));
     else if (type === "checkbox") input = h("input", { type: "checkbox", name: key, checked: !!cfg[key] });
     else input = h("input", { type, name: key, value: cfg[key] ?? "" });
     return h("label", {}, h("span", { class: "label" }, label), input, help ? h("span", { class: "help" }, help) : null);

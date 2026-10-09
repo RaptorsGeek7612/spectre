@@ -4,11 +4,42 @@ from __future__ import annotations
 
 import json
 import os
+import unicodedata
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
 DIR_ENV = "SPECTRE_ASSISTANT_DIR"
+
+# Spectre's sub-agents, by the model that serves them (names chosen by the user)
+AGENT_NAMES = {
+    "sonnet": "Gétro",  # execution agent by default
+    "haiku": "Kaïto",  # the verifier of every mission step
+    "chatgpt": "Kyra",  # images, video and multimedia
+    "mistral": "Syfer",  # cybersecurity and penetration tests
+    "opus": "Spectre",  # Spectre itself, when it runs the steps too
+}
+
+
+AGENT_CHOICES = ("claude", *AGENT_NAMES)  # what a mission may ask for ("claude" = the setting)
+
+
+def agent_name(model: str) -> str:
+    return AGENT_NAMES.get(model, model)
+
+
+def resolve_agent(value: str) -> str:
+    """An agent key from a key or a name, whatever the case or accents ("Kaïto" -> "haiku");
+    empty when unknown."""
+
+    def plain(text: str) -> str:
+        decomposed = unicodedata.normalize("NFKD", text.strip().lower())
+        return "".join(c for c in decomposed if not unicodedata.combining(c))
+
+    wanted = plain(value)
+    if wanted in AGENT_CHOICES:
+        return wanted
+    return next((key for key, name in AGENT_NAMES.items() if plain(name) == wanted), "")
 
 
 def assistant_dir() -> Path:
