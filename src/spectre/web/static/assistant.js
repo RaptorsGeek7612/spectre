@@ -253,6 +253,7 @@ async function loadStatus() {
   voiceAvailable = s.voice_available;
   $("#brain-model").textContent = `cerveau : ${s.brain_label || s.brain_model}`;
   $("#talk-btn").hidden = !voiceAvailable;
+  $("#cam-btn").hidden = !(REMOTE && s.camera);  // the PC's own camera already watches the PC
   $("#count-approvals").textContent = s.pending_approvals || "";
   $("#count-initiatives").textContent = s.pending_initiatives || "";
   $("#count-facts").textContent = s.facts || "";
@@ -361,6 +362,54 @@ async function playWav(b64) {
   await new Promise((resolve) => { src.onended = resolve; src.start(); });
 }
 
+/* ---- camera of this device (phone): a picture every 2 s, analysed by Spectre like its own ---- */
+const cam = { stream: null, timer: null, canvas: document.createElement("canvas"), sending: false };
+async function deviceCamera() {
+  if (cam.stream) { stopCamera(); return; }
+  try {
+    cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+  } catch {
+    toast("Autorise la caméra dans le navigateur pour que Spectre te reconnaisse depuis cet appareil.", "error", 7000);
+    return;
+  }
+  const video = $("#cam-preview");
+  video.srcObject = cam.stream;
+  video.hidden = false;
+  await video.play().catch(() => {});
+  $("#cam-btn").setAttribute("aria-pressed", "true");
+  cam.timer = setInterval(sendFrame, 2000);
+  toast("Caméra du téléphone active : Spectre regarde qui est là. Retouche le bouton pour l'arrêter.");
+}
+function stopCamera() {
+  clearInterval(cam.timer);
+  cam.stream?.getTracks().forEach((t) => t.stop());
+  cam.stream = null;
+  const video = $("#cam-preview");
+  video.srcObject = null;
+  video.hidden = true;
+  $("#cam-btn").setAttribute("aria-pressed", "false");
+}
+async function sendFrame() {
+  const video = $("#cam-preview");
+  if (cam.sending || !video.videoWidth) return;
+  cam.sending = true;
+  try {
+    const scale = Math.min(1, 640 / video.videoWidth);
+    cam.canvas.width = Math.round(video.videoWidth * scale);
+    cam.canvas.height = Math.round(video.videoHeight * scale);
+    cam.canvas.getContext("2d").drawImage(video, 0, 0, cam.canvas.width, cam.canvas.height);
+    const blob = await new Promise((resolve) => cam.canvas.toBlob(resolve, "image/jpeg", 0.75));
+    const res = await fetch("/api/assistant/frame", { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "image/jpeg" }, body: blob });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      stopCamera();
+      toast(data.error || `HTTP ${res.status}`, "error", 7000);
+    }
+  } catch { /* a lost picture: the next one follows */ }
+  finally { cam.sending = false; }
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden && cam.stream) stopCamera(); });
+
 /* ---- live events ---- */
 function connect() {
   const es = new EventSource("/api/assistant/events");
@@ -389,6 +438,7 @@ document.addEventListener("click", (e) => {
   if (a === "close-drawers") closeDrawers();
   if (a === "open-rail") { document.body.classList.add("rail-open"); $(".scrim").hidden = false; }
   if (a === "open-inspector") { document.body.classList.add("inspector-open"); $(".scrim").hidden = false; }
+  if (a === "camera") deviceCamera();
   if (a === "talk") {
     if (REMOTE) deviceTalk();
     else api("POST", "talk", {}).catch((err) => toast(err.message, "error"));

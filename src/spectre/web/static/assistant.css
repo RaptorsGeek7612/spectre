@@ -183,6 +183,10 @@ body[data-view="talk"] .presence { display: none; }
 .dock { display: flex; width: max-content; max-width: 100%; align-items: center; gap: clamp(8px, 2vw, 18px); padding: 8px 14px; border: 1px solid var(--hair); background: color-mix(in oklab, var(--plate) 88%, transparent); }
 .dock-btn { position: relative; display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid transparent; background: none; color: var(--ash); cursor: pointer; }
 .dock-btn:hover, .dock-btn:focus-visible { color: var(--bone); border-color: var(--hair-2); }
+.dock-btn[aria-pressed="true"] { color: var(--bone); border-color: var(--hair-2); }
+/* the phone's camera is on: a small mirror of what it sends, so it never films unseen */
+.cam-preview { position: fixed; right: 14px; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 20; width: 84px; height: 112px; object-fit: cover; transform: scaleX(-1); border: 1px solid var(--hair-2); background: var(--plate); }
+.cam-preview[hidden] { display: none; }
 .dock-btn .count { position: absolute; top: 4px; right: 2px; font-size: 0.7rem; }
 .dock-mic { width: 62px; height: 62px; border: 1px solid var(--l486); border-radius: 50%; color: var(--l486); }
 .dock-mic .ic { width: 26px; height: 26px; }

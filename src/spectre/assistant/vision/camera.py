@@ -72,6 +72,7 @@ class FaceEngine:
             str(paths[LIVENESS]), providers=["CPUExecutionProvider"]
         )
         self.liveness_input = self.liveness.get_inputs()[0].name
+        self.lock = threading.Lock()  # the PC camera and the phone may send frames at once
 
     def _liveness_crop(self, rgb: Any, box: Any) -> Any:
         """Square crop of the face, 1.5x larger, edges mirrored, letterboxed to 128x128 CHW."""
@@ -92,8 +93,19 @@ class FaceEngine:
         face = cv2.resize(pad, (LIVENESS_SIZE, LIVENESS_SIZE), interpolation=cv2.INTER_AREA)
         return face.transpose(2, 0, 1).astype(np.float32) / 255.0
 
+    def embeddings_jpeg(self, data: bytes) -> list[dict[str, Any]]:
+        """`embeddings` of a JPEG picture (a frame from the phone's camera)."""
+        frame = self.cv2.imdecode(self.np.frombuffer(data, self.np.uint8), self.cv2.IMREAD_COLOR)
+        if frame is None:
+            raise ValueError("image illisible")
+        return self.embeddings(frame)
+
     def embeddings(self, frame: Any) -> list[dict[str, Any]]:
         """[{"feature": [128 floats], "live": bool}] for each face found."""
+        with self.lock:
+            return self._embeddings(frame)
+
+    def _embeddings(self, frame: Any) -> list[dict[str, Any]]:
         from spectre.assistant.vision.faces import is_live
 
         height, width = frame.shape[:2]

@@ -332,6 +332,20 @@ class AssistantService:
             }
         )
 
+    def remote_frame(self, jpeg: bytes) -> Event:
+        """A picture from another device's camera (the phone), analysed like the PC camera's:
+        enrolled, live people become present; nothing is stored."""
+        if self.camera is None:
+            raise ValueError(
+                "la reconnaissance des visages n'est pas active (active-la dans les réglages "
+                "puis relance Spectre)"
+            )
+        if not jpeg:
+            raise ValueError("image vide")
+        faces = self.camera.engine.embeddings_jpeg(jpeg)
+        self.on_faces(faces)
+        return {"faces": len(faces), "present": self.presence.present()}
+
     def _on_arrival(self, name: str, away_s: float) -> None:
         greeting = f"Bon retour, {name}." if away_s else f"Bonjour {name}."
         self.db.log_event("presence", "camera", f"{name} est là")

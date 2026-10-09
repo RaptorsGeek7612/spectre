@@ -171,6 +171,13 @@ voix (Piper, avec son timbre) est jouée sur le téléphone ; rien n'est joué s
 Spectre tourne avec la voix (`--voice`) et que le navigateur du téléphone ait le droit d'utiliser
 le micro (HTTPS, fourni par Tailscale).
 
+**La caméra du téléphone.** Quand la reconnaissance des visages est active sur le PC, un bouton
+caméra apparaît dans la barre de la page Assistant ouverte depuis le téléphone. Il envoie une
+image toutes les 2 secondes, que Spectre analyse comme celles de sa propre caméra (les
+personnes enregistrées et vivantes deviennent présentes, les photos et écrans sont écartés). Un
+petit aperçu montre ce qui est filmé ; la caméra s'arrête quand on retouche le bouton ou qu'on
+quitte la page. Aucune image n'est gardée.
+
 Le premier lancement avec `--voice` télécharge les modèles (environ 200 Mo) dans
 `~/.spectre/assistant/models/`. L'interface `assistant.html` affiche l'état de la voix, la
 conversation, les actions en attente de validation, les missions, la mémoire (consultable,
