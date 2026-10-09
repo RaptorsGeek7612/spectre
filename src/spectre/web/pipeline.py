@@ -13,9 +13,11 @@ from langchain_core.language_models import BaseChatModel
 
 from spectre.config import (
     AGENT_NAMES,
+    check_max_revisions,
     has_api_key,
     load_client_settings,
     load_env,
+    load_max_revisions,
     load_specs,
 )
 from spectre.costs import total_cost
@@ -23,6 +25,7 @@ from spectre.errors import ConfigurationError, MissingAPIKeyError, SpectreError
 from spectre.graph import build_graph
 from spectre.llm import make_chat_model
 from spectre.state import UsageRecord
+from spectre.verdict import VerdictFilter
 from spectre.web.demo import DemoChatModel
 
 # Only these per-agent overrides may come from the browser (presets).
@@ -74,53 +77,81 @@ def stream_run(
     cancel: threading.Event | None = None,
     delay: float = 0.0,
     models: Mapping[str, BaseChatModel] | None = None,
+    max_revisions: int | None = None,
 ) -> Iterator[Event]:
-    """Yield `agent_start`, `token`, `agent_done`, then `done` (or `error` / `cancelled`)."""
+    """Yield `agent_start`, `token`, `agent_done`, then `done` (or `error` / `cancelled`).
+
+    After a rejection by Warden, Scribe and Warden run again: their `agent_start` then carry
+    `revision` (1, 2...). Warden's tokens never include its verdict line.
+    """
     cancel = cancel or threading.Event()
     outputs: dict[str, str] = {}
     usage: list[UsageRecord] = []
     durations: dict[str, float] = {}
+    verdict: dict[str, Any] = {"approved": True, "issues": [], "revisions": 0}
     order = list(AGENT_NAMES)
-    current = order[0]
+    current: str | None = order[0]
+    hide_verdict = VerdictFilter()
     started = time.monotonic()
     try:
         resolved = dict(models) if models is not None else None
         if resolved is None:
             resolved = build_models(demo=demo, overrides=clean_overrides(overrides), delay=delay)
-        graph = build_graph(resolved)
+        rounds = (
+            load_max_revisions() if max_revisions is None else check_max_revisions(max_revisions)
+        )
+        graph = build_graph(resolved, max_revisions=rounds)
         yield {"type": "agent_start", "agent": current}
         stream = graph.stream(
-            {"request": request.strip(), "usage": []}, stream_mode=["updates", "messages"]
+            {"request": request.strip(), "usage": [], "revisions": 0},
+            stream_mode=["updates", "messages"],
         )
         for mode, chunk in stream:
             if cancel.is_set():
                 raise RunCancelled
             if mode == "messages":
                 message, meta = cast(tuple[Any, dict[str, Any]], chunk)
-                text = getattr(message, "text", "")
+                text = str(getattr(message, "text", "") or "")
                 if text and meta.get("langgraph_node") == current:
-                    yield {"type": "token", "agent": current, "text": str(text)}
+                    if current == "warden":
+                        text = hide_verdict.feed(text)
+                    if text:
+                        yield {"type": "token", "agent": current, "text": text}
                 continue
             for node, update in cast(dict[str, dict[str, Any]], chunk).items():
                 if node not in _OUTPUT_KEY or not update:  # pragma: no cover - defensive
                     continue
+                if node == "warden":
+                    rest = hide_verdict.flush()
+                    if rest:
+                        yield {"type": "token", "agent": node, "text": rest}
+                    hide_verdict = VerdictFilter()
+                    verdict["approved"] = update.get("approved", True)
+                    verdict["issues"] = list(update.get("issues", []))
+                verdict["revisions"] = update.get("revisions", verdict["revisions"])
                 outputs[_OUTPUT_KEY[node]] = update[_OUTPUT_KEY[node]]
                 records = list(update.get("usage", []))
                 usage.extend(records)
                 now = time.monotonic()
-                durations[node] = round(now - started, 3)
+                elapsed = round(now - started, 3)
+                durations[node] = round(durations.get(node, 0.0) + elapsed, 3)  # all rounds
                 started = now
-                yield {
+                done: Event = {
                     "type": "agent_done",
                     "agent": node,
                     "text": outputs[_OUTPUT_KEY[node]],
                     "usage": records[0] if records else None,
-                    "seconds": durations[node],
+                    "seconds": elapsed,
                 }
-                position = order.index(node)
-                if position + 1 < len(order):
-                    current = order[position + 1]
-                    yield {"type": "agent_start", "agent": current}
+                if node == "warden":
+                    done["approved"], done["issues"] = verdict["approved"], verdict["issues"]
+                yield done
+                current = _next_agent(node, verdict, rounds)
+                if current is not None:
+                    start: Event = {"type": "agent_start", "agent": current}
+                    if current != "scout" and verdict["approved"] is False:
+                        start["revision"] = verdict["revisions"] + (current == "scribe")
+                    yield start
     except RunCancelled:
         yield {"type": "cancelled", "agent": current, **_partial(outputs, usage, durations)}
         return
@@ -132,7 +163,18 @@ def stream_run(
             **_partial(outputs, usage, durations),
         }
         return
-    yield {"type": "done", **_partial(outputs, usage, durations)}
+    yield {"type": "done", **_partial(outputs, usage, durations), **verdict}
+
+
+def _next_agent(node: str, verdict: Mapping[str, Any], rounds: int) -> str | None:
+    """The agent that runs after `node` (the graph's own routing, seen from the stream)."""
+    if node == "scout":
+        return "scribe"
+    if node == "scribe":
+        return "warden"
+    if verdict["approved"] is False and verdict["revisions"] < rounds:
+        return "scribe"
+    return None
 
 
 def _partial(

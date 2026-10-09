@@ -432,7 +432,7 @@ function shortModel(id) {
 function agentStates(run) {
   const states = {};
   for (const agent of AGENTS) {
-    const usage = (run?.usage || []).find((u) => u.agent === agent);
+    const usage = (run?.usage || []).findLast((u) => u.agent === agent);  // its latest round
     let st = "idle";
     if (usage) st = usage.truncated ? "truncated" : usage.model !== configuredModel(agent, run) ? "fallback" : "done";
     if (run && run.error_agent === agent) st = run.status === "cancelled" ? "cancelled" : "error";
@@ -448,7 +448,7 @@ function renderAgents() {
     const agent = node.dataset.agent;
     node.dataset.state = states[agent];
     $(".agent-model", node).textContent = shortModel(configuredModel(agent, run));
-    const usage = (run?.usage || []).find((u) => u.agent === agent);
+    const usage = (run?.usage || []).findLast((u) => u.agent === agent);  // its latest round
     const sec = run?.durations?.[agent];
     $(".agent-status", node).textContent = states[agent] === "done" || states[agent] === "fallback" || states[agent] === "truncated"
       ? `${t(`state.${states[agent]}`)} · ${fmtSec(sec)}${state.settings.show_costs ? ` · ${fmtCost(usage?.cost_usd)}` : ""}`
@@ -466,7 +466,7 @@ function renderInspector() {
   const run = state.current;
   const states = agentStates(run);
   for (const agent of AGENTS) {
-    const usage = (run?.usage || []).find((u) => u.agent === agent);
+    const usage = (run?.usage || []).findLast((u) => u.agent === agent);  // its latest round
     const conf = configuredModel(agent, run);
     const fallback = usage && usage.model !== conf;
     body.append(h("section", { class: "m-agent", "data-agent": agent, "data-state": usage ? "done" : "idle", "data-fallback": fallback ? "true" : null, "data-truncated": usage?.truncated ? "true" : null },
@@ -664,6 +664,10 @@ function onEvent(ev) {
       renderPlate(); loadRuns();
       return;
     case "agent_start":
+      if (ev.revision && run) {
+        run[OUTPUT[ev.agent]] = "";  // a revision round rewrites the text from scratch
+        if (ev.agent === "scribe") toast(`Révision ${ev.revision} : Warden renvoie le texte à Scribe${run.issues?.length ? ` — ${run.issues.join(" ; ")}` : ""}.`, "ok", 7000);
+      }
       state.running.live = ev.agent;
       document.body.dataset.live = ev.agent;
       document.title = `● ${NAME[ev.agent]} · Spectre`;
@@ -678,7 +682,8 @@ function onEvent(ev) {
     case "agent_done":
       if (!run) return;
       run[OUTPUT[ev.agent]] = ev.text;
-      if (ev.usage) run.usage = [...(run.usage || []).filter((u) => u.agent !== ev.agent), ev.usage];
+      if (ev.usage) run.usage = [...(run.usage || []), ev.usage];  // one record per round
+      if (ev.agent === "warden" && "approved" in ev) { run.approved = ev.approved; run.issues = ev.issues; }
       run.durations = { ...(run.durations || {}), [ev.agent]: ev.seconds };
       run.total_cost_usd = run.usage.reduce((s, u) => s + (u.cost_usd || 0), 0) || null;
       state.running.live = null;

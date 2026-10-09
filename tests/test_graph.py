@@ -88,7 +88,17 @@ def test_total_cost_none_when_models_unknown() -> None:
 
 def test_to_dict_is_json_serialisable(fake_models: dict[str, RecordingFakeModel]) -> None:
     data = run("demande", models=fake_models).to_dict()
-    assert set(data) == {"brief", "draft", "final_text", "usage", "total_cost_usd"}
+    assert set(data) == {
+        "brief",
+        "draft",
+        "final_text",
+        "approved",
+        "issues",
+        "revisions",
+        "usage",
+        "total_cost_usd",
+    }
+    assert (data["approved"], data["issues"], data["revisions"]) == (True, [], 0)
     assert json.loads(json.dumps(data)) == data
     assert len(data["usage"]) == 3
 

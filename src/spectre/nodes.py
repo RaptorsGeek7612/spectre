@@ -23,6 +23,7 @@ from spectre.prompts import (
     warden_input,
 )
 from spectre.state import SpectreState, UsageRecord
+from spectre.verdict import parse_verdict
 
 logger = logging.getLogger("spectre")
 
@@ -92,28 +93,45 @@ def make_scout_node(model: BaseChatModel, model_name: str | None = None) -> Node
 
 
 def make_scribe_node(model: BaseChatModel, model_name: str | None = None) -> NodeFn:
-    """Scribe: request + brief -> draft."""
+    """Scribe: request + brief -> draft; after a rejection, rewrites with Warden's issues."""
 
     name = _resolve_model_name("scribe", model, model_name)
 
     def scribe(state: SpectreState) -> dict[str, Any]:
-        human = scribe_input(state["request"], state["brief"])
+        revising = state.get("approved") is False
+        human = scribe_input(
+            state["request"],
+            state["brief"],
+            state.get("final_text", "") if revising else "",
+            state.get("issues", []) if revising else (),
+        )
         messages = [SystemMessage(SCRIBE_PROMPT), HumanMessage(human)]
         draft, usage = _call_agent("scribe", model, name, messages)
-        return {"draft": draft, "usage": [usage]}
+        update: dict[str, Any] = {"draft": draft, "usage": [usage]}
+        if revising:
+            update["revisions"] = state.get("revisions", 0) + 1
+        return update
 
     return scribe
 
 
 def make_warden_node(model: BaseChatModel, model_name: str | None = None) -> NodeFn:
-    """Warden: request + draft -> final_text."""
+    """Warden: request + draft -> final_text and a verdict (approved, issues)."""
 
     name = _resolve_model_name("warden", model, model_name)
 
     def warden(state: SpectreState) -> dict[str, Any]:
         human = warden_input(state["request"], state["draft"])
         messages = [SystemMessage(WARDEN_PROMPT), HumanMessage(human)]
-        final_text, usage = _call_agent("warden", model, name, messages)
-        return {"final_text": final_text, "usage": [usage]}
+        answer, usage = _call_agent("warden", model, name, messages)
+        verdict = parse_verdict(answer)
+        if not verdict.text:
+            raise EmptyOutputError("warden")
+        return {
+            "final_text": verdict.text,
+            "approved": verdict.approved,
+            "issues": verdict.issues,
+            "usage": [usage],
+        }
 
     return warden

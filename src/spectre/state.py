@@ -22,10 +22,17 @@ class UsageRecord(TypedDict):
 
 
 class SpectreState(TypedDict, total=False):
-    """Graph state: request in, brief/draft/final_text out, additive usage log."""
+    """Graph state: request in, brief/draft/final_text out, Warden's verdict, additive usage.
+
+    `revisions` counts the Warden -> Scribe rounds already done; `approved` and `issues` are
+    Warden's latest verdict.
+    """
 
     request: str
     brief: str
     draft: str
     final_text: str
+    approved: bool
+    issues: list[str]
+    revisions: int
     usage: Annotated[list[UsageRecord], operator.add]

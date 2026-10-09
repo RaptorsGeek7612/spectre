@@ -24,7 +24,10 @@ def requests_seen(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     seen: list[str] = []
 
     def fake_run(
-        request: str, *, models: Mapping[str, BaseChatModel] | None = None
+        request: str,
+        *,
+        models: Mapping[str, BaseChatModel] | None = None,
+        max_revisions: int | None = None,
     ) -> SpectreResult:
         seen.append(request)
         fakes = {
@@ -125,7 +128,7 @@ def test_missing_api_key_exit_1(
 def test_spectre_error_exit_1(
     api_key: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    def failing_run(request: str) -> SpectreResult:
+    def failing_run(request: str, **_: object) -> SpectreResult:
         raise AgentRefusalError("warden")
 
     monkeypatch.setattr(cli, "run", failing_run)
@@ -138,7 +141,7 @@ def test_spectre_error_exit_1(
 def test_ctrl_c_exit_130(
     api_key: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    def interrupted_run(request: str) -> SpectreResult:
+    def interrupted_run(request: str, **_: object) -> SpectreResult:
         raise KeyboardInterrupt
 
     monkeypatch.setattr(cli, "run", interrupted_run)
@@ -161,3 +164,92 @@ def test_main_loads_env_before_checking_key(
     monkeypatch.setattr(cli, "load_env", lambda: monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-x"))
     assert cli.main(["demande"]) == cli.EXIT_OK
     assert requests_seen == ["demande"]
+
+
+# ---- v0.4: streaming and revision rounds --------------------------------------------------
+
+REJECT = 'V1\n=== VERDICT ===\n{"approved": false, "issues": ["Plus court"]}'
+
+
+@pytest.fixture
+def streamed(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
+    """Route `cli.stream_run` to the real stream with fake models; record its arguments."""
+    from spectre.web import pipeline
+
+    seen: dict[str, object] = {}
+
+    def fake_stream(request: str, **kwargs: object) -> object:
+        seen.update(kwargs, request=request)
+        models = {
+            "scout": fake("scout", make_ai("BRIEF")),
+            "scribe": fake("scribe", make_ai("D1"), make_ai("D2")),
+            "warden": fake("warden", make_ai(REJECT), make_ai("FINAL\n=== VERDICT ===\n{}")),
+        }
+        return pipeline.stream_run(request, demo=False, models=models, max_revisions=1)
+
+    monkeypatch.setattr(cli, "stream_run", fake_stream)
+    return seen
+
+
+def test_stream_shows_each_agent_and_the_revision(
+    api_key: str, streamed: dict[str, object], capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["--stream", "--revisions", "1", "Un poème"]) == 0
+    out, err = capsys.readouterr()
+    assert out.strip() == "FINAL"  # not a terminal: the final text still goes to stdout
+    for header in ("── Scout ──", "── Scribe ──", "── Warden ──", "── Scribe (révision 1) ──"):
+        assert header in err
+    assert "── Warden (révision 1) ──" in err and "VERDICT" not in err
+    assert streamed["max_revisions"] == 1 and streamed["demo"] is False
+
+
+def test_stream_json_and_terminal_output(
+    api_key: str,
+    streamed: dict[str, object],
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert cli.main(["--stream", "--json", "x"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert (data["approved"], data["revisions"], data["final_text"]) == (True, 1, "FINAL")
+    monkeypatch.setattr(cli.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(cli.sys.stderr, "isatty", lambda: True)
+    assert cli.main(["--stream", "x"]) == 0
+    assert capsys.readouterr().out == ""  # already on screen through stderr
+
+
+def test_stream_error_exit_1(
+    api_key: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        cli, "stream_run", lambda request, **kw: iter([{"type": "error", "message": "refus"}])
+    )
+    assert cli.main(["--stream", "x"]) == 1
+    assert "refus" in capsys.readouterr().err
+
+
+def test_unapproved_text_warns(
+    api_key: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    seen: dict[str, object] = {}
+
+    def rejected_run(request: str, **kwargs: object) -> SpectreResult:
+        seen.update(kwargs)
+        models = {
+            "scout": fake("scout", make_ai("B")),
+            "scribe": fake("scribe", make_ai("D")),
+            "warden": fake("warden", make_ai(REJECT)),
+        }
+        return real_run(request, models=models, max_revisions=0)
+
+    monkeypatch.setattr(cli, "run", rejected_run)
+    assert cli.main(["--revisions", "0", "x"]) == 0
+    out, err = capsys.readouterr()
+    assert out.strip() == "V1" and "n'a pas validé" in err and "Plus court" in err
+    assert seen["max_revisions"] == 0
+
+
+def test_revisions_out_of_range_is_usage_error(api_key: str) -> None:
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["--revisions", "9", "x"])
+    assert exc.value.code == 2
