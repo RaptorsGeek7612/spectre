@@ -39,6 +39,8 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "write_file": "ALWAYS",
     "reminder": "ALWAYS",
     "mission": "ALWAYS",
+    "lab": "ALWAYS",  # labo biométrie/multimédia : calcul local, réversible
+    "lab_secu": "ASK",  # labo sécurité : contacte une cible -> validation (aussi niveau EXTERNAL)
     "delete_file": "ASK",
     "overwrite_file": "ASK",
     "external_send": "ASK",

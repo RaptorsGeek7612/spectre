@@ -49,7 +49,8 @@ docker exec -i lab-biometrie bash -lc \
 Ou en code (`PYTHONPATH=/opt/sourceafis` déjà réglé) :
 ```python
 from fp_match import match
-score = match("d1.png", "d2.png")   # >= 40 => même doigt (scans réels ~500 dpi)
+
+score = match("d1.png", "d2.png")  # >= 40 => même doigt (scans réels ~500 dpi)
 ```
 
 ## Pièges connus

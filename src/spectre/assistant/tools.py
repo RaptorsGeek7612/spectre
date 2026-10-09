@@ -98,6 +98,13 @@ def _write_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
     return (Level.DESTRUCTIVE, "overwrite_file") if exists else (Level.WRITE, "write_file")
 
 
+def _lab_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
+    # le labo sécu contacte un réseau/une cible -> toujours la validation de l'utilisateur
+    if str(args.get("lab", "")).strip().lower() == "secu":
+        return (Level.EXTERNAL, "lab_secu")
+    return (Level.WRITE, "lab")
+
+
 TOOLS: dict[str, Tool] = {
     tool.name: tool
     for tool in [
@@ -200,6 +207,19 @@ TOOLS: dict[str, Tool] = {
             Level.WRITE,
             "mission",
             _start_mission,
+        ),
+        Tool(
+            "lab_run",
+            "Exécuter une commande dans un labo Docker local (apprentissage/labo), via docker "
+            "exec. lab=biometrie : reconnaissance visage/voix/empreintes (scripts "
+            "/work/shared/face_demo*.py, voice_demo*.py, fp_match.py) ; lab=media : "
+            "FFmpeg/OpenCV/MoviePy ; lab=secu : suite Kali (cibles possédées ou autorisées "
+            "uniquement — chaque exécution demande ta validation). Échange de fichiers via le "
+            "dossier shared/ du labo.",
+            Level.WRITE,
+            "lab",
+            actions.lab_run,
+            _lab_risk,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
         Tool(
