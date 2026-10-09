@@ -21,6 +21,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   celles de la caméra du PC, avec un aperçu visible ; arrêt au second appui ou en quittant la
   page. Route `POST /api/assistant/frame` (JPEG), `FaceEngine.embeddings_jpeg()`, verrou sur
   le moteur de visages. Aucune image n'est gardée.
+- `tools\spectre-assistant.ps1 --silent` : démarrage avec la session Windows (raccourci dans le
+  dossier Démarrage), sans ouvrir de page ; il attend jusqu'à 90 s que Tailscale soit connecté
+  pour que le téléphone y ait accès dès l'ouverture de session.
 - `PiperTTS.render()` produit la voix sans la jouer ; la reconnaissance et la synthèse sont
   protégées par un verrou, car le micro du PC et le téléphone peuvent parler en même temps.
 

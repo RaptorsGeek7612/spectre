@@ -164,6 +164,12 @@ Tailscale demande d'activer Serve et HTTPS pour votre réseau (un lien dans sa c
 d'administration). Sans Tailscale ou sans mot de passe, Spectre reste joignable depuis le PC
 seulement.
 
+**Toujours joignable.** Spectre ne tourne que sur le PC : PC éteint ou en veille, le téléphone
+n'a plus rien à afficher. Pour qu'il reste joignable, laissez le PC allumé sur secteur (veille
+désactivée sur secteur, fermer l'écran ne fait rien) et démarrez Spectre avec la session :
+raccourci vers `powershell -File tools\spectre-assistant.ps1 --silent` dans le dossier
+Démarrage de Windows (`shell:startup`).
+
 **Parler à Spectre depuis le téléphone.** Sur la page Assistant ouverte depuis le téléphone, le
 bouton micro enregistre avec le micro **du téléphone** (et non plus celui du PC) : il s'arrête
 tout seul après une pause, Spectre transcrit la phrase sur le PC (faster-whisper), répond, et sa
