@@ -7,6 +7,23 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-10-09
+
+### Added
+
+- Deux nouveaux agents d'exécution des missions : **ChatGPT** via Codex CLI (`codex exec`, compte
+  ChatGPT) et **Mistral** via Mistral Vibe (`vibe -p`, compte Le Chat ou `MISTRAL_API_KEY`). Ils
+  reçoivent les outils de Spectre par MCP (même portail de gouvernance) et la recherche web.
+- Réglage `mission_model` : `chatgpt` et `mistral` en plus de `sonnet`, `opus` et `haiku` ;
+  `chatgpt_model`, `mistral_model`, `codex_bin` et `vibe_bin`. Pour une seule mission,
+  `start_mission` accepte `agent=claude|chatgpt|mistral`, et chaque étape note quel agent l'a faite.
+- Spécialités : ChatGPT pour les images, la vidéo et le multimédia ; Mistral pour la cybersécurité
+  et les tests d'intrusion (cadre autorisé uniquement). Spectre choisit l'agent selon le sujet.
+
+### Fixed
+
+- Changer l'agent d'exécution dans les réglages s'applique tout de suite, sans relancer Spectre.
+
 ## [0.3.4] - 2026-10-09
 
 ### Added

@@ -2,6 +2,10 @@
 
 `kind=redaction` runs Spectre's own pipeline (Scout -> Scribe -> Warden) with the three agents
 served by the Claude Code CLI, so it works on the subscription without API credit.
+Mission steps are executed by Claude (`mission_model` = sonnet, opus or haiku), by ChatGPT through
+the Codex CLI (chatgpt) or by Mistral through the Vibe CLI (mistral), set in the settings or chosen
+for one mission (`agent`); Spectre still plans, the Haiku verifier still checks each step, and
+Spectre writes the report.
 Missions persist step by step; one interrupted by a restart resumes where it stopped.
 """
 
@@ -19,10 +23,13 @@ from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
 from spectre.assistant.brain import ClaudeCLI, extract_json, one_shot
+from spectre.assistant.codex import CodexCLI
 from spectre.assistant.db import Database, now_iso
 from spectre.assistant.memory import Memory
+from spectre.assistant.mistral import VibeCLI
 
 MAX_STEPS = 6
+EXTERNAL: dict[str, Any] = {"chatgpt": CodexCLI, "mistral": VibeCLI}  # non-Claude agents
 Notify = Callable[[str, str, str], object]  # (kind, title, body)
 
 PLANNER = """\
@@ -35,6 +42,21 @@ WORKER = """\
 Tu es Spectre et tu exécutes UNE étape d'une mission en arrière-plan, avec tes outils. \
 Travaille dans le dossier courant. Termine par un compte rendu factuel de ce que tu as \
 réellement fait et obtenu (fichiers créés, sources). N'invente rien."""
+
+SPECIALTIES = {  # added to WORKER for the agent in charge of each field
+    "chatgpt": """\
+Ta spécialité : les images, la vidéo et le multimédia (création et retouche d'images, montage \
+et sous-titres, audio, formats et conversions, choix d'outils et de banques de médias \
+libres). Respecte les droits d'auteur et le droit à l'image : pas de deepfake d'une personne \
+réelle, pas de contenu trompeur.""",
+    "mistral": """\
+Ta spécialité : la cybersécurité (audit de configuration, durcissement, analyse de \
+vulnérabilités, veille CVE, réponse à incident) et les tests d'intrusion. Tu n'agis que sur \
+les systèmes de l'utilisateur ou ceux pour lesquels la mission mentionne une autorisation \
+écrite ; sinon, arrête-toi et dis-le dans ton compte rendu. Pas d'action destructive, pas de \
+déni de service, pas d'exfiltration de données réelles. Chaque constat donne sa gravité, sa \
+preuve et sa correction.""",
+}
 
 VERIFIER = """\
 Tu vérifies si une étape de mission est réellement accomplie, d'après son compte rendu. \
@@ -88,12 +110,14 @@ class MissionEngine:
         notify: Notify,
         model: str = "sonnet",
         lead_model: str = "opus",
+        agents: dict[str, Any] | None = None,
     ) -> None:
         self.db = db
         self.cli = cli
         self.notify = notify
-        self.model = model  # execution agents (mission steps)
+        self.model = model  # execution agents: a Claude alias, "chatgpt" or "mistral"
         self.lead_model = lead_model  # Spectre itself plans and reports
+        self.agents = dict(agents or {})  # ChatGPT and Mistral agents, created on first use
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -157,16 +181,17 @@ class MissionEngine:
             steps_plan = [str(s) for s in extract_json(reply.text).get("steps", [])][:MAX_STEPS]
             if not steps_plan:
                 raise ValueError("le plan de mission est vide")
-            self._set(
-                row["id"],
-                plan=json.dumps({"kind": "mission", "steps": steps_plan}, ensure_ascii=False),
-            )
+            saved: dict[str, Any] = {"kind": "mission", "steps": steps_plan}
+            if isinstance(plan, dict) and plan.get("agent"):
+                saved["agent"] = plan["agent"]
+            self._set(row["id"], plan=json.dumps(saved, ensure_ascii=False))
+        agent = str(plan.get("agent", "")) if isinstance(plan, dict) else ""
         done: list[dict[str, Any]] = json.loads(row["steps"] or "[]")
         for index in range(len(done), len(steps_plan)):
             if self._stop.is_set():
                 return
             step = steps_plan[index]
-            outcome = self._run_step(row["goal"], step, done)
+            outcome = self._run_step(row["goal"], step, done, agent)
             done.append(outcome)
             self._set(row["id"], steps=json.dumps(done, ensure_ascii=False))
         summary = "\n\n".join(
@@ -181,13 +206,28 @@ class MissionEngine:
         body = "Toutes les étapes sont vérifiées." if not failed else f"{failed} étape(s) à revoir."
         self._finish(row, report, "Mission terminée", body)
 
-    def _run_step(self, goal: str, step: str, done: list[dict[str, Any]]) -> dict[str, Any]:
+    def _worker(self, agent: str) -> tuple[Any, str]:
+        """Who executes a step: the mission's own choice, else the `mission_model` setting."""
+        name = agent if agent in ("claude", *EXTERNAL) else self.model
+        if name == "claude":  # Claude asked for one mission while the setting names another
+            name = "sonnet" if self.model in EXTERNAL else self.model
+        if name not in EXTERNAL:
+            return self.cli, name
+        if name not in self.agents:
+            self.agents[name] = EXTERNAL[name](self.cli.config, self.cli.root)
+        return self.agents[name], name
+
+    def _run_step(
+        self, goal: str, step: str, done: list[dict[str, Any]], agent: str = ""
+    ) -> dict[str, Any]:
         previous = "\n".join(f"- {d['step']} → {d['result'][:400]}" for d in done) or "(aucune)"
         prompt = f"Mission : {goal}\nÉtapes déjà faites :\n{previous}\n\nÉtape à faire : {step}"
+        worker, model = self._worker(agent)
+        system = f"{WORKER}\n\n{SPECIALTIES[model]}" if model in SPECIALTIES else WORKER
         note, ok, result = "", False, ""
         for attempt in range(2):
             extra = f"\n\nTentative précédente insuffisante : {note}" if attempt else ""
-            result = one_shot(self.cli, prompt + extra, WORKER, model=self.model, tools=True).text
+            result = worker.ask(prompt + extra, system=system, model=model, with_tools=True).text
             check = one_shot(
                 self.cli, f"Étape : {step}\n\nCompte rendu :\n{result}", VERIFIER, model="haiku"
             )
@@ -198,7 +238,7 @@ class MissionEngine:
                 ok, note = False, "vérification illisible"
             if ok:
                 break
-        return {"step": step, "result": result, "ok": ok, "note": note}
+        return {"step": step, "result": result, "ok": ok, "note": note, "agent": model}
 
     # ---- persistence -----------------------------------------------------------------------
 

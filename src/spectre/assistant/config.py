@@ -25,8 +25,12 @@ class AssistantConfig:
     user_name: str = ""
     language: str = "fr"
     brain_model: str = "opus"  # the superior agent (Opus 5.5): conversation, plans, reports
-    mission_model: str = "sonnet"  # execution agents for mission steps
+    mission_model: str = "sonnet"  # execution agents for mission steps (or chatgpt, mistral)
     claude_bin: str = "claude"
+    codex_bin: str = "codex"  # Codex CLI, for the ChatGPT execution agent
+    chatgpt_model: str = ""  # empty = Codex's default model for the ChatGPT account
+    vibe_bin: str = "vibe"  # Mistral Vibe CLI, for the Mistral execution agent
+    mistral_model: str = ""  # a Vibe model alias; empty = Vibe's default Mistral model
     brain_timeout_s: float = 300.0
     city: str = "Paris"
     briefing_hour: int = 8

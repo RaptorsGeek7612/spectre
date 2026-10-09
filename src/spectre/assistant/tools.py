@@ -19,6 +19,8 @@ from spectre.assistant.governance import Gate, Level
 from spectre.assistant.memory import Memory
 from spectre.assistant.vision.faces import describe_presence
 
+AGENTS = ("claude", "chatgpt", "mistral")  # who executes mission steps
+
 
 @dataclass(frozen=True)
 class Tool:
@@ -57,15 +59,18 @@ def _forget(ctx: ActionContext, fact_id: int) -> str:
     return f"oublié : #{fact['id']} {fact['subject']} {fact['predicate']} {fact['value']}"
 
 
-def _start_mission(ctx: ActionContext, goal: str, kind: str = "mission") -> str:
+def _start_mission(ctx: ActionContext, goal: str, kind: str = "mission", agent: str = "") -> str:
     if not goal.strip():
         raise ActionError("objectif de mission vide")
     if kind not in ("mission", "redaction"):
         kind = "mission"
+    plan: dict[str, str] = {"kind": kind}
+    if agent in AGENTS:
+        plan["agent"] = agent
     stamp = now_iso()
     mid = ctx.db.execute(
         "INSERT INTO missions(ts, goal, status, plan, updated_at) VALUES(?, ?, 'queued', ?, ?)",
-        (stamp, goal.strip(), json.dumps({"kind": kind}), stamp),
+        (stamp, goal.strip(), json.dumps(plan), stamp),
     )
     return (
         f"mission #{mid} lancée en arrière-plan : {goal.strip()} (je te préviens quand c'est fini)"
@@ -185,7 +190,10 @@ TOOLS: dict[str, Tool] = {
         Tool(
             "start_mission",
             "Lancer une mission longue en arrière-plan (plan, étapes vérifiées, "
-            "rapport). kind=redaction pour un texte soigné rédigé par Scout, Scribe et Warden.",
+            "rapport). kind=redaction pour un texte soigné rédigé par Scout, Scribe et Warden. "
+            "agent : qui exécute les étapes. chatgpt pour les images, vidéos et le multimédia ; "
+            "mistral pour la cybersécurité et les tests d'intrusion autorisés ; claude pour le "
+            "reste (vide = le réglage).",
             Level.WRITE,
             "mission",
             _start_mission,
