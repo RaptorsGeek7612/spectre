@@ -149,3 +149,28 @@ def test_main(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(launcher_mod, "make_server", lambda launcher: Server())
     monkeypatch.setenv(launcher_mod.PASSWORD_ENV, " secret ")
     assert launcher_mod.main() == 0 and Server.closed
+
+
+def test_one_launcher_per_port() -> None:
+    launcher, _ = _launcher()
+    first = launcher_mod.make_server(launcher, port=0)
+    try:
+        with pytest.raises(OSError):
+            launcher_mod.make_server(launcher, port=first.server_address[1])
+    finally:
+        first.server_close()
+
+
+def test_one_spectre_per_port(tmp_path: Path) -> None:
+    from spectre.web import server as server_mod
+    from spectre.web.auth import Auth
+    from spectre.web.store import Store
+
+    store = Store(tmp_path / "state")
+    auth = Auth(None, store.root / "k")
+    first = server_mod.make_server("127.0.0.1", 0, store=store, auth=auth)
+    try:
+        with pytest.raises(OSError):
+            server_mod.make_server("127.0.0.1", first.server_address[1], store=store, auth=auth)
+    finally:
+        first.server_close()

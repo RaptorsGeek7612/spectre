@@ -29,8 +29,23 @@ if ($env:SPECTRE_WEBUI_PASSWORD -and -not (Test-Launcher)) {
         -WorkingDirectory $repo -WindowStyle Hidden
 }
 
-if (Test-Spectre) {
-    if (-not $silent) { Start-Process $url }  # already running: just show it
+# One start at a time: the shortcut, the Startup folder and the phone's launcher may overlap,
+# and two Spectre instances fight over the microphone and the camera.
+$mutex = New-Object System.Threading.Mutex($false, "Local\SpectreStart")
+if (-not $mutex.WaitOne(0)) {
+    if (-not $silent) {
+        for ($i = 0; $i -lt 90 -and -not (Test-Spectre); $i++) { Start-Sleep -Milliseconds 500 }
+        if (Test-Spectre) { Start-Process $url }
+    }
+    exit 0
+}
+
+# Already running, or still loading (its page may not answer yet while the voice loads).
+$alive = Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" |
+    Where-Object { $_.CommandLine -like "*spectre.assistant*" }
+if ((Test-Spectre) -or $alive) {
+    for ($i = 0; $i -lt 90 -and -not (Test-Spectre); $i++) { Start-Sleep -Milliseconds 500 }
+    if (-not $silent -and (Test-Spectre)) { Start-Process $url }  # just show it
     exit 0
 }
 
