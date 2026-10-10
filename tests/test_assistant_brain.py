@@ -316,6 +316,7 @@ def _proactive(
         lambda *a: notes.append(a),
         fetch=kw.get("fetch", _fetch()),
         clock=lambda: now,
+        rand=kw.get("rand", lambda: 1.0),  # never befriends unless a test asks for it
     )
     return pro, notes
 

@@ -7,6 +7,22 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-10
+
+### Added
+
+- Spectre vient de lui-même parler à l'utilisateur pour mieux le connaître (`befriend_per_day`,
+  2 par défaut, 0 à 4 ; `befriend_hours`, 10-21 par défaut) : une question sincère sur un sujet
+  qu'il connaît mal (catégories de la mémoire les moins remplies) ou une suite à ce que
+  l'utilisateur lui a confié, rédigée par l'agent supérieur sans répéter ses dernières venues.
+  Il la dit à voix haute puis écoute pour qu'on lui réponde directement ; elle apparaît aussi
+  dans la conversation et les initiatives. La réponse arrive au cerveau avec ce que Spectre
+  avait dit, et la consolidation de la nuit en retient les faits durables.
+- Garde-fous : jamais pendant une conversation ni dans les 20 minutes qui suivent un échange,
+  3 heures au moins entre deux venues (6 si la précédente est restée sans réponse), moment
+  imprévisible, rien d'intrusif, pas de culpabilisation ; Spectre reste honnête sur ce qu'il
+  est et ne cherche pas à remplacer les proches. Réglages dans « Réglages de l'assistant ».
+
 ## [0.5.3] - 2026-10-10
 
 ### Fixed

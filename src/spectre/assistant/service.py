@@ -50,7 +50,9 @@ class AssistantService:
         self.cli = cli or ClaudeCLI(self.config, root)
         self.brain = Brain(self.db, self.cli, self.config)
         kwargs: dict[str, Any] = {"fetch": fetch} if fetch else {}
-        self.proactive = Proactive(self.db, self.cli, self.config, self._on_initiative, **kwargs)
+        self.proactive = Proactive(
+            self.db, self.cli, self.config, self._on_initiative, is_free=self._free, **kwargs
+        )
         self.missions = MissionEngine(
             self.db,
             self.cli,
@@ -113,14 +115,27 @@ class AssistantService:
             with contextlib.suppress(queue.Full):
                 q.put_nowait(event)
 
+    def _free(self) -> bool:
+        """Nobody is talking with Spectre right now (a good moment to come over)."""
+        return self.voice_state in ("sleeping", "off") and not self._busy.locked()
+
     def _on_initiative(self, kind: str, title: str, body: str) -> None:
         self.publish({"type": "initiative", "kind": kind, "title": title, "body": body})
+        if kind == "lien":  # Spectre comes to talk: its words join the conversation
+            self.publish({"type": "message", "role": "spectre", "text": body, "channel": "voice"})
         if (
             self.voice is not None
             and self.config.speak_initiatives
             and self.voice_state == "sleeping"
         ):
-            threading.Thread(target=self.voice.say, args=(f"{title}. {body}",), daemon=True).start()
+            threading.Thread(target=self._announce, args=(kind, title, body), daemon=True).start()
+
+    def _announce(self, kind: str, title: str, body: str) -> None:
+        if kind == "lien":
+            self.voice.say(body)
+            self.voice.trigger()  # then listen, so the user can simply answer
+        else:
+            self.voice.say(f"{title}. {body}")
 
     def _max_id(self, table: str) -> int:
         row = self.db.one(f"SELECT COALESCE(MAX(id), 0) AS n FROM {table}")  # noqa: S608 - fixed

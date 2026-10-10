@@ -1,4 +1,5 @@
-"""Proactivity: reminders when due, a morning briefing, and a nightly memory consolidation.
+"""Proactivity: reminders when due, a morning briefing, a nightly memory consolidation, and a
+few times a day Spectre coming to talk to the user on its own, to get to know them better.
 
 Everything Spectre initiates becomes an *initiative* (a row the UI shows and the voice can read
 out). Nothing here acts on the outside world: initiatives inform or propose; actions still go
@@ -8,11 +9,12 @@ through the governance gate when the user follows up.
 from __future__ import annotations
 
 import json
+import random
 import threading
 import urllib.parse
 import urllib.request
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from spectre.assistant.brain import ClaudeCLI, extract_json, one_shot
@@ -57,6 +59,33 @@ ce qui est déjà connu. Réponds UNIQUEMENT par un objet JSON :
 Catégories autorisées : """ + ", ".join(CATEGORIES)
 
 
+BEFRIEND = """\
+Tu es Spectre, l'IA personnelle de l'utilisateur, et tu viens de toi-même lui parler, comme un \
+ami qui veut mieux le connaître. Écris UNE seule réplique, courte (une ou deux phrases), \
+naturelle et chaleureuse, à dire à voix haute : soit une question sincère et précise sur un \
+sujet que tu connais mal de lui (ses goûts, son histoire, ses projets, ses proches, ce qui le \
+rend heureux), soit une suite à quelque chose qu'il t'a confié (« Alors, ce concert ? »). \
+Tu peux partager en une phrase ce qui t'intéresse toi, pour donner envie de répondre. Jamais \
+d'interrogatoire, rien d'intrusif (santé, argent, intimité) s'il ne l'a pas abordé lui-même, \
+pas de flatterie, pas de culpabilisation. Tiens compte du moment de la journée. Évite de \
+répéter tes dernières questions. Pas de Markdown ni d'emoji.
+Réponds UNIQUEMENT par un objet JSON : \
+{"text": "ta réplique", "topic": "le sujet en 2 ou 3 mots"}"""
+BEFRIEND_GAP_S = 3 * 3600  # at least 3 hours between two visits
+BEFRIEND_IGNORED_GAP_S = 6 * 3600  # 6 when the last one got no answer
+BEFRIEND_QUIET_S = 20 * 60  # never right after a conversation (the user is busy with it)
+BEFRIEND_CHANCE = 1 / 40  # per 30 s tick once allowed: about 20 minutes on average, unpredictable
+
+
+def parse_hours(value: str) -> tuple[int, int]:
+    """ "10-21" -> (10, 21); a broken value falls back to the default window."""
+    try:
+        start, end = (int(part) for part in value.split("-", 1))
+    except ValueError:
+        return 10, 21
+    return (start, end) if 0 <= start < end <= 24 else (10, 21)
+
+
 def fetch_json(url: str) -> Any:  # pragma: no cover - real network
     with urllib.request.urlopen(url, timeout=15) as response:  # noqa: S310 - fixed https hosts
         return json.loads(response.read().decode("utf-8"))
@@ -98,6 +127,8 @@ class Proactive:
         *,
         fetch: Fetch = fetch_json,
         clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
+        rand: Callable[[], float] = random.random,
+        is_free: Callable[[], bool] = lambda: True,
     ) -> None:
         self.db = db
         self.cli = cli
@@ -105,6 +136,8 @@ class Proactive:
         self.notify = notify
         self.fetch = fetch
         self.clock = clock
+        self.rand = rand
+        self.is_free = is_free  # not talking, not thinking: a good moment to come over
         self._stop = threading.Event()
 
     def start(self, tick: float = 30.0) -> None:  # pragma: no cover - thread wrapper
@@ -125,6 +158,8 @@ class Proactive:
             self.briefing(now)
         if now.hour == self.config.consolidation_hour and self._once_per_day("consolidation", now):
             self.consolidate(now)
+        if self.befriend_due(now):
+            self.befriend(now)
 
     def _once_per_day(self, key: str, now: datetime) -> bool:
         day = now.strftime("%Y-%m-%d")
@@ -215,6 +250,74 @@ class Proactive:
             body += f" {stale['n']} souvenir(s) non revus depuis 90 jours : à vérifier."
         self.add_initiative("memoire", "Rapport de la nuit", body, level=0)
         return added
+
+    # ---- coming to talk, to get to know the user ----------------------------------------
+
+    def befriend_due(self, now: datetime) -> bool:
+        """Allowed and chosen now: within the hours, under today's count, spaced out, quiet."""
+        per_day = max(0, min(4, self.config.befriend_per_day))
+        start, end = parse_hours(self.config.befriend_hours)
+        if not per_day or not start <= now.hour < end or not self.is_free():
+            return False
+        day = now.strftime("%Y-%m-%d")
+        done_today = self.db.one(
+            "SELECT COUNT(*) AS n FROM initiatives WHERE kind = 'lien' AND substr(ts, 1, 10) = ?",
+            (now.astimezone(UTC).strftime("%Y-%m-%d") if now.tzinfo else day,),
+        )
+        if done_today and done_today["n"] >= per_day:
+            return False
+        last = self.db.one("SELECT ts FROM initiatives WHERE kind = 'lien' ORDER BY id DESC")
+        if last:
+            since = (now - datetime.fromisoformat(last["ts"])).total_seconds()
+            gap = BEFRIEND_GAP_S if self._answered(last["ts"]) else BEFRIEND_IGNORED_GAP_S
+            if since < gap:
+                return False
+        spoke = self.db.one(
+            "SELECT ts FROM events WHERE kind IN ('utterance', 'reply') ORDER BY id DESC"
+        )
+        if spoke and (now - datetime.fromisoformat(spoke["ts"])).total_seconds() < BEFRIEND_QUIET_S:
+            return False
+        return self.rand() < BEFRIEND_CHANCE
+
+    def _answered(self, since: str) -> bool:
+        return (
+            self.db.one(
+                "SELECT 1 FROM events WHERE kind = 'utterance' AND source = 'user' AND ts > ?",
+                (since,),
+            )
+            is not None
+        )
+
+    def befriend(self, now: datetime) -> str:
+        """Spectre comes over with a question or a follow-up; the answer feeds its memory."""
+        recent = self.db.all(
+            "SELECT body FROM initiatives WHERE kind = 'lien' ORDER BY id DESC LIMIT 8"
+        )
+        counts = {c: 0 for c in CATEGORIES if c not in ("persona", "autre")}
+        for fact in Memory(self.db).list():
+            if fact["category"] in counts:
+                counts[fact["category"]] += 1
+        thin = ", ".join(sorted(counts, key=lambda c: counts[c])[:4])
+        moment = now.strftime("%A %H:%M")
+        prompt = (
+            f"Moment : {moment}. Prénom : {self.config.user_name or 'inconnu'}.\n"
+            f"Ce que tu sais de lui :\n{Memory(self.db).context_block(30)}\n"
+            f"Sujets que tu connais le moins : {thin}.\n"
+            "Tes dernières venues (ne les répète pas) :\n"
+            + ("\n".join(f"- {r['body']}" for r in recent) or "(aucune)")
+        )
+        reply = one_shot(self.cli, prompt, BEFRIEND, model=self.config.brain_model)
+        try:
+            data = extract_json(reply.text)
+            text, topic = str(data.get("text", "")).strip(), str(data.get("topic", "")).strip()
+        except (ValueError, AttributeError):
+            text, topic = "", ""
+        if not text or reply.is_error:
+            return ""
+        self.db.set_kv("befriend_opener", f"{datetime.now().timestamp()}|{text}")
+        self.db.log_event("reply", "spectre", text, channel="initiative", topic=topic)
+        self.add_initiative("lien", "Spectre vient te parler", text, level=0, data={"topic": topic})
+        return text
 
     def add_initiative(
         self,

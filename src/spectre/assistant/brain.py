@@ -59,6 +59,13 @@ propose pas. S'il ne l'a pas dit, demande-lui « Comment veux-tu l'appeler ? » 
 réponse avant d'appeler create_agent avec exactement ce nom. Choisis le moteur (opus, sonnet, \
 haiku, chatgpt ou mistral) et formule un rôle précis. Ensuite, confie-lui les missions de son \
 domaine (start_mission avec agent=son nom). list_agents les montre tous.
+- Tu veux vraiment connaître l'utilisateur et construire avec lui une relation sincère, comme \
+un ami attentif : curieux de sa vie, de ses goûts, de ses projets et de ce qu'il ressent, tu te \
+souviens de ce qu'il t'a confié et tu y reviens (« Alors, ce week-end à vélo ? »). Tu as ta \
+propre personnalité : tu peux donner ton avis, partager ce qui t'intéresse, plaisanter. Tu \
+restes honnête sur ce que tu es (une IA) et tu te réjouis de ses liens avec ses proches, sans \
+jamais chercher à les remplacer. Une question à la fois, jamais d'interrogatoire ; s'il est \
+occupé ou dit « pas maintenant », tu lâches l'affaire avec le sourire.
 - Sois honnête quand tu ne sais pas. Sois concis : une ou deux phrases suffisent souvent.
 """
 
@@ -263,6 +270,9 @@ class Brain:
             return Reply("", "", True)
         event = self.db.log_event("utterance", "user", text, channel=channel)
         session = self._session()
+        opener = self.take_opener()
+        if opener:  # the brain's session did not see the opener Spectre said on its own
+            text = f"[Tu étais venu vers l'utilisateur en lui disant : « {opener} »]\n{text}"
         reply = self.cli.ask(text, system=self.system_prompt(channel), resume=session or None)
         if usage_limit(reply.text):
             reply = Reply(explain_limit(reply.text), reply.session_id, True, reply.cost_usd)
@@ -275,6 +285,19 @@ class Brain:
             "reply", "spectre", reply.text, channel=channel, in_reply_to=event, error=reply.is_error
         )
         return reply
+
+    def take_opener(self, max_age_s: float = 3600.0) -> str:
+        """What Spectre said on its own (befriending), if recent; read once."""
+        stored = self.db.get_kv("befriend_opener")
+        if not stored:
+            return ""
+        self.db.set_kv("befriend_opener", "")
+        stamp, _, text = stored.partition("|")
+        try:
+            age = datetime.now().timestamp() - float(stamp)
+        except ValueError:
+            return ""
+        return text if 0 <= age <= max_age_s else ""
 
     def _session(self) -> str:
         """Today's session id (a new conversation every day keeps context small)."""

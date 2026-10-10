@@ -88,6 +88,8 @@ class AssistantConfig:
     tts_effect: str = "futuriste"  # onboard-AI timbre: futuriste, vaisseau (subtler) or aucun
     tts_pace: str = "naturel"  # speaking speed: pose, naturel or vif
     speak_initiatives: bool = True
+    befriend_per_day: int = 2  # times a day Spectre comes to talk to you on its own (0 = never)
+    befriend_hours: str = "10-21"  # when it may: from hour to hour
     camera: bool = False  # face recognition of enrolled people (opt-in, nothing leaves the PC)
     camera_index: int = 0
 
