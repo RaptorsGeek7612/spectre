@@ -1,10 +1,12 @@
-"""Spectre's launcher: a tiny always-on page that starts Spectre from the phone.
+"""Spectre's launcher: a tiny always-on page that starts, restarts or stops Spectre from the phone.
 
 When Spectre is closed on the PC, nothing answers on its port, so the phone cannot reach it. This
 launcher (standard library only, a few MB of memory) stays on, listens on 127.0.0.1:8764, and
 `tailscale serve` publishes it on the tailnet under /lanceur. Its page asks for Spectre's
-password, then starts Spectre with tools/spectre-assistant.ps1 --silent and sends the phone back
-to Spectre once it answers. It can do nothing else.
+password, then starts Spectre with tools/spectre-assistant.ps1 --silent (or stops it the way
+tools/spectre-stop.cmd does) and sends the phone back to Spectre once it answers. It also tells
+whether the PC runs on battery, when it may go to sleep and become unreachable. It can do
+nothing else.
 
     python tools/spectre_launcher.py        (started by tools/spectre-assistant.ps1)
 """
@@ -33,7 +35,10 @@ PASSWORD_ENV = "SPECTRE_WEBUI_PASSWORD"
 MAX_FAILURES = 5
 LOCKOUT_S = 60.0
 MAX_BODY = 4096
+ACTIONS = ("start", "restart", "stop")
 REPO = Path(__file__).resolve().parent.parent
+# A browser or phone that closes a page while it loads: normal, not worth a traceback in the log.
+QUIET_ERRORS = (ConnectionAbortedError, ConnectionResetError, BrokenPipeError, TimeoutError)
 
 PAGE = """<!doctype html>
 <html lang="fr"><head><meta charset="utf-8">
@@ -41,66 +46,96 @@ PAGE = """<!doctype html>
 <meta name="theme-color" content="#121315"><title>Spectre · Lanceur</title>
 <style>
 :root { color-scheme: dark; --ground:#121315; --plate:#1b1c1f; --hair:#4a4c52; --bone:#e9e4d8;
-  --dim:#8f8a7f; --cyan:#4fc3f7; --green:#8bd450; --red:#ef5f6f; }
+  --dim:#8f8a7f; --cyan:#4fc3f7; --green:#8bd450; --yellow:#ffd23f; --red:#ef5f6f; }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px;
   background: var(--ground); color: var(--bone);
   font: 16px/1.5 "Barlow Semi Condensed", "Segoe UI", system-ui, sans-serif; }
-main { width: min(420px, 100%); display: grid; gap: 18px; padding: 28px 22px;
+main { width: min(420px, 100%); display: grid; gap: 16px; padding: 28px 22px;
   border: 1px solid var(--hair); background: var(--plate); }
 h1 { margin: 0; font-weight: 500; font-size: 1.9rem; letter-spacing: .32em; text-transform: uppercase; }
 p { margin: 0; color: var(--dim); }
 #state { color: var(--bone); font-size: 1.1rem; }
 #state[data-s="up"] { color: var(--green); } #state[data-s="err"] { color: var(--red); }
+#power { padding: 10px 12px; border: 1px dashed var(--yellow); color: var(--yellow); }
 label { display: grid; gap: 6px; font-size: .78rem; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 input { min-height: 48px; padding: 0 12px; font: inherit; color: var(--bone); background: var(--ground);
   border: 1px solid var(--hair); }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 button, a.btn { min-height: 52px; display: grid; place-items: center; border: 1px solid var(--cyan);
-  background: none; color: var(--bone); font: inherit; font-size: .9rem; letter-spacing: .22em;
+  background: none; color: var(--bone); font: inherit; font-size: .9rem; letter-spacing: .2em;
   text-transform: uppercase; text-decoration: none; cursor: pointer; }
+button.quiet { border-color: var(--hair); color: var(--dim); }
+button.danger { border-color: var(--red); }
 button:disabled { opacity: .5; cursor: wait; }
 [hidden] { display: none !important; }
 </style></head><body><main>
 <h1>Spectre</h1>
 <p id="state" aria-live="polite">Vérification…</p>
+<p id="power" hidden></p>
+<a class="btn" id="open" href="/assistant.html" hidden>Ouvrir Spectre</a>
 <form id="form" hidden>
   <label>Mot de passe<input type="password" id="pw" autocomplete="current-password" required></label>
-  <button type="submit" id="go">Lancer Spectre</button>
+  <button type="submit" id="go" data-action="start">Lancer Spectre</button>
+  <div class="row" id="manage" hidden>
+    <button type="submit" class="quiet" data-action="restart">Redémarrer</button>
+    <button type="submit" class="danger" data-action="stop">Arrêter</button>
+  </div>
 </form>
-<a class="btn" id="open" href="/assistant.html" hidden>Ouvrir Spectre</a>
-<p>Le lanceur reste allumé sur le PC et ne fait qu'une chose : démarrer Spectre.</p>
+<p>Le lanceur reste allumé sur le PC et ne fait qu'une chose : démarrer, redémarrer ou arrêter Spectre.</p>
 </main><script>
 const $ = (s) => document.querySelector(s);
 function show(text, s = "") { $("#state").textContent = text; $("#state").dataset.s = s; }
-async function running() {
-  try { return (await (await fetch("/lanceur/status", { cache: "no-store" })).json()).running; }
-  catch { return false; }
+async function status() {
+  try { return await (await fetch("/lanceur/status", { cache: "no-store" })).json(); }
+  catch { return { running: false, unreachable: true }; }
+}
+function power(p) {
+  const box = $("#power");
+  box.hidden = !(p && p.on_battery);
+  if (p && p.on_battery) box.textContent = `Le PC est sur batterie${p.percent != null ? ` (${p.percent} %)` : ""} : il peut se mettre en veille, et Spectre ne sera plus joignable. Branche-le pour qu'il reste disponible.`;
 }
 async function check() {
-  const up = await running();
-  $("#form").hidden = up; $("#open").hidden = !up;
-  show(up ? "Spectre est en marche." : "Spectre est fermé sur le PC.", up ? "up" : "");
-  return up;
+  const s = await status();
+  power(s.power);
+  $("#form").hidden = false;
+  $("#open").hidden = !s.running; $("#manage").hidden = !s.running; $("#go").hidden = s.running;
+  show(s.running ? "Spectre est en marche." : "Spectre est fermé sur le PC.", s.running ? "up" : "");
+  return s.running;
+}
+async function waitFor(up) {
+  for (let i = 0; i < 60; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if ((await status()).running === up) return true;
+  }
+  return false;
 }
 $("#form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  $("#go").disabled = true;
+  const action = (e.submitter && e.submitter.dataset.action) || "start";
+  if (action === "stop" && !confirm("Arrêter Spectre sur le PC ?")) return;
+  const buttons = [...document.querySelectorAll("#form button")];
+  buttons.forEach((b) => { b.disabled = true; });
   try {
-    const res = await fetch("/lanceur/start", { method: "POST", headers: { "Content-Type": "application/json", "X-Spectre": "1" },
+    const res = await fetch(`/lanceur/${action}`, { method: "POST", headers: { "Content-Type": "application/json", "X-Spectre": "1" },
       body: JSON.stringify({ password: $("#pw").value }) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     $("#pw").value = "";
-    show("Démarrage de Spectre… (environ 20 secondes)");
-    for (let i = 0; i < 60; i++) {
-      await new Promise((r) => setTimeout(r, 2000));
-      if (await running()) { show("Spectre est prêt.", "up"); location.href = "/assistant.html"; return; }
+    if (action === "stop") {
+      show("Arrêt de Spectre…");
+      await waitFor(false); await check(); show("Spectre est arrêté.");
+      return;
     }
+    show(action === "restart" ? "Redémarrage de Spectre… (environ 30 secondes)" : "Démarrage de Spectre… (environ 20 secondes)");
+    if (action === "restart") await waitFor(false);
+    if (await waitFor(true)) { show("Spectre est prêt.", "up"); location.href = "/assistant.html"; return; }
     show("Spectre ne répond pas encore. Réessaie dans un instant.", "err");
   } catch (err) { show(err.message, "err"); }
-  finally { $("#go").disabled = false; }
+  finally { buttons.forEach((b) => { b.disabled = false; }); }
 });
 check();
+setInterval(check, 60000);
 </script></body></html>
 """
 
@@ -113,74 +148,140 @@ def spectre_running(url: str = SPECTRE) -> bool:
         return False
 
 
+def power_status() -> dict[str, Any]:
+    """On battery or mains, and the charge, from Windows (empty elsewhere or when unknown)."""
+    if sys.platform != "win32":
+        return {}
+    import ctypes
+
+    class SystemPowerStatus(ctypes.Structure):
+        _fields_ = [
+            ("ACLineStatus", ctypes.c_ubyte),
+            ("BatteryFlag", ctypes.c_ubyte),
+            ("BatteryLifePercent", ctypes.c_ubyte),
+            ("SystemStatusFlag", ctypes.c_ubyte),
+            ("BatteryLifeTime", ctypes.c_ulong),
+            ("BatteryFullLifeTime", ctypes.c_ulong),
+        ]
+
+    state = SystemPowerStatus()
+    if not ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(state)):
+        return {}
+    return {
+        "on_battery": state.ACLineStatus == 0,
+        "percent": None if state.BatteryLifePercent == 255 else int(state.BatteryLifePercent),
+    }
+
+
+def _hidden() -> dict[str, Any]:
+    return {
+        "cwd": REPO,
+        "creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+    }
+
+
 def start_spectre() -> None:
     """Start Spectre in the background, without a window, the way the Startup shortcut does."""
-    script = REPO / "tools" / "spectre-assistant.ps1"
-    subprocess.Popen(  # noqa: S603 - fixed command, no user input
-        [
-            "powershell.exe",
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-WindowStyle",
-            "Hidden",
-            "-File",
-            str(script),
-            "--silent",
-        ],
-        cwd=REPO,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    command = [
+        "powershell.exe",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-WindowStyle",
+        "Hidden",
+        "-File",
+        str(REPO / "tools" / "spectre-assistant.ps1"),
+        "--silent",
+    ]
+    subprocess.Popen(command, **_hidden())  # noqa: S603 - fixed command
+
+
+def stop_spectre() -> None:
+    """Stop Spectre like tools/spectre-stop.cmd (the launcher itself keeps running)."""
+    command = ["cmd.exe", "/c", str(REPO / "tools" / "spectre-stop.cmd")]
+    subprocess.run(command, timeout=30, check=False, **_hidden())  # noqa: S603
 
 
 class Launcher:
-    """Password check with a lockout, and the start action (injectable for tests)."""
+    """Password check with a lockout, and the actions (injectable for tests)."""
 
     def __init__(
         self,
         password: str | None,
         is_running: Callable[[], bool] = spectre_running,
         start: Callable[[], None] = start_spectre,
+        stop: Callable[[], None] = stop_spectre,
+        wait_stopped: Callable[[], None] | None = None,
     ) -> None:
         self.password = password or None
         self.is_running = is_running
         self.start = start
+        self.stop = stop
+        self.wait_stopped = wait_stopped or self._wait_stopped
         self._failures = 0
         self._locked_until = 0.0
         self._last_start = 0.0
         self._lock = threading.Lock()
 
-    def launch(self, password: str) -> tuple[HTTPStatus, dict[str, Any]]:
+    def _wait_stopped(self) -> None:
+        for _ in range(30):
+            if not self.is_running():
+                return
+            time.sleep(0.5)
+
+    def _check(self, password: str, now: float) -> tuple[HTTPStatus, dict[str, Any]] | None:
+        """An error to send back, or None when the password is right."""
+        if self.password is None:
+            return HTTPStatus.SERVICE_UNAVAILABLE, {
+                "error": "aucun mot de passe défini sur le PC (tools\\spectre-password.cmd)"
+            }
+        if now < self._locked_until:
+            return HTTPStatus.TOO_MANY_REQUESTS, {
+                "error": "trop d'essais : réessaie dans une minute"
+            }
+        if not hmac.compare_digest(password.encode(), self.password.encode()):
+            self._failures += 1
+            if self._failures >= MAX_FAILURES:
+                self._failures, self._locked_until = 0, now + LOCKOUT_S
+            return HTTPStatus.UNAUTHORIZED, {"error": "mot de passe incorrect"}
+        self._failures = 0
+        return None
+
+    def act(self, action: str, password: str) -> tuple[HTTPStatus, dict[str, Any]]:
         with self._lock:
             now = time.monotonic()
-            if self.password is None:
-                return HTTPStatus.SERVICE_UNAVAILABLE, {
-                    "error": "aucun mot de passe défini sur le PC (tools\\spectre-password.cmd)"
-                }
-            if now < self._locked_until:
-                return HTTPStatus.TOO_MANY_REQUESTS, {
-                    "error": "trop d'essais : réessaie dans une minute"
-                }
-            if not hmac.compare_digest(password.encode(), self.password.encode()):
-                self._failures += 1
-                if self._failures >= MAX_FAILURES:
-                    self._failures, self._locked_until = 0, now + LOCKOUT_S
-                return HTTPStatus.UNAUTHORIZED, {"error": "mot de passe incorrect"}
-            self._failures = 0
-            if self.is_running():
+            refused = self._check(password, now)
+            if refused:
+                return refused
+            running = self.is_running()
+            if action == "stop":
+                if running:
+                    self.stop()
+                return HTTPStatus.OK, {"stopped": running}
+            if action == "restart" and running:
+                self.stop()
+                self.wait_stopped()
+                self._last_start = now
+                self.start()
+                return HTTPStatus.OK, {"restarted": True}
+            if running:
                 return HTTPStatus.OK, {"started": False, "running": True}
             if now - self._last_start > 30:  # a second tap while it boots starts nothing more
                 self._last_start = now
                 self.start()
             return HTTPStatus.OK, {"started": True, "running": False}
 
+    def launch(self, password: str) -> tuple[HTTPStatus, dict[str, Any]]:
+        return self.act("start", password)
+
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "SpectreLanceur"
     launcher: Launcher
+    power: Callable[[], dict[str, Any]] = staticmethod(power_status)
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         pass
@@ -210,12 +311,15 @@ class Handler(BaseHTTPRequestHandler):
             case "/":
                 self._send(HTTPStatus.OK, PAGE.encode(), "text/html; charset=utf-8")
             case "/status":
-                self._json(HTTPStatus.OK, {"running": self.launcher.is_running()})
+                self._json(
+                    HTTPStatus.OK, {"running": self.launcher.is_running(), "power": self.power()}
+                )
             case _:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "introuvable"})
 
     def do_POST(self) -> None:  # noqa: N802
-        if self._path() != "/start":
+        action = self._path().strip("/")
+        if action not in ACTIONS:
             self._json(HTTPStatus.NOT_FOUND, {"error": "introuvable"})
             return
         if self.headers.get("X-Spectre") != "1":  # forces a CORS preflight: same origin only
@@ -231,7 +335,7 @@ class Handler(BaseHTTPRequestHandler):
             password = str(data.get("password", "")) if isinstance(data, dict) else ""
         except ValueError:
             password = ""
-        self._json(*self.launcher.launch(password))
+        self._json(*self.launcher.act(action, password))
 
 
 class ExclusiveHTTPServer(ThreadingHTTPServer):
@@ -244,6 +348,11 @@ class ExclusiveHTTPServer(ThreadingHTTPServer):
         if exclusive is not None:
             self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
         super().server_bind()
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        if isinstance(sys.exc_info()[1], QUIET_ERRORS):
+            return
+        super().handle_error(request, client_address)
 
 
 def make_server(launcher: Launcher, port: int = PORT) -> ThreadingHTTPServer:

@@ -273,6 +273,10 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
   .remote-qr { width: min(240px, 100%); justify-self: center; }
 }
 
+/* ---- banners: PC on battery, PC unreachable ---- */
+.as-banner { margin: 0; padding: 10px clamp(16px, 3vw, 36px); border-bottom: 1px dashed var(--l589); color: var(--l589); font-size: 0.92rem; }
+.as-banner-off { border-color: var(--danger); color: var(--danger); }
+
 /* ---- created agents ---- */
 .ag-card[data-agent^="agent:"] { --c: var(--l546); }
 .ag-tags .btn { min-height: 26px; padding: 0 8px; font-size: 0.7rem; }

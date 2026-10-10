@@ -13,7 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import tools
+from spectre.assistant import tools, winapi
 from spectre.assistant.brain import Brain, ClaudeCLI
 from spectre.assistant.config import AGENT_NAMES, AGENT_ORDER, AGENT_ROLES, AssistantConfig
 from spectre.assistant.custom_agents import CustomAgents
@@ -69,6 +69,7 @@ class AssistantService:
         self._subscribers: list[queue.Queue[Event]] = []
         self._sub_lock = threading.Lock()
         self._busy = threading.Lock()
+        self.power: Callable[[], Event] = winapi.power_status  # on battery: may go to sleep
         self._stop = threading.Event()
         self._level_at = 0.0
         self._seen = {
@@ -284,6 +285,7 @@ class AssistantService:
             ),
             "camera": self.camera is not None,
             "present": self.presence.present(),
+            "power": self.power(),
         }
 
     def agents(self) -> Event:

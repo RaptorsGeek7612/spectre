@@ -34,14 +34,29 @@ class State:
     def __init__(self) -> None:
         self.running = False
         self.starts = 0
+        self.stops = 0
+        self.log: list[str] = []
 
     def start(self) -> None:
         self.starts += 1
+        self.log.append("start")
+
+    def stop(self) -> None:
+        self.stops += 1
+        self.running = False
+        self.log.append("stop")
 
 
 def _launcher(password: str | None = "secret") -> tuple[Any, State]:
     state = State()
-    return launcher_mod.Launcher(password, lambda: state.running, state.start), state
+    launcher = launcher_mod.Launcher(
+        password,
+        lambda: state.running,
+        state.start,
+        state.stop,
+        lambda: state.log.append("waited"),
+    )
+    return launcher, state
 
 
 def test_launch_rules(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -62,6 +77,31 @@ def test_launch_rules(monkeypatch: pytest.MonkeyPatch) -> None:
     assert status == HTTPStatus.TOO_MANY_REQUESTS and "minute" in body["error"]
     clock[0] += launcher_mod.LOCKOUT_S + 1
     assert launcher.launch("secret")[0] == HTTPStatus.OK
+
+
+def test_stop_and_restart() -> None:
+    launcher, state = _launcher()
+    assert launcher.act("stop", "faux")[0] == HTTPStatus.UNAUTHORIZED and state.stops == 0
+    assert launcher.act("stop", "secret") == (HTTPStatus.OK, {"stopped": False})  # not running
+    state.running = True
+    assert launcher.act("stop", "secret") == (HTTPStatus.OK, {"stopped": True})
+    assert state.stops == 1 and state.running is False
+    state.running = True
+    assert launcher.act("restart", "secret") == (HTTPStatus.OK, {"restarted": True})
+    assert state.log[-3:] == ["stop", "waited", "start"]
+    # restart while stopped: a plain start
+    assert launcher.act("restart", "secret")[1] == {"started": True, "running": False}
+
+
+def test_wait_stopped(monkeypatch: pytest.MonkeyPatch) -> None:
+    answers = iter([True, True, False])
+    launcher = launcher_mod.Launcher("s", lambda: next(answers))
+    monkeypatch.setattr(launcher_mod.time, "sleep", lambda s: None)
+    launcher.wait_stopped()
+    with pytest.raises(StopIteration):  # it stopped asking once Spectre was down
+        next(answers)
+    never = launcher_mod.Launcher("s", lambda: True)
+    never.wait_stopped()  # gives up after a while
 
 
 def test_without_password() -> None:
@@ -100,7 +140,8 @@ def test_http(served: tuple[int, State]) -> None:
     for path in ("/", "/lanceur/", "/lanceur", "/lanceur/?x=1"):
         status, page = _request(port, "GET", path)
         assert status == 200 and b"Lancer Spectre" in page
-    assert json.loads(_request(port, "GET", "/lanceur/status")[1]) == {"running": False}
+    status_body = json.loads(_request(port, "GET", "/lanceur/status")[1])
+    assert status_body["running"] is False and isinstance(status_body["power"], dict)
     assert _request(port, "GET", "/nope")[0] == 404
     same = {"X-Spectre": "1", "Content-Type": "application/json"}
     assert _request(port, "POST", "/lanceur/start", {"password": "secret"})[0] == 403
@@ -110,6 +151,9 @@ def test_http(served: tuple[int, State]) -> None:
     status, body = _request(port, "POST", "/lanceur/start", {"password": "secret"}, same)
     assert status == 200 and json.loads(body)["started"] is True and state.starts == 1
     assert _request(port, "POST", "/autre", {}, same)[0] == 404
+    state.running = True
+    status, body = _request(port, "POST", "/lanceur/stop", {"password": "secret"}, same)
+    assert status == 200 and json.loads(body) == {"stopped": True} and state.stops == 1
     big = {**same, "Content-Length": str(launcher_mod.MAX_BODY + 1)}
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
     conn.putrequest("POST", "/lanceur/start")
@@ -128,6 +172,34 @@ def test_spectre_running_and_start(monkeypatch: pytest.MonkeyPatch) -> None:
     command = launched[0][0]
     assert command[0] == "powershell.exe" and command[-1] == "--silent"
     assert command[-2].endswith("spectre-assistant.ps1")
+
+
+def test_stop_command_and_power(monkeypatch: pytest.MonkeyPatch) -> None:
+    ran: list[Any] = []
+    monkeypatch.setattr(launcher_mod.subprocess, "run", lambda *a, **kw: ran.append((a, kw)))
+    launcher_mod.stop_spectre()
+    (command,), options = ran[0]
+    assert command[:2] == ["cmd.exe", "/c"] and command[2].endswith("spectre-stop.cmd")
+    assert options["timeout"] == 30
+    power = launcher_mod.power_status()
+    assert power == {} or set(power) == {"on_battery", "percent"}
+    monkeypatch.setattr(launcher_mod.sys, "platform", "linux")
+    assert launcher_mod.power_status() == {}
+
+
+def test_quiet_connection_errors(capsys: pytest.CaptureFixture[str]) -> None:
+    launcher, _ = _launcher()
+    server = launcher_mod.make_server(launcher, port=0)
+    try:
+        for error in (ConnectionResetError("reset"), ValueError("vraie erreur")):
+            try:
+                raise error
+            except Exception:  # noqa: BLE001 - handle_error reads the exception in flight
+                server.handle_error(None, ("127.0.0.1", 1))
+    finally:
+        server.server_close()
+    err = capsys.readouterr().err
+    assert "vraie erreur" in err and "reset" not in err
 
 
 def test_main(monkeypatch: pytest.MonkeyPatch) -> None:

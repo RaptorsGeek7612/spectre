@@ -8,6 +8,7 @@ from __future__ import annotations
 import sys
 import time
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,31 @@ class Monitor:
 
 
 IS_WINDOWS = sys.platform == "win32"
+
+
+def power_status() -> dict[str, Any]:  # pragma: no cover - needs a real Windows machine
+    """On battery or mains, and the charge (empty elsewhere or when Windows does not know)."""
+    if sys.platform != "win32":
+        return {}
+    import ctypes
+
+    class SystemPowerStatus(ctypes.Structure):
+        _fields_ = [
+            ("ACLineStatus", ctypes.c_ubyte),
+            ("BatteryFlag", ctypes.c_ubyte),
+            ("BatteryLifePercent", ctypes.c_ubyte),
+            ("SystemStatusFlag", ctypes.c_ubyte),
+            ("BatteryLifeTime", ctypes.c_ulong),
+            ("BatteryFullLifeTime", ctypes.c_ulong),
+        ]
+
+    state = SystemPowerStatus()
+    if not ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(state)):
+        return {}
+    return {
+        "on_battery": state.ACLineStatus == 0,
+        "percent": None if state.BatteryLifePercent == 255 else int(state.BatteryLifePercent),
+    }
 
 
 def monitors() -> list[Monitor]:  # pragma: no cover - needs a real Windows desktop

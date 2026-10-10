@@ -347,6 +347,9 @@ async function loadStatus() {
   $("#hud-missions").textContent = s.missions_running;
   if (s.camera) showPresence(s.present || [], 0);
   $("#hud-brain").textContent = String(s.brain_label || s.brain_model).toUpperCase();
+  const power = s.power || {};
+  $("#power-banner").hidden = !power.on_battery;
+  if (power.on_battery) $("#power-banner").textContent = `Le PC est sur batterie${power.percent != null ? ` (${power.percent} %)` : ""} : il peut se mettre en veille, et Spectre ne sera plus joignable. Branche-le pour qu'il reste disponible.`;
   if (!document.body.dataset.voice || document.body.dataset.voice === "off") setState(s.voice);
 }
 const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
@@ -511,10 +514,14 @@ function connect() {
   es.addEventListener("approval_done", () => loadApprovals());
   es.addEventListener("initiative", (e) => { const d = JSON.parse(e.data); toast(`${d.title}${d.body ? ` — ${d.body}` : ""}`, "ok", 8000); loadInitiatives(); loadMissions(); });
   es.addEventListener("initiative_row", () => loadInitiatives());
+  es.onopen = () => { $("#offline-banner").hidden = true; };
   es.onerror = () => {
     setState("off", "Connexion perdue, reconnexion…");
-    // from the phone: if Spectre was closed on the PC, the launcher can start it again
-    if (REMOTE) fetch("/api/status", { cache: "no-store" }).then((r) => { if (r.status >= 502) location.href = "/lanceur/"; }).catch(() => {});
+    // Spectre closed on the PC: the launcher can start it again (from the phone). Nothing
+    // answers at all: the PC sleeps, is off or offline; say so instead of a frozen page.
+    fetch("/api/status", { cache: "no-store" })
+      .then((r) => { if (REMOTE && r.status >= 502) location.href = "/lanceur/"; })
+      .catch(() => { $("#offline-banner").hidden = false; });
   };
 }
 
@@ -594,4 +601,5 @@ addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setT
     setState("off", `L'assistant n'est pas lancé ici (${err.message}). Démarre-le avec : uv run python -m spectre.assistant`);
   }
 })();
+setInterval(() => loadStatus().catch(() => {}), 60000);  // battery, counters
 addEventListener("hashchange", () => { const v = location.hash.slice(1); if (LOADERS[v]) show(v); });
