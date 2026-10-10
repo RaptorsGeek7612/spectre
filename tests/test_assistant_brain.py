@@ -151,9 +151,9 @@ def test_brain_sessions_and_prompt(db: Database, tmp_path: Path) -> None:
     cli = FakeCLI(tmp_path, "Il est midi.", Reply("vieux", "", True), "Nouveau départ.")
     brain = Brain(db, cli, AssistantConfig(user_name="Barth", city="Lyon"))  # type: ignore[arg-type]
     assert brain.ask("  ").is_error
+    Memory(db).remember("Barth", "aime", "le vélo")
     assert brain.ask("Quelle heure ?").text == "Il est midi."
     assert cli.calls[0]["resume"] is None
-    Memory(db).remember("Barth", "aime", "le vélo")
     db.execute(
         "INSERT INTO approvals(ts, tool, args, level, category, reason) "
         "VALUES('t', 'delete_file', '{}', 3, 'c', 'r')"
@@ -170,6 +170,39 @@ def test_brain_sessions_and_prompt(db: Database, tmp_path: Path) -> None:
     assert brain._session() == ""
     brain.reset()
     assert db.get_kv("brain_session") == ""
+
+
+def test_brain_new_session_when_memory_changes(db: Database, tmp_path: Path) -> None:
+    cli = FakeCLI(tmp_path)
+    brain = Brain(db, cli, AssistantConfig())  # type: ignore[arg-type]
+    brain.ask("Salut")
+    brain.ask("Ça va ?")
+    assert [c["resume"] for c in cli.calls] == [None, "s1"]  # memory unchanged: same session
+    Memory(db).remember("utilisateur", "aime", "le minage")  # learnt elsewhere
+    brain.ask("Tu sais ce que j'aime ?")
+    fresh = cli.calls[-1]
+    assert fresh["resume"] is None and "le minage" in fresh["system"]
+    assert fresh["prompt"].startswith("[Ta mémoire a changé")
+    assert "Utilisateur : Ça va ?" in fresh["prompt"] and "Toi : ok" in fresh["prompt"]
+    assert fresh["prompt"].endswith("]\nTu sais ce que j'aime ?")
+    assert db.all("SELECT text FROM events WHERE kind = 'utterance'")[-1]["text"] == (
+        "Tu sais ce que j'aime ?"
+    )
+    brain.ask("Et après ?")
+    assert cli.calls[-1]["resume"] == "s1"  # the new session saw it: resumed again
+    db.execute("DELETE FROM events")
+    assert brain._recap() == "[Ta mémoire a changé : nouvelle conversation.]\n"
+
+
+def test_brain_upgrade_keeps_session(db: Database, tmp_path: Path) -> None:
+    """No fingerprint stored yet (first run after an upgrade): the session is kept."""
+    cli = FakeCLI(tmp_path)
+    brain = Brain(db, cli, AssistantConfig())  # type: ignore[arg-type]
+    brain.ask("Salut")
+    db.set_kv("brain_memory", "")
+    Memory(db).remember("utilisateur", "aime", "le trading")
+    brain.ask("Encore")
+    assert cli.calls[-1]["resume"] == "s1"
 
 
 # ---- missions -----------------------------------------------------------------------------

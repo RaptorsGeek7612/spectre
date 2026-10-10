@@ -7,6 +7,24 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-10-10
+
+### Added
+
+- Spectre parle aussi sur le téléphone : ses réponses aux messages écrits et ses initiatives
+  (dont les visites où il vient discuter, suivies de l'écoute) sont dites à voix haute sur
+  l'appareil distant. Le navigateur n'autorise le son qu'après un toucher : ce qui arrive avant
+  attend le premier toucher de l'écran. Nouvelle route `POST /api/assistant/speak`.
+
+### Fixed
+
+- Ce que Spectre apprend en dehors de la conversation (page Mémoire, missions, autre
+  processus) n'était vu que le lendemain : la conversation du jour reprise gardait la mémoire
+  de son début. Il en recommence maintenant une quand sa mémoire a changé, avec un rappel des
+  derniers échanges pour garder le fil ; ce qu'il retient lui-même pendant un échange ne la
+  relance pas.
+- Sur un écran tactile, le son est débloqué quand le doigt se lève (règle des navigateurs).
+
 ## [0.6.2] - 2026-10-10
 
 ### Added

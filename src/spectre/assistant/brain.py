@@ -7,6 +7,7 @@ the child environment so the CLI uses the logged-in subscription, not a credit-l
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -199,6 +200,7 @@ def parse_reply(stdout: str, stderr: str = "") -> Reply:
 
 
 LANGUAGES = {"fr": "français", "en": "anglais"}
+MEMORY_KV = "brain_memory"  # fingerprint of the memory the current session saw
 LIMIT_MARKERS = ("session limit", "usage limit", "rate limit", "limit reached", "hit your limit")
 
 
@@ -268,11 +270,17 @@ class Brain:
         text = text.strip()
         if not text:
             return Reply("", "", True)
-        event = self.db.log_event("utterance", "user", text, channel=channel)
         session = self._session()
+        recap = ""
+        if session and self.db.get_kv(MEMORY_KV) not in ("", self._memory_mark()):
+            # A resumed session keeps the system prompt it started with: the memory changed
+            # elsewhere (memory page, missions, another process), so start afresh, with the thread.
+            recap, session = self._recap(), ""
+        event = self.db.log_event("utterance", "user", text, channel=channel)
         opener = self.take_opener()
         if opener:  # the brain's session did not see the opener Spectre said on its own
             text = f"[Tu étais venu vers l'utilisateur en lui disant : « {opener} »]\n{text}"
+        text = recap + text
         reply = self.cli.ask(text, system=self.system_prompt(channel), resume=session or None)
         if usage_limit(reply.text):
             reply = Reply(explain_limit(reply.text), reply.session_id, True, reply.cost_usd)
@@ -281,6 +289,8 @@ class Brain:
             reply = self.cli.ask(text, system=self.system_prompt(channel), resume=None)
         if reply.session_id:
             self.db.set_kv("brain_session", f"{datetime.now():%Y-%m-%d}|{reply.session_id}")
+        # after the turn: what Spectre itself remembered during it, its session already knows
+        self.db.set_kv(MEMORY_KV, self._memory_mark())
         self.db.log_event(
             "reply", "spectre", reply.text, channel=channel, in_reply_to=event, error=reply.is_error
         )
@@ -304,6 +314,26 @@ class Brain:
         stored = self.db.get_kv("brain_session")
         day, _, session = stored.partition("|")
         return session if day == f"{datetime.now():%Y-%m-%d}" else ""
+
+    def _memory_mark(self) -> str:
+        """A fingerprint of the memory shown in the system prompt."""
+        return hashlib.sha256(self.memory.context_block().encode()).hexdigest()[:16]
+
+    def _recap(self, turns: int = 8) -> str:
+        """The last exchanges, so a fresh session keeps the thread of the conversation."""
+        rows = self.db.all(
+            "SELECT source, text FROM events WHERE kind IN ('utterance', 'reply') "
+            "ORDER BY id DESC LIMIT ?",
+            (turns,),
+        )
+        lines = [
+            f"{'Utilisateur' if r['source'] == 'user' else 'Toi'} : {r['text'][:300]}"
+            for r in reversed(rows)
+        ]
+        head = "[Ta mémoire a changé : nouvelle conversation."
+        if not lines:
+            return f"{head}]\n"
+        return f"{head} Fin de votre échange :\n" + "\n".join(lines) + "]\n"
 
     def reset(self) -> None:
         self.db.set_kv("brain_session", "")

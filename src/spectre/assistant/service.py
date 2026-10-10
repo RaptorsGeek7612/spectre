@@ -121,14 +121,13 @@ class AssistantService:
         return self.voice_state in ("sleeping", "off") and not self._busy.locked()
 
     def _on_initiative(self, kind: str, title: str, body: str) -> None:
-        self.publish({"type": "initiative", "kind": kind, "title": title, "body": body})
+        speak = self.voice is not None and self.config.speak_initiatives  # the phone says it too
+        self.publish(
+            {"type": "initiative", "kind": kind, "title": title, "body": body, "speak": speak}
+        )
         if kind == "lien":  # Spectre comes to talk: its words join the conversation
             self.publish({"type": "message", "role": "spectre", "text": body, "channel": "voice"})
-        if (
-            self.voice is not None
-            and self.config.speak_initiatives
-            and self.voice_state == "sleeping"
-        ):
+        if speak and self.voice_state == "sleeping":
             threading.Thread(target=self._announce, args=(kind, title, body), daemon=True).start()
 
     def _announce(self, kind: str, title: str, body: str) -> None:
@@ -372,12 +371,16 @@ class AssistantService:
         if not text:
             return {"heard": "", "reply": "", "audio": ""}
         reply = self.chat(text, channel="voice")
-        audio = ""
+        return {"heard": text, "reply": reply, "audio": self.render_speech(reply)}
+
+    def render_speech(self, text: str) -> str:
+        """Spectre's voice saying `text`, as a base64 WAV for another device (the phone) to
+        play: typed replies and initiatives; "" when nothing can be rendered."""
+        if self.voice is None:
+            raise ValueError("la voix n'est pas active (lance Spectre avec la voix)")
         render = getattr(self.voice.tts, "render", None)  # the Windows fallback voice cannot
-        rendered = render(reply) if reply and render else None
-        if rendered:
-            audio = base64.b64encode(to_wav(*rendered)).decode("ascii")
-        return {"heard": text, "reply": reply, "audio": audio}
+        rendered = render(text) if text.strip() and render else None
+        return base64.b64encode(to_wav(*rendered)).decode("ascii") if rendered else ""
 
     # ---- vision (opt-in) -------------------------------------------------------------------
 
