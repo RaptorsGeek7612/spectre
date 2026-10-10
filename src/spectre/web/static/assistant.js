@@ -42,7 +42,6 @@ let voiceAvailable = false;
 // Opened from another device (the phone, through Tailscale): the microphone button records on
 // this device instead of making the PC listen, and Spectre's answer is played here.
 const REMOTE = !["127.0.0.1", "localhost", "::1", "[::1]"].includes(location.hostname);
-if (REMOTE) document.body.classList.add("remote-device");  // already on the phone
 const SLEEP_HINT = REMOTE ? "Touche le micro pour me parler." : "Dis « Spectre » pour me parler.";
 
 const orb = new Orb($("#orb"));
@@ -185,7 +184,8 @@ $("#agent-form").addEventListener("submit", async (e) => {
 /* ---- remote access: Spectre on the phone through Tailscale ---- */
 async function loadRemote() {
   const r = await api("GET", "remote");
-  $("#remote-hint").textContent = r.hint || "";
+  // on the phone itself: it is already connected, the QR code serves to open Spectre elsewhere
+  $("#remote-hint").textContent = REMOTE && r.serving ? "Tu es connecté à Spectre à distance depuis cet appareil. Le QR code ouvre Spectre sur un autre appareil." : (r.hint || "");
   $("#remote-qr").innerHTML = r.qr || "";  // SVG drawn by Spectre itself, from Tailscale's name
   const check = (label, ok, yes, no) => [h("dt", {}, label), h("dd", { class: ok ? "ok" : "ko" }, ok ? yes : no)];
   $("#remote-checks").replaceChildren(
@@ -195,6 +195,8 @@ async function loadRemote() {
   $("#remote-url-row").hidden = !r.url;
   $("#remote-url").textContent = r.url; $("#remote-url").href = r.url || "#";
   $("#remote-enable").hidden = !(r.running && r.password && !r.serving);
+  $("#remote-launcher").hidden = !r.launcher_url;
+  $("#remote-launcher-url").textContent = r.launcher_url || ""; $("#remote-launcher-url").href = r.launcher_url || "#";
 }
 function openRemote() {
   closeDrawers();
@@ -506,7 +508,11 @@ function connect() {
   es.addEventListener("approval_done", () => loadApprovals());
   es.addEventListener("initiative", (e) => { const d = JSON.parse(e.data); toast(`${d.title}${d.body ? ` — ${d.body}` : ""}`, "ok", 8000); loadInitiatives(); loadMissions(); });
   es.addEventListener("initiative_row", () => loadInitiatives());
-  es.onerror = () => setState("off", "Connexion perdue, reconnexion…");
+  es.onerror = () => {
+    setState("off", "Connexion perdue, reconnexion…");
+    // from the phone: if Spectre was closed on the PC, the launcher can start it again
+    if (REMOTE) fetch("/api/status", { cache: "no-store" }).then((r) => { if (r.status >= 502) location.href = "/lanceur/"; }).catch(() => {});
+  };
 }
 
 /* ---- wiring ---- */

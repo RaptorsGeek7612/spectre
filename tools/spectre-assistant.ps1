@@ -14,6 +14,21 @@ function Test-Spectre {
 $silent = $args -contains "--silent"
 $args = @($args | Where-Object { $_ -ne "--silent" })
 
+# The launcher (tools\spectre_launcher.py) stays on even when Spectre is closed, so the phone can
+# start Spectre again from https://<pc>/lanceur/. Tiny: standard library only.
+function Test-Launcher {
+    try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 "http://127.0.0.1:8764/status" | Out-Null; return $true }
+    catch { return $false }
+}
+
+if (-not $env:SPECTRE_WEBUI_PASSWORD) {
+    $env:SPECTRE_WEBUI_PASSWORD = [Environment]::GetEnvironmentVariable("SPECTRE_WEBUI_PASSWORD", "User")
+}
+if ($env:SPECTRE_WEBUI_PASSWORD -and -not (Test-Launcher)) {
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "uv run --no-sync python tools\spectre_launcher.py" `
+        -WorkingDirectory $repo -WindowStyle Hidden
+}
+
 if (Test-Spectre) {
     if (-not $silent) { Start-Process $url }  # already running: just show it
     exit 0
@@ -27,9 +42,6 @@ $extra = ($args | ForEach-Object { "`"$_`"" }) -join " "
 # Access from the phone, anywhere: when Tailscale is installed and a password is set
 # (tools\spectre-password.cmd), publish Spectre on the private tailnet over HTTPS with
 # `tailscale serve` (nothing is opened to the Internet) and accept its host name.
-if (-not $env:SPECTRE_WEBUI_PASSWORD) {
-    $env:SPECTRE_WEBUI_PASSWORD = [Environment]::GetEnvironmentVariable("SPECTRE_WEBUI_PASSWORD", "User")
-}
 $tailscale = (Get-Command tailscale -ErrorAction SilentlyContinue).Source
 if (-not $tailscale -and (Test-Path "$env:ProgramFiles\Tailscale\tailscale.exe")) {
     $tailscale = "$env:ProgramFiles\Tailscale\tailscale.exe"  # PATH not refreshed yet
@@ -48,6 +60,10 @@ if ($tailscale -and $env:SPECTRE_WEBUI_PASSWORD) {
             -WindowStyle Hidden -PassThru
         if (-not $serve.WaitForExit(10000)) { $serve.Kill() }
         elseif ($name -and $serve.ExitCode -eq 0) { $extra = "--allow-host $name $extra" }
+        # and the launcher under /lanceur, so the phone can start Spectre when it is closed
+        $lanceur = Start-Process -FilePath $tailscale -WindowStyle Hidden -PassThru `
+            -ArgumentList "serve", "--bg", "--set-path", "/lanceur", "http://127.0.0.1:8764"
+        if (-not $lanceur.WaitForExit(10000)) { $lanceur.Kill() }
     } catch { }  # Tailscale stopped or logged out: Spectre stays local
 }
 $command = "uv run python -m spectre.assistant --voice --camera --no-browser $extra >> `"$log`" 2>&1"

@@ -19,6 +19,7 @@ from spectre.assistant import qrcode
 SERVE_TIMEOUT_S = 10.0  # `serve` waits forever while HTTPS/Serve is off on the tailnet
 STATUS_TIMEOUT_S = 5.0
 PAGE = "assistant.html"
+LAUNCHER_PORT = 8764  # tools/spectre_launcher.py, published under /lanceur
 
 Runner = Callable[[list[str], float], tuple[int, str]]
 
@@ -78,6 +79,7 @@ class Remote:
             "dns": "",
             "url": "",
             "qr": "",
+            "launcher_url": "",
         }
         if self.binary is None:
             return info | {"hint": "Installe Tailscale sur ce PC et sur ton téléphone."}
@@ -89,6 +91,8 @@ class Remote:
         served = json.dumps(self._json("serve", "status"))
         info["serving"] = f"127.0.0.1:{self.port}" in served or f"localhost:{self.port}" in served
         info["url"] = f"https://{info['dns']}/{PAGE}"
+        if f"127.0.0.1:{LAUNCHER_PORT}" in served:
+            info["launcher_url"] = f"https://{info['dns']}/lanceur/"
         info["qr"] = qrcode.svg(info["url"])
         if not password:
             hint = (

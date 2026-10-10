@@ -255,7 +255,6 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 
 /* ---- remote access (phone) ---- */
 .rail-foot .remote-btn { width: 100%; justify-content: flex-start; white-space: nowrap; letter-spacing: 0.12em; }
-body.remote-device .remote-btn { display: none; }
 .remote { width: min(680px, calc(100vw - 32px)); margin: auto; }
 .remote[open] { animation: pal-in 0.3s var(--out); }
 .remote-inner { display: grid; }

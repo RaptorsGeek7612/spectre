@@ -1,6 +1,6 @@
 [project]
 name = "spectre"
-version = "0.5.1"
+version = "0.5.2"
 description = "Spectre: a multi-agent Claude pipeline (Scout, Scribe, Warden) orchestrated with LangGraph."
 readme = "README.md"
 license = "MIT"
@@ -71,6 +71,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.ruff.lint.per-file-ignores]
 "src/spectre/assistant/db.py" = ["E501"]  # SQL schema reads better unwrapped
 "tools/make_logo.py" = ["E501"]  # SVG markup and geometry read better unwrapped
+"tools/spectre_launcher.py" = ["E501"]  # the embedded page reads better unwrapped
 
 [tool.ruff.format]
 quote-style = "double"
