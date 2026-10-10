@@ -7,6 +7,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-10-10
+
+### Added
+
+- Surveillance dans le lanceur (`tools/spectre_launcher.py`) : toutes les 30 s, il vérifie que
+  Spectre répond. Après deux vérifications sans réponse, il note dans
+  `~/.spectre/assistant/watchdog.log` l'heure, la mémoire libre et la fin de `spectre.log`, puis
+  relance Spectre. Il laisse tranquille un Spectre arrêté exprès (marque `stopped` posée par le
+  lanceur et par `spectre-stop.cmd`, retirée à chaque démarrage), attend 2 minutes après un
+  démarrage, et abandonne après 3 relances en une heure (une seule ligne dans le journal).
+- `spectre.log` se termine par le code de sortie de Spectre quand il s'arrête : s'il disparaît
+  sans cette ligne, c'est qu'il a été tué.
+
 ## [0.6.5] - 2026-10-10
 
 ### Fixed

@@ -30,6 +30,16 @@ def _load() -> ModuleType:
 launcher_mod = _load()
 
 
+@pytest.fixture(autouse=True)
+def _home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Never touch the real ~/.spectre: the stop mark and the logs go to a temporary folder."""
+    home = tmp_path / "spectre-home"
+    monkeypatch.setattr(launcher_mod, "HOME", home)
+    monkeypatch.setattr(launcher_mod, "STOPPED_FLAG", home / "stopped")
+    monkeypatch.setattr(launcher_mod, "WATCHDOG_LOG", home / "watchdog.log")
+    return home
+
+
 class State:
     def __init__(self) -> None:
         self.running = False
@@ -91,6 +101,101 @@ def test_stop_and_restart() -> None:
     assert state.log[-3:] == ["stop", "waited", "start"]
     # restart while stopped: a plain start
     assert launcher.act("restart", "secret")[1] == {"started": True, "running": False}
+
+
+def test_stop_mark(_home: Path) -> None:
+    """Stopping on purpose leaves a mark the watchdog respects; any start removes it."""
+    launcher, state = _launcher()
+    flag = _home / "stopped"
+    launcher.act("stop", "secret")
+    assert flag.exists()
+    launcher.act("start", "secret")
+    assert not flag.exists()
+
+    def stop_like_the_cmd() -> None:  # spectre-stop.cmd marks it stopped on purpose too
+        state.stop()
+        launcher_mod.mark_stopped(True)
+
+    launcher.stop = stop_like_the_cmd
+    state.running = True
+    assert launcher.act("restart", "secret") == (HTTPStatus.OK, {"restarted": True})
+    assert not flag.exists()  # a restart is not a stop
+    launcher_mod.mark_stopped(True, _home / "missing" / "dir" / "stopped")  # creates the folder
+    launcher_mod.mark_stopped(False, _home / "nothing")  # removing a missing mark is fine
+    blocked = _home / "blocked"
+    blocked.mkdir()
+    launcher_mod.mark_stopped(True, blocked)  # a folder in the way: ignored, no crash
+
+
+def _watchdog(_home: Path, clock: list[float]) -> tuple[Any, State, Any]:
+    launcher, state = _launcher()
+    (_home / "spectre.log").parent.mkdir(parents=True, exist_ok=True)
+    (_home / "spectre.log").write_text("Spectre est prêt\n\nCaméra active\n", encoding="utf-8")
+    dog = launcher_mod.Watchdog(
+        launcher,
+        spectre_log=_home / "spectre.log",
+        clock=lambda: clock[0],
+        memory=lambda: 812,
+    )
+    return dog, state, launcher
+
+
+def test_watchdog_restarts_a_silent_spectre(_home: Path) -> None:
+    clock = [1000.0]
+    dog, state, launcher = _watchdog(_home, clock)
+    state.running = True
+    assert dog.check() == "ok"
+    state.running = False
+    assert dog.check() == "silent" and state.starts == 0  # one silent look is not enough
+    assert dog.check() == "restarted" and state.starts == 1
+    log = (_home / "watchdog.log").read_text(encoding="utf-8")
+    assert "ne répond plus (812 Mo de mémoire libre)" in log and "Caméra active" in log
+    assert dog.check() == "starting"  # within the start-up grace: wait
+    clock[0] += launcher_mod.STARTUP_GRACE_S + 1
+    state.running = True
+    assert dog.check() == "ok" and dog.silent_checks == 0
+
+
+def test_watchdog_respects_a_stop_on_purpose(_home: Path) -> None:
+    clock = [1000.0]
+    dog, state, _ = _watchdog(_home, clock)
+    launcher_mod.mark_stopped(True)
+    for _ in range(4):
+        assert dog.check() == "stopped"
+    assert state.starts == 0 and not (_home / "watchdog.log").exists()
+
+
+def test_watchdog_gives_up_after_too_many_restarts(_home: Path) -> None:
+    clock = [1000.0]
+    dog, state, _ = _watchdog(_home, clock)
+    dog.memory = lambda: None
+    dog.spectre_log = _home / "absent.log"
+    for _ in range(launcher_mod.MAX_RESTARTS):
+        dog.check()
+        assert dog.check() == "restarted"
+        clock[0] += launcher_mod.STARTUP_GRACE_S + 1
+    dog.check()
+    assert dog.check() == "gave-up" and dog.check() == "gave-up"
+    assert state.starts == launcher_mod.MAX_RESTARTS
+    log = (_home / "watchdog.log").read_text(encoding="utf-8")
+    assert "mémoire libre inconnue" in log and "(vide)" in log
+    assert log.count("je ne le relance plus") == 1  # said once, not every 30 s
+    state.running = True
+    assert dog.check() == "ok" and not dog.gave_up  # back up: it watches again
+    clock[0] += launcher_mod.RESTART_WINDOW_S  # an hour later the count starts over
+    state.running = False
+    dog.check()
+    assert dog.check() == "restarted"
+
+
+def test_watchdog_log_and_memory_never_break(_home: Path) -> None:
+    clock = [1000.0]
+    dog, _, _ = _watchdog(_home, clock)
+    dog.log = _home  # a folder: writing fails, quietly
+    dog.note("rien")
+    assert launcher_mod.log_tail(_home / "absent.log") == []
+    free = launcher_mod.free_memory_mb()
+    assert free is None or free > 0
 
 
 def test_wait_stopped(monkeypatch: pytest.MonkeyPatch) -> None:

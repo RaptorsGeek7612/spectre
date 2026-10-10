@@ -37,6 +37,15 @@ LOCKOUT_S = 60.0
 MAX_BODY = 4096
 ACTIONS = ("start", "restart", "stop")
 REPO = Path(__file__).resolve().parent.parent
+HOME = Path(os.environ.get("SPECTRE_ASSISTANT_DIR") or Path.home() / ".spectre" / "assistant")
+# Written when Spectre is stopped on purpose (launcher, spectre-stop.cmd), removed when it is
+# started: the watchdog never restarts what the user stopped.
+STOPPED_FLAG = HOME / "stopped"
+WATCHDOG_LOG = HOME / "watchdog.log"
+WATCH_EVERY_S = 30.0
+STARTUP_GRACE_S = 120.0  # Spectre takes ~20 s to answer, up to 2 min at Windows sign-in
+MAX_RESTARTS = 3  # per hour: beyond that something is broken, restarting would only loop
+RESTART_WINDOW_S = 3600.0
 # A browser or phone that closes a page while it loads: normal, not worth a traceback in the log.
 QUIET_ERRORS = (ConnectionAbortedError, ConnectionResetError, BrokenPipeError, TimeoutError)
 
@@ -205,6 +214,137 @@ def stop_spectre() -> None:
     subprocess.run(command, timeout=30, check=False, **_hidden())  # noqa: S603
 
 
+def mark_stopped(stopped: bool, flag: Path | None = None) -> None:
+    """Remember that the user stopped Spectre on purpose (or forget it when it starts)."""
+    flag = flag or STOPPED_FLAG
+    try:
+        if stopped:
+            flag.parent.mkdir(parents=True, exist_ok=True)
+            flag.write_text(time.strftime("%Y-%m-%d %H:%M:%S"), encoding="utf-8")
+        else:
+            flag.unlink(missing_ok=True)
+    except OSError:
+        pass  # a read-only or missing folder must not break the launcher
+
+
+def free_memory_mb() -> int | None:
+    """Free physical memory in MB on Windows (None elsewhere or when unknown)."""
+    if sys.platform != "win32":
+        return None
+    import ctypes
+
+    class MemoryStatusEx(ctypes.Structure):
+        _fields_ = [
+            ("dwLength", ctypes.c_ulong),
+            ("dwMemoryLoad", ctypes.c_ulong),
+            ("ullTotalPhys", ctypes.c_ulonglong),
+            ("ullAvailPhys", ctypes.c_ulonglong),
+            ("ullTotalPageFile", ctypes.c_ulonglong),
+            ("ullAvailPageFile", ctypes.c_ulonglong),
+            ("ullTotalVirtual", ctypes.c_ulonglong),
+            ("ullAvailVirtual", ctypes.c_ulonglong),
+            ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+        ]
+
+    status = MemoryStatusEx()
+    status.dwLength = ctypes.sizeof(MemoryStatusEx)
+    if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+        return None
+    return int(status.ullAvailPhys // (1024 * 1024))
+
+
+def log_tail(path: Path, lines: int = 12) -> list[str]:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    return [line for line in text.splitlines() if line.strip()][-lines:]
+
+
+class Watchdog:
+    """Restarts Spectre when it stops on its own, and writes down the circumstances.
+
+    Spectre has been seen to vanish without a word in its log. Every WATCH_EVERY_S the
+    watchdog checks that it answers; after two silent checks in a row it notes the time, the
+    free memory and the end of Spectre's log in watchdog.log, then starts it again. It leaves
+    alone a Spectre the user stopped (STOPPED_FLAG), one that is still starting, and gives up
+    after MAX_RESTARTS restarts in an hour: something is then broken and needs a person.
+    """
+
+    def __init__(
+        self,
+        launcher: Launcher,
+        *,
+        flag: Path | None = None,
+        log: Path | None = None,
+        spectre_log: Path | None = None,
+        clock: Callable[[], float] = time.monotonic,
+        memory: Callable[[], int | None] = free_memory_mb,
+    ) -> None:
+        self.launcher = launcher
+        self.flag = flag or STOPPED_FLAG
+        self.log = log or WATCHDOG_LOG
+        self.spectre_log = spectre_log or HOME / "spectre.log"
+        self.clock = clock
+        self.memory = memory
+        self.silent_checks = 0
+        self.restarts: list[float] = []
+        self.gave_up = False
+
+    def note(self, text: str) -> None:
+        try:
+            self.log.parent.mkdir(parents=True, exist_ok=True)
+            with self.log.open("a", encoding="utf-8") as out:
+                out.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {text}\n")
+        except OSError:
+            pass
+
+    def check(self) -> str:
+        """One look; returns what it did (for the tests and the log)."""
+        if self.launcher.is_running():
+            self.silent_checks = 0
+            self.gave_up = False
+            return "ok"
+        if self.flag.exists():
+            self.silent_checks = 0
+            return "stopped"  # stopped on purpose: not our business
+        now = self.clock()
+        if now - self.launcher._last_start < STARTUP_GRACE_S:
+            return "starting"
+        self.silent_checks += 1
+        if self.silent_checks < 2:
+            return "silent"  # one silent look may be a busy moment: look again first
+        self.restarts = [t for t in self.restarts if now - t < RESTART_WINDOW_S]
+        if len(self.restarts) >= MAX_RESTARTS:
+            if not self.gave_up:
+                self.gave_up = True
+                self.note(
+                    f"Spectre s'est arrêté {MAX_RESTARTS + 1} fois en une heure : je ne le "
+                    "relance plus. Lance-le à la main (raccourci « Spectre » ou lanceur)."
+                )
+            return "gave-up"
+        free = self.memory()
+        memory = f"{free} Mo de mémoire libre" if free is not None else "mémoire libre inconnue"
+        tail = "\n".join(f"    {line}" for line in log_tail(self.spectre_log))
+        self.note(
+            f"Spectre ne répond plus ({memory}) : je le relance.\n"
+            f"  Fin de spectre.log :\n{tail or '    (vide)'}"
+        )
+        self.restarts.append(now)
+        self.silent_checks = 0
+        with self.launcher._lock:
+            self.launcher._last_start = now
+            self.launcher.start()
+        return "restarted"
+
+    def run(self, stop: threading.Event) -> None:  # pragma: no cover - thread loop
+        while not stop.wait(WATCH_EVERY_S):
+            try:
+                self.check()
+            except Exception as exc:  # noqa: BLE001 - the watchdog must never die
+                self.note(f"erreur de la surveillance : {exc!r}")
+
+
 class Launcher:
     """Password check with a lockout, and the actions (injectable for tests)."""
 
@@ -258,12 +398,15 @@ class Launcher:
                 return refused
             running = self.is_running()
             if action == "stop":
+                mark_stopped(True)
                 if running:
                     self.stop()
                 return HTTPStatus.OK, {"stopped": running}
+            mark_stopped(False)
             if action == "restart" and running:
                 self.stop()
                 self.wait_stopped()
+                mark_stopped(False)  # spectre-stop.cmd has just marked it stopped on purpose
                 self._last_start = now
                 self.start()
                 return HTTPStatus.OK, {"restarted": True}
@@ -364,15 +507,21 @@ def make_server(launcher: Launcher, port: int = PORT) -> ThreadingHTTPServer:
 
 def main() -> int:
     password = os.environ.get(PASSWORD_ENV, "").strip() or None
+    launcher = Launcher(password)
     try:
-        server = make_server(Launcher(password))
+        server = make_server(launcher)
     except OSError:
         return 0  # already running
+    stop = threading.Event()
+    launcher._last_start = time.monotonic()  # started with Spectre: give it time to answer
+    watchdog = Watchdog(launcher)
+    threading.Thread(target=watchdog.run, args=(stop,), name="watchdog", daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        stop.set()
         server.server_close()
     return 0
 

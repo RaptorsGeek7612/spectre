@@ -21,6 +21,10 @@ function Test-Launcher {
     catch { return $false }
 }
 
+# Asked to start: Spectre is no longer "stopped on purpose" (the launcher's watchdog may
+# restart it again if it stops on its own).
+Remove-Item (Join-Path $env:USERPROFILE ".spectre\assistant\stopped") -ErrorAction SilentlyContinue
+
 if (-not $env:SPECTRE_WEBUI_PASSWORD) {
     $env:SPECTRE_WEBUI_PASSWORD = [Environment]::GetEnvironmentVariable("SPECTRE_WEBUI_PASSWORD", "User")
 }
@@ -81,8 +85,11 @@ if ($tailscale -and $env:SPECTRE_WEBUI_PASSWORD) {
         if (-not $lanceur.WaitForExit(10000)) { $lanceur.Kill() }
     } catch { }  # Tailscale stopped or logged out: Spectre stays local
 }
-$command = "uv run python -m spectre.assistant --voice --camera --no-browser $extra >> `"$log`" 2>&1"
-Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $command -WorkingDirectory $repo -WindowStyle Hidden
+# The last line notes how Spectre ended (!errorlevel! is read after it exits, thanks to /v:on):
+# if it ever vanishes, the log then shows its exit code, or nothing if it was killed.
+$command = "uv run python -m spectre.assistant --voice --camera --no-browser $extra >> `"$log`" 2>&1" +
+    " & echo [!date! !time!] Spectre s'est arrete (code de sortie !errorlevel!) >> `"$log`""
+Start-Process -FilePath "cmd.exe" -ArgumentList "/v:on", "/c", $command -WorkingDirectory $repo -WindowStyle Hidden
 
 $tries = if ($silent) { 240 } else { 60 }  # slower at sign-in, while Windows starts everything
 for ($i = 0; $i -lt $tries -and -not (Test-Spectre); $i++) { Start-Sleep -Milliseconds 500 }
