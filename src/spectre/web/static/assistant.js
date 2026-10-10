@@ -447,6 +447,34 @@ async function playWav(b64) {
   setState("speaking");
   await new Promise((resolve) => { src.onended = resolve; src.start(); });
 }
+// Spectre's other words (typed replies, initiatives) are spoken here too. The browser only lets
+// a page play sound after a tap: the first tap unlocks it, and what came before waits for it.
+let pendingSpeech = null;
+async function unlockAudio() {
+  rec.ctx = rec.ctx || new AudioContext();
+  await rec.ctx.resume();
+  if (pendingSpeech) { const p = pendingSpeech; pendingSpeech = null; speakHere(p.text, p.listen); }
+}
+async function speakHere(text, listen = false) {
+  if (!REMOTE || !text || rec.active || rec.busy) return;
+  if (rec.ctx?.state !== "running") {
+    pendingSpeech = { text, listen };
+    toast("Touche l'écran pour entendre Spectre.", "warn", 7000);
+    return;
+  }
+  rec.busy = true;
+  try {
+    const { audio } = await api("POST", "speak", { text });
+    if (audio) await playWav(audio);
+  } catch (err) {
+    toast(err.message, "error");
+  } finally {
+    rec.busy = false;
+    setState("sleeping");
+  }
+  if (listen && document.visibilityState === "visible") deviceTalk();  // then the user can simply answer
+}
+if (REMOTE) document.addEventListener("pointerdown", () => unlockAudio().catch(() => {}));
 
 /* ---- camera of this device (phone): a picture every 2 s, analysed by Spectre like its own ---- */
 const cam = { stream: null, timer: null, canvas: document.createElement("canvas"), sending: false };
@@ -512,7 +540,12 @@ function connect() {
   es.addEventListener("arrival", (e) => { const d = JSON.parse(e.data); caption("#said", d.text, 8000); });
   es.addEventListener("approval", () => { loadApprovals(); toast("Spectre attend ta validation pour une action.", "warn", 6000); });
   es.addEventListener("approval_done", () => loadApprovals());
-  es.addEventListener("initiative", (e) => { const d = JSON.parse(e.data); toast(`${d.title}${d.body ? ` — ${d.body}` : ""}`, "ok", 8000); loadInitiatives(); loadMissions(); });
+  es.addEventListener("initiative", (e) => {
+    const d = JSON.parse(e.data);
+    toast(`${d.title}${d.body ? ` — ${d.body}` : ""}`, "ok", 8000);
+    loadInitiatives(); loadMissions();
+    if (d.speak) speakHere(d.kind === "lien" ? d.body : `${d.title}. ${d.body}`, d.kind === "lien");
+  });
   es.addEventListener("initiative_row", () => loadInitiatives());
   es.onopen = () => { $("#offline-banner").hidden = true; };
   es.onerror = () => {
@@ -547,7 +580,7 @@ $("#say-form").addEventListener("submit", async (e) => {
   const input = $("#say"); const text = input.value.trim();
   if (!text) return;
   input.value = ""; $("#send").disabled = true;
-  try { await api("POST", "chat", { text }); } catch (err) { toast(err.message, "error"); }
+  try { const { reply } = await api("POST", "chat", { text }); speakHere(reply); } catch (err) { toast(err.message, "error"); }
   finally { $("#send").disabled = false; input.focus(); loadStatus(); }
 });
 $("#say").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) { e.preventDefault(); $("#say-form").requestSubmit(); } });
