@@ -7,6 +7,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-10
+
+### Fixed
+
+- Le bouton « Connexion à distance » est aussi visible sur le téléphone (icône en haut de
+  l'écran et menu) ; ouvert depuis le téléphone déjà connecté, il le signale.
+
 ## [0.5.1] - 2026-10-10
 
 ### Added
