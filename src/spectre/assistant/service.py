@@ -16,8 +16,9 @@ from typing import Any
 from spectre.assistant import tools
 from spectre.assistant.brain import Brain, ClaudeCLI
 from spectre.assistant.config import AGENT_NAMES, AGENT_ORDER, AGENT_ROLES, AssistantConfig
+from spectre.assistant.custom_agents import CustomAgents
 from spectre.assistant.db import Database
-from spectre.assistant.governance import Gate
+from spectre.assistant.governance import Gate, Level
 from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
@@ -293,7 +294,34 @@ class AssistantService:
             {"key": spec.name, "name": spec.name.capitalize(), "engine": model_label(spec.model)}
             for spec in DEFAULT_SPECS.values()
         ]
-        return {"assistant": assistant, "redaction": redaction}
+        created = [
+            {
+                "key": f"agent:{a['id']}",
+                "id": a["id"],
+                "name": a["name"],
+                "engine": next(x["engine"] for x in assistant if x["key"] == a["engine"]),
+                "role": a["role"],
+                "instructions": a["instructions"],
+            }
+            for a in CustomAgents(self.db).list()
+        ]
+        return {"assistant": assistant, "created": created, "redaction": redaction}
+
+    def create_agent(self, data: dict[str, Any]) -> str:
+        """Create an agent from the interface, through the gate like Spectre would."""
+        args = {k: str(data.get(k, "")) for k in ("name", "engine", "role", "instructions")}
+        result = tools.execute(self.gate, self.ctx, "create_agent", args)
+        if result.startswith("ÉCHEC"):
+            raise ValueError(result.removeprefix("ÉCHEC : "))
+        return result
+
+    def delete_agent(self, agent_id: int) -> Event:
+        """The user removes a created agent (their own click: no approval needed)."""
+        agent = CustomAgents(self.db).delete(f"agent:{agent_id}")
+        self.gate.record(
+            "delete_agent", {"id": agent_id}, Level.DESTRUCTIVE, "agent", "user", agent["name"]
+        )
+        return agent
 
     def update_config(self, changes: dict[str, Any]) -> Event:
         self.config.update(changes)

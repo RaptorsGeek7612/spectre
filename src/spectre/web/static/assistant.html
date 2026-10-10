@@ -164,6 +164,16 @@
       <h2 class="as-h">Les agents de Spectre</h2>
       <p class="meta">Spectre dirige ; ses sous-agents exécutent et vérifient les missions. Il confie d'office le multimédia à Kyra et la cybersécurité à Syfer.</p>
       <div id="agents" class="ag-grid"></div>
+      <h3 class="as-h as-h-sub">Agents créés</h3>
+      <p class="meta">Spectre crée un agent quand tu le lui demandes, et c’est toi qui lui donnes son nom : s’il ne le connaît pas, il te le demande. Tu peux aussi le créer ici. Spectre lui confie ensuite les missions de son domaine.</p>
+      <form class="ag-form" id="agent-form" autocomplete="off">
+        <label><span class="label">Nom</span><input type="text" name="name" maxlength="30" required placeholder="Le nom que tu lui donnes"></label>
+        <label><span class="label">Moteur</span><select name="engine" id="agent-engine"></select></label>
+        <label class="ag-wide"><span class="label">Rôle</span><input type="text" name="role" maxlength="300" required placeholder="ex. Recettes, menus de la semaine et liste de courses"></label>
+        <label class="ag-wide"><span class="label">Consignes (facultatif)</span><textarea name="instructions" maxlength="4000" rows="3" placeholder="ex. Cuisine de saison, budget serré, pas de porc."></textarea></label>
+        <div><button class="btn btn-primary" type="submit">Créer l'agent</button></div>
+      </form>
+      <div id="agents-created" class="ag-grid"></div>
       <h3 class="as-h as-h-sub">Rédaction</h3>
       <p class="meta">La chaîne qui écrit les textes soignés : recherche, rédaction, contrôle.</p>
       <div id="agents-redaction" class="ag-grid"></div>

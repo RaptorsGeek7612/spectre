@@ -21,6 +21,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   (Mistral via Vibe) — puis la chaîne de rédaction Scout, Scribe et Warden ; un outil
   introuvable est signalé.
 - Missions : choix de l'agent qui exécute une mission lancée depuis l'interface.
+- Agents créés : Spectre peut créer de nouveaux agents (`create_agent`, `list_agents`,
+  `delete_agent`) avec un nom, toujours donné par l'utilisateur (Spectre le lui demande et
+  n'en invente jamais), un moteur (Opus, Sonnet, Haiku, ChatGPT ou Mistral), un rôle et des
+  consignes. Une mission confiée à l'un d'eux tourne sur son moteur avec son rôle ; le plan, la
+  vérification par Kaïto et le rapport ne changent pas. Création et suppression aussi depuis la
+  vue « Agents » ; supprimer un agent demandé par Spectre passe par ta validation.
 
 ## [0.5.0] - 2026-10-09
 

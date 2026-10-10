@@ -146,6 +146,7 @@ function agentCard(a) {
   if (a.key === "opus") tags.push(h("span", {}, "chef"));
   if (a.default) tags.push(h("span", {}, "exécute par défaut"));
   if (a.available === false) tags.push(h("span", { class: "off" }, "outil introuvable"));
+  if (a.id) tags.push(h("button", { class: "btn btn-ghost", type: "button", onclick: () => deleteAgent(a) }, h("span", {}, "Supprimer")));
   return h("article", { class: "ag-card", "data-agent": a.key },
     h("h3", { class: "ag-name" }, a.name),
     h("p", { class: "ag-engine" }, a.engine),
@@ -155,16 +156,31 @@ function agentCard(a) {
 async function loadAgents() {
   agentsCache = null;
   const data = await fetchAgents();
-  $("#count-agents").textContent = data.assistant.length + data.redaction.length;
+  $("#count-agents").textContent = data.assistant.length + data.created.length + data.redaction.length;
   $("#agents").replaceChildren(...data.assistant.map(agentCard));
+  $("#agents-created").replaceChildren(...(data.created.length ? data.created.map(agentCard) : [h("p", { class: "empty-cards" }, "Aucun agent créé pour l'instant.")]));
+  const engine = $("#agent-engine");
+  if (!engine.options.length) engine.append(...data.assistant.map((a) => h("option", { value: a.key, selected: a.key === "sonnet" }, `${a.name} · ${a.engine}`)));
   $("#agents-redaction").replaceChildren(...data.redaction.map(agentCard));
 }
 async function fillAgentSelect() {
   const select = $("#mission-agent");
-  if (select.options.length > 1) return;
   const data = await fetchAgents();
-  select.append(...data.assistant.filter((a) => a.key !== "opus").map((a) => h("option", { value: a.key }, a.name)));
+  select.replaceChildren(h("option", { value: "" }, "Agent : selon les réglages"),
+    ...[...data.assistant.filter((a) => a.key !== "opus"), ...data.created].map((a) => h("option", { value: a.name }, a.name)));
 }
+async function deleteAgent(a) {
+  try { await api("POST", `agents/${a.id}/delete`, {}); toast(`Agent ${a.name} supprimé.`); }
+  catch (err) { toast(err.message, "error"); }
+  agentsCache = null; loadAgents();
+}
+$("#agent-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try { await api("POST", "agents", data); toast(`Agent ${data.name.trim()} créé : Spectre peut lui confier des missions.`, "ok", 6000); e.target.reset(); }
+  catch (err) { toast(err.message, "error", 7000); }
+  agentsCache = null; loadAgents();
+});
 
 /* ---- remote access: Spectre on the phone through Tailscale ---- */
 async function loadRemote() {

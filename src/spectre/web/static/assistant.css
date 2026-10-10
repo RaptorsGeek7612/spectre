@@ -273,3 +273,13 @@ body.remote-device .remote-btn { display: none; }
   .remote-body { grid-template-columns: 1fr; }
   .remote-qr { width: min(240px, 100%); justify-self: center; }
 }
+
+/* ---- created agents ---- */
+.ag-card[data-agent^="agent:"] { --c: var(--l546); }
+.ag-tags .btn { min-height: 26px; padding: 0 8px; font-size: 0.7rem; }
+.ag-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; max-width: 84ch; margin: 0 0 18px; }
+.ag-form label { display: grid; gap: 6px; }
+.ag-form .ag-wide { grid-column: 1 / -1; }
+.ag-form input, .ag-form select { min-height: 40px; padding: 0 10px; }
+.ag-form textarea { padding: 8px 10px; resize: vertical; }
+@media (max-width: 600px) { .ag-form { grid-template-columns: 1fr; } }
