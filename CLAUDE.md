@@ -37,6 +37,9 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
   emprunts, réseaux, plus âgés ; varier ses répliques ; saluer selon l'heure, une fois par jour)
   et `spectre-langage-anglais` (Londres MLE/UK, États-Unis Gen Z/Alpha, Canada/Toronto, faux
   amis) ; comprendre tout, employer peu, jamais de caricature.
+- Skill (entreprise) : `spectre-entrepreneur` — dès que l'utilisateur veut créer un SaaS ou une
+  entreprise, Spectre parle en chef d'entreprise (marché, offre, prix, MRR/churn/CAC/LTV,
+  mise sur le marché, juridique France à vérifier, prochaines étapes).
 - Ces skills servent aussi au **cerveau de Spectre** : `assistant/competences.py` les liste dans
   son prompt système (hors skills de développement) et l'outil `competence(name)` en lit une.
 - Skills (capacités labo, conteneurs Docker à `C:\Users\sherp\labs`) : `labs-biometrie`
