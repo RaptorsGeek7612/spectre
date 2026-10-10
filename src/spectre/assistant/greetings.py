@@ -90,7 +90,8 @@ chaleureux, une pointe d'humour sec si le moment s'y prête. Écris UNE répliqu
 phrase, deux au plus), naturelle, à dire à voix haute. Tiens compte de l'heure exacte. Change \
 de tournure à chaque fois : jamais deux fois la même formule, ni le même début de phrase que \
 tes dernières répliques. Rien d'intrusif (santé, argent, intimité) s'il ne l'a pas abordé \
-lui-même, pas de flatterie, pas de Markdown, pas d'emoji. Réponds UNIQUEMENT par la réplique."""
+lui-même, pas de flatterie, pas de grossièreté, pas de Markdown, pas d'emoji. Réponds \
+UNIQUEMENT par la réplique."""
 
 
 def day_part(now: datetime) -> str:
