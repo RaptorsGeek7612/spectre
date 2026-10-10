@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from spectre.assistant import greetings
 from spectre.assistant.config import AssistantConfig
 from spectre.assistant.db import Database
 from spectre.assistant.mcp_server import SERVER_NAME
@@ -200,6 +201,10 @@ def parse_reply(stdout: str, stderr: str = "") -> Reply:
 
 
 LANGUAGES = {"fr": "français", "en": "anglais"}
+VARIETY = (
+    "Varie toujours tes formulations : ne commence pas deux réponses de la même façon et évite "
+    "les formules toutes faites ; adapte ton registre à celui de l'utilisateur."
+)
 MEMORY_KV = "brain_memory"  # fingerprint of the memory the current session saw
 LIMIT_MARKERS = ("session limit", "usage limit", "rate limit", "limit reached", "hit your limit")
 
@@ -241,7 +246,8 @@ class Brain:
             user=cfg.user_name or "l'utilisateur",
             language_name=LANGUAGES.get(cfg.language, cfg.language),
         )
-        now = datetime.now().astimezone().strftime("%A %d %B %Y, %H:%M")
+        moment = datetime.now().astimezone()
+        now = f"{moment:%d/%m/%Y}, {greetings.moment(moment)}"
         pending = self.db.all(
             "SELECT id, tool, reason FROM approvals WHERE status = 'pending' LIMIT 5"
         )
@@ -252,6 +258,7 @@ class Brain:
             core,
             f"Maintenant : {now}. Ville de l'utilisateur : {cfg.city}. Canal : "
             f"{'voix (réponse parlée, très courte)' if channel == 'voice' else 'texte'}.",
+            greetings.greeting_rule(self.db, moment) + " " + VARIETY,
             "Ce que tu sais de l'utilisateur (mémoire, la plus fiable d'abord) :\n"
             + self.memory.context_block(),
         ]
@@ -291,6 +298,8 @@ class Brain:
             self.db.set_kv("brain_session", f"{datetime.now():%Y-%m-%d}|{reply.session_id}")
         # after the turn: what Spectre itself remembered during it, its session already knows
         self.db.set_kv(MEMORY_KV, self._memory_mark())
+        if not reply.is_error:  # the first exchange of the day is the moment to greet
+            greetings.mark_greeted(self.db, datetime.now().astimezone())
         self.db.log_event(
             "reply", "spectre", reply.text, channel=channel, in_reply_to=event, error=reply.is_error
         )
