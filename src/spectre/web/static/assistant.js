@@ -538,7 +538,11 @@ function connect() {
   });
   es.addEventListener("level", (e) => setLevel(JSON.parse(e.data).v));
   es.addEventListener("presence", (e) => { const d = JSON.parse(e.data); showPresence(d.people, d.unknown, d.spoof); });
-  es.addEventListener("arrival", (e) => { const d = JSON.parse(e.data); caption("#said", d.text, 8000); });
+  es.addEventListener("arrival", (e) => {
+    const d = JSON.parse(e.data);
+    caption("#said", d.text, 8000);
+    if (d.speak) speakHere(d.text, true);
+  });
   es.addEventListener("approval", () => { loadApprovals(); toast("Spectre attend ta validation pour une action.", "warn", 6000); });
   es.addEventListener("approval_done", () => loadApprovals());
   es.addEventListener("initiative", (e) => {

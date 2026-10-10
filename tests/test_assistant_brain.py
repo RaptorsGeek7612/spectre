@@ -15,6 +15,7 @@ import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from spectre.assistant import brain as brain_mod
+from spectre.assistant import greetings
 from spectre.assistant.brain import (
     Brain,
     ClaudeCLI,
@@ -374,7 +375,9 @@ def test_tick_briefing_once_and_reminders(db: Database, tmp_path: Path) -> None:
     assert [n[0] for n in notes] == ["rappel", "briefing"]
     assert notes[0][1] == "Rappel : pain"
     text = notes[1][2]
-    assert text.startswith("Bonjour Barth. Météo — Lyon : pluie faible")
+    hello, _, rest = text.partition(" Météo — ")
+    assert hello in [g.format(name="Barth") for g in greetings.FIRST["matin"]]
+    assert rest.startswith("Lyon : pluie faible")
     assert "18:00 sport" in text and "1 action(s)" in text and "1 mission(s)" in text
     assert len(db.all("SELECT * FROM initiatives")) == 2
 
@@ -385,7 +388,9 @@ def test_briefing_without_weather(db: Database, tmp_path: Path) -> None:
 
     pro, _ = _proactive(db, tmp_path, datetime(2026, 10, 8, 9).astimezone(), fetch=broken)
     pro.config.user_name = ""
-    assert pro.briefing(pro.clock()) == "Bonjour. Météo indisponible ce matin."
+    text = pro.briefing(pro.clock())
+    assert text.endswith(" Météo indisponible ce matin.") and "{name}" not in text
+    assert pro.briefing(pro.clock()) == "Météo indisponible ce matin."  # greeted already
 
 
 def test_consolidation(db: Database, tmp_path: Path) -> None:

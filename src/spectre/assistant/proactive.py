@@ -17,6 +17,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from spectre.assistant import greetings
 from spectre.assistant.brain import ClaudeCLI, extract_json, one_shot
 from spectre.assistant.config import AssistantConfig
 from spectre.assistant.db import Database, now_iso
@@ -184,7 +185,8 @@ class Proactive:
         return fired
 
     def briefing(self, now: datetime) -> str:
-        parts = [f"Bonjour{(' ' + self.config.user_name) if self.config.user_name else ''}."]
+        hello = greetings.opening(self.db, now, self.config.user_name)  # "" if already greeted
+        parts = [hello] if hello else []
         try:
             parts.append("Météo — " + weather_summary(self.config.city, self.fetch) + ".")
         except (OSError, ValueError, KeyError):
@@ -293,18 +295,20 @@ class Proactive:
         recent = self.db.all(
             "SELECT body FROM initiatives WHERE kind = 'lien' ORDER BY id DESC LIMIT 8"
         )
+        lines = greetings.recent_lines(self.db)
         counts = {c: 0 for c in CATEGORIES if c not in ("persona", "autre")}
         for fact in Memory(self.db).list():
             if fact["category"] in counts:
                 counts[fact["category"]] += 1
         thin = ", ".join(sorted(counts, key=lambda c: counts[c])[:4])
-        moment = now.strftime("%A %H:%M")
         prompt = (
-            f"Moment : {moment}. Prénom : {self.config.user_name or 'inconnu'}.\n"
+            f"Moment exact : {greetings.moment(now)}. "
+            f"Prénom : {self.config.user_name or 'inconnu'}.\n"
+            f"{greetings.greeting_rule(self.db, now)}\n"
             f"Ce que tu sais de lui :\n{Memory(self.db).context_block(30)}\n"
             f"Sujets que tu connais le moins : {thin}.\n"
-            "Tes dernières venues (ne les répète pas) :\n"
-            + ("\n".join(f"- {r['body']}" for r in recent) or "(aucune)")
+            "Tes dernières venues et répliques (ne reprends ni leurs mots ni leur tournure) :\n"
+            + ("\n".join(f"- {line}" for line in [r["body"] for r in recent] + lines) or "(aucune)")
         )
         reply = one_shot(self.cli, prompt, BEFRIEND, model=self.config.brain_model)
         try:
@@ -315,6 +319,8 @@ class Proactive:
         if not text or reply.is_error:
             return ""
         self.db.set_kv("befriend_opener", f"{datetime.now().timestamp()}|{text}")
+        greetings.remember_line(self.db, text)
+        greetings.mark_greeted(self.db, now)
         self.db.log_event("reply", "spectre", text, channel="initiative", topic=topic)
         self.add_initiative("lien", "Spectre vient te parler", text, level=0, data={"topic": topic})
         return text
