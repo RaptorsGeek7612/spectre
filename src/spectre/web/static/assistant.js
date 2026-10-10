@@ -42,6 +42,7 @@ let voiceAvailable = false;
 // Opened from another device (the phone, through Tailscale): the microphone button records on
 // this device instead of making the PC listen, and Spectre's answer is played here.
 const REMOTE = !["127.0.0.1", "localhost", "::1", "[::1]"].includes(location.hostname);
+if (REMOTE) document.body.classList.add("remote-device");  // already on the phone
 const SLEEP_HINT = REMOTE ? "Touche le micro pour me parler." : "Dis « Spectre » pour me parler.";
 
 const orb = new Orb($("#orb"));
@@ -133,6 +134,67 @@ async function loadMissions() {
       m.report ? h("details", {}, h("summary", {}, "Rapport"), h("pre", {}, m.report)) : null);
   }) : [h("p", { class: "empty-cards" }, "Aucune mission. Demande-en une à Spectre ou lance-la ici.")]));
 }
+
+/* ---- agents ---- */
+let agentsCache = null;
+async function fetchAgents() {
+  agentsCache = agentsCache || await api("GET", "agents");
+  return agentsCache;
+}
+function agentCard(a) {
+  const tags = [];
+  if (a.key === "opus") tags.push(h("span", {}, "chef"));
+  if (a.default) tags.push(h("span", {}, "exécute par défaut"));
+  if (a.available === false) tags.push(h("span", { class: "off" }, "outil introuvable"));
+  return h("article", { class: "ag-card", "data-agent": a.key },
+    h("h3", { class: "ag-name" }, a.name),
+    h("p", { class: "ag-engine" }, a.engine),
+    a.role ? h("p", { class: "ag-role" }, a.role) : null,
+    tags.length ? h("div", { class: "ag-tags" }, tags) : null);
+}
+async function loadAgents() {
+  agentsCache = null;
+  const data = await fetchAgents();
+  $("#count-agents").textContent = data.assistant.length + data.redaction.length;
+  $("#agents").replaceChildren(...data.assistant.map(agentCard));
+  $("#agents-redaction").replaceChildren(...data.redaction.map(agentCard));
+}
+async function fillAgentSelect() {
+  const select = $("#mission-agent");
+  if (select.options.length > 1) return;
+  const data = await fetchAgents();
+  select.append(...data.assistant.filter((a) => a.key !== "opus").map((a) => h("option", { value: a.key }, a.name)));
+}
+
+/* ---- remote access: Spectre on the phone through Tailscale ---- */
+async function loadRemote() {
+  const r = await api("GET", "remote");
+  $("#remote-hint").textContent = r.hint || "";
+  $("#remote-qr").innerHTML = r.qr || "";  // SVG drawn by Spectre itself, from Tailscale's name
+  const check = (label, ok, yes, no) => [h("dt", {}, label), h("dd", { class: ok ? "ok" : "ko" }, ok ? yes : no)];
+  $("#remote-checks").replaceChildren(
+    ...check("Tailscale", r.installed && r.running, "connecté", r.installed ? "arrêté ou déconnecté" : "pas installé"),
+    ...check("Mot de passe", r.password, "défini", "absent"),
+    ...check("Accès à distance", r.serving, "actif", "inactif"));
+  $("#remote-url-row").hidden = !r.url;
+  $("#remote-url").textContent = r.url; $("#remote-url").href = r.url || "#";
+  $("#remote-enable").hidden = !(r.running && r.password && !r.serving);
+}
+function openRemote() {
+  closeDrawers();
+  $("#remote").showModal();
+  loadRemote().catch((e) => { $("#remote-hint").textContent = e.message; });
+}
+$("#remote-enable").addEventListener("click", async () => {
+  const btn = $("#remote-enable"); btn.disabled = true;
+  try { await api("POST", "remote", {}); toast("Accès à distance activé : scanne le QR code avec ton téléphone."); }
+  catch (err) { toast(err.message, "error", 8000); }
+  finally { btn.disabled = false; loadRemote().catch(() => {}); }
+});
+$("#remote-copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("#remote-url").textContent); toast("Lien copié."); }
+  catch { toast("Copie impossible : sélectionne le lien à la main.", "warn"); }
+});
 
 /* ---- initiatives ---- */
 async function loadInitiatives() {
@@ -266,7 +328,7 @@ async function loadStatus() {
   $("#hud-brain").textContent = String(s.brain_label || s.brain_model).toUpperCase();
   if (!document.body.dataset.voice || document.body.dataset.voice === "off") setState(s.voice);
 }
-const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: loadMissions, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
+const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
 function show(view) {
   $$(".as-nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === view)));
   $$(".as-view").forEach((v) => { v.hidden = v.dataset.view !== view; });
@@ -439,6 +501,7 @@ document.addEventListener("click", (e) => {
   if (a === "open-rail") { document.body.classList.add("rail-open"); $(".scrim").hidden = false; }
   if (a === "open-inspector") { document.body.classList.add("inspector-open"); $(".scrim").hidden = false; }
   if (a === "camera") deviceCamera();
+  if (a === "remote") openRemote();
   if (a === "talk") {
     if (REMOTE) deviceTalk();
     else api("POST", "talk", {}).catch((err) => toast(err.message, "error"));
@@ -459,7 +522,7 @@ $("#say").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shift
 $("#mission-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const goal = $("#mission-goal").value.trim(); if (!goal) return;
-  try { const r = await api("POST", "missions", { goal, kind: $("#mission-kind").value }); toast(r.result); $("#mission-goal").value = ""; loadMissions(); }
+  try { const r = await api("POST", "missions", { goal, kind: $("#mission-kind").value, agent: $("#mission-agent").value }); toast(r.result); $("#mission-goal").value = ""; loadMissions(); }
   catch (err) { toast(err.message, "error"); }
 });
 let qTimer = 0;

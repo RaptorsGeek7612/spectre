@@ -7,6 +7,21 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-10
+
+### Added
+
+- Assistant : bouton « Connexion à distance » (rail et barre du haut) qui affiche le lien
+  Tailscale de Spectre et son QR code à scanner avec le téléphone, l'état de Tailscale, du mot
+  de passe et de la publication, et un bouton pour activer `tailscale serve` s'il est inactif
+  (seulement avec un mot de passe ; le nom du tailnet est alors accepté sans relancer).
+  Le QR code est généré par Spectre (`assistant/qrcode.py`, sans dépendance).
+- Assistant : vue « Agents » avec le nom, le moteur et le rôle de chaque agent — Spectre
+  (Opus 5.5), Gétro (Sonnet), Kaïto (Haiku, vérificateur), Kyra (ChatGPT via Codex) et Syfer
+  (Mistral via Vibe) — puis la chaîne de rédaction Scout, Scribe et Warden ; un outil
+  introuvable est signalé.
+- Missions : choix de l'agent qui exécute une mission lancée depuis l'interface.
+
 ## [0.5.0] - 2026-10-09
 
 ### Added

@@ -231,3 +231,45 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .presence-line { margin: 0; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--l546); }
 .presence-line:empty { display: none; }
 .faces-panel { max-width: 84ch; margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--hair); }
+
+/* ---- agents ---- */
+.as-h-sub { margin-top: 32px; font-size: 1.1rem; }
+.ag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 10px; }
+.ag-card { position: relative; display: grid; gap: 4px; align-content: start; padding: 14px 14px 14px 20px; border: 1px solid var(--hair); background: var(--plate); }
+.ag-card::before { content: ""; position: absolute; left: 8px; top: 14px; bottom: 14px; width: 2px; background: var(--c, var(--hair-2)); }
+.ag-name { margin: 0; font-family: var(--font-mark); font-size: 1.6rem; font-weight: 600; line-height: 1; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c, var(--bone)); }
+.ag-engine { margin: 0; font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); }
+.ag-role { margin: 4px 0 0; color: var(--ash); font-size: 0.92rem; }
+.ag-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ag-tags span { padding: 2px 8px; border: 1px solid var(--hair-2); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ash); }
+.ag-tags .off { border-style: dashed; color: var(--danger); }
+.ag-card[data-agent="opus"] { --c: var(--l405); }
+.ag-card[data-agent="sonnet"] { --c: var(--l436); }
+.ag-card[data-agent="haiku"] { --c: var(--l486); }
+.ag-card[data-agent="chatgpt"] { --c: var(--l615); }
+.ag-card[data-agent="mistral"] { --c: var(--l656); }
+.ag-card[data-agent="scout"] { --c: var(--scout); }
+.ag-card[data-agent="scribe"] { --c: var(--scribe); }
+.ag-card[data-agent="warden"] { --c: var(--warden); }
+.inline-form select { min-height: 40px; padding: 0 8px; }
+
+/* ---- remote access (phone) ---- */
+.rail-foot .remote-btn { width: 100%; justify-content: flex-start; white-space: nowrap; letter-spacing: 0.12em; }
+body.remote-device .remote-btn { display: none; }
+.remote { width: min(680px, calc(100vw - 32px)); margin: auto; }
+.remote[open] { animation: pal-in 0.3s var(--out); }
+.remote-inner { display: grid; }
+.remote-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 4px 20px; }
+.remote-body { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; padding: 8px 20px 20px; }
+.remote-qr { width: 220px; aspect-ratio: 1; background: var(--plate-2); border: 1px solid var(--hair); }
+.remote-qr:empty { background: repeating-linear-gradient(45deg, var(--plate), var(--plate) 6px, var(--plate-2) 6px, var(--plate-2) 12px); }
+.remote-qr svg { display: block; width: 100%; height: 100%; }
+.remote-info { display: grid; gap: 14px; align-content: start; }
+.remote-hint { margin: 0; font-size: 1rem; }
+.remote-url { display: flex; align-items: center; gap: 6px; margin: 0; }
+.remote-url a { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--l486); }
+.remote-info .meta { margin: 0; line-height: 1.5; }
+@media (max-width: 600px) {
+  .remote-body { grid-template-columns: 1fr; }
+  .remote-qr { width: min(240px, 100%); justify-self: center; }
+}

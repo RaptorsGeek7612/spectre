@@ -21,6 +21,18 @@ AGENT_NAMES = {
 }
 
 
+# What each one does, as shown in the interface's « Agents » view
+AGENT_ROLES = {
+    "opus": "L'agent supérieur : il converse avec toi, planifie les missions et rédige leurs "
+    "rapports.",
+    "sonnet": "Agent d'exécution par défaut : il mène les étapes des missions.",
+    "haiku": "Le vérificateur : il contrôle chaque étape des missions ; rapide.",
+    "chatgpt": "Images, vidéo et multimédia (via Codex, sur ton compte ChatGPT).",
+    "mistral": "Cybersécurité et tests d'intrusion, sur un périmètre autorisé uniquement "
+    "(via Vibe, sur ton compte Le Chat).",
+}
+AGENT_ORDER = ("opus", "sonnet", "haiku", "chatgpt", "mistral")
+
 AGENT_CHOICES = ("claude", *AGENT_NAMES)  # what a mission may ask for ("claude" = the setting)
 
 
