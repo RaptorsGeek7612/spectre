@@ -437,6 +437,10 @@ def _finish(run: dict[str, Any], event: Event) -> None:
         run["error"], run["error_agent"] = "arrêtée par l'utilisateur", event["agent"]
 
 
+# A browser or phone that closes a page while it loads (or a status check that times out).
+QUIET_ERRORS = (ConnectionAbortedError, ConnectionResetError, BrokenPipeError, TimeoutError)
+
+
 class ExclusiveHTTPServer(ThreadingHTTPServer):
     """One server per port. On Windows, SO_REUSEADDR lets a second process bind a port already
     in use, so two Spectre instances could start side by side and fight over the microphone."""
@@ -448,6 +452,12 @@ class ExclusiveHTTPServer(ThreadingHTTPServer):
         if exclusive is not None:
             self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
         super().server_bind()
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        """Keep the log for real errors: a page closed while loading is not one."""
+        if isinstance(sys.exc_info()[1], QUIET_ERRORS):
+            return
+        super().handle_error(request, client_address)
 
 
 def make_server(

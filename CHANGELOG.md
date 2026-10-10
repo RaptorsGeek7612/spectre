@@ -7,6 +7,22 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-10
+
+### Added
+
+- Lanceur du téléphone : boutons « Redémarrer » et « Arrêter » (mot de passe, confirmation
+  avant l'arrêt) en plus de « Lancer » ; il indique si le PC est sur batterie.
+- Avertissements sur le téléphone : bandeau quand le PC est sur batterie (il peut se mettre en
+  veille), bandeau quand le PC ne répond plus pendant qu'on utilise Spectre, et page « PC
+  injoignable » (veille, éteint, sans réseau, Tailscale coupé) au lieu d'une erreur du
+  navigateur. L'état de l'alimentation est dans `/api/assistant/status` (`power`).
+
+### Fixed
+
+- Le journal de Spectre et du lanceur ne se remplit plus de fausses erreurs (connexion fermée
+  par le navigateur ou le téléphone pendant un chargement) ; les vraies erreurs restent visibles.
+
 ## [0.6.1] - 2026-10-10
 
 ### Fixed
