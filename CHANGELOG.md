@@ -7,6 +7,17 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-10
+
+### Fixed
+
+- Spectre pouvait s'arrêter juste après son démarrage quand deux lancements se chevauchaient
+  (raccourci, démarrage de Windows, lanceur du téléphone) : sous Windows, deux instances
+  pouvaient écouter le même port et se disputer le micro et la caméra. Les serveurs de Spectre
+  et du lanceur réservent désormais leur port en exclusivité, et `spectre-assistant.ps1`
+  n'autorise qu'un démarrage à la fois et attend un Spectre encore en chargement au lieu d'en
+  lancer un second.
+
 ## [0.5.2] - 2026-10-10
 
 ### Fixed

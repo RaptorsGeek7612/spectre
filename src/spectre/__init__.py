@@ -10,7 +10,7 @@ from spectre.errors import (
 from spectre.graph import SpectreResult, build_graph, run
 from spectre.state import SpectreState, UsageRecord
 
-__version__ = "0.5.2"
+__version__ = "0.5.3"
 
 __all__ = [
     "AgentRefusalError",

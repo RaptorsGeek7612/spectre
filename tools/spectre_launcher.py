@@ -14,6 +14,7 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import socket
 import subprocess
 import sys
 import threading
@@ -233,9 +234,21 @@ class Handler(BaseHTTPRequestHandler):
         self._json(*self.launcher.launch(password))
 
 
+class ExclusiveHTTPServer(ThreadingHTTPServer):
+    """One launcher only: on Windows, SO_REUSEADDR would let a second one bind the same port."""
+
+    allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self) -> None:
+        exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+        if exclusive is not None:
+            self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        super().server_bind()
+
+
 def make_server(launcher: Launcher, port: int = PORT) -> ThreadingHTTPServer:
     handler = type("BoundHandler", (Handler,), {"launcher": launcher})
-    server = ThreadingHTTPServer(("127.0.0.1", port), handler)
+    server = ExclusiveHTTPServer(("127.0.0.1", port), handler)
     server.daemon_threads = True
     return server
 
