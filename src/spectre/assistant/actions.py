@@ -101,13 +101,23 @@ def list_dir(ctx: ActionContext, path: str) -> str:
     return f"{folder}\n" + ("\n".join(lines) if lines else "(vide)")
 
 
-def read_file(ctx: ActionContext, path: str) -> str:
+def read_file(ctx: ActionContext, path: str, offset: int = 0) -> str:
+    """Up to MAX_READ_CHARS characters from `offset`; a long file is read in several calls."""
     file = resolve_path(ctx, path)
     if not file.is_file():
         raise ActionError(f"fichier introuvable : {file}")
     text = file.read_text(encoding="utf-8", errors="replace")
-    suffix = "\n… (tronqué)" if len(text) > MAX_READ_CHARS else ""
-    return text[:MAX_READ_CHARS] + suffix
+    offset = max(0, int(offset))
+    if offset and offset >= len(text):
+        return f"(fin du fichier : il fait {len(text)} caractères)"
+    end = offset + MAX_READ_CHARS
+    head = f"(caractères {offset} à {min(end, len(text))} sur {len(text)})\n" if offset else ""
+    tail = (
+        f"\n… (suite : {len(text) - end} caractères de plus ; relis avec offset={end})"
+        if end < len(text)
+        else ""
+    )
+    return head + text[offset:end] + tail
 
 
 def search_files(ctx: ActionContext, folder: str, pattern: str) -> str:
