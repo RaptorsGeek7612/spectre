@@ -126,16 +126,17 @@ def test_service_faces(service: AssistantService) -> None:  # noqa: F811
     service.set_voice_state("sleeping")
     q = service.subscribe()
     service.on_faces([L(ME_AGAIN), L(SOMEONE), PHOTO])
-    events = _drain(q)
-    assert {"type": "arrival", "name": "Barth", "text": "Bonjour Barth."} in events
-    assert events[-1] == {"type": "presence", "people": ["Barth"], "unknown": 1, "spoof": 1}
     assert service.db.one("SELECT text FROM events WHERE kind = 'spoof'")
     service.on_faces([PHOTO])  # logged at most once a minute
     assert len(service.db.all("SELECT id FROM events WHERE kind = 'spoof'")) == 1
     deadline = time.monotonic() + 2
-    while not voice.said and time.monotonic() < deadline:
+    while not voice.triggered and time.monotonic() < deadline:
         time.sleep(0.01)
-    assert voice.said == ["Bonjour Barth."]
+    events = _drain(q)
+    # the line the model wrote (here the fake's "Réponse."), spoken, then Spectre listens
+    assert {"type": "arrival", "name": "Barth", "text": "Réponse.", "speak": True} in events
+    assert {"type": "presence", "people": ["Barth"], "unknown": 1, "spoof": 1} in events
+    assert voice.said == ["Réponse."] and voice.triggered == 1
     assert service.status()["present"] == ["Barth"] and service.status()["camera"]
     gate = Gate(service.db)
     assert "Barth" in tools.execute(gate, service.ctx, "who_is_there", {})

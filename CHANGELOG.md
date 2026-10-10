@@ -7,7 +7,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
-## [0.6.3] - 2026-10-10
+## [0.6.4] - 2026-10-10
+
+### Changed
+
+- Salutations (`assistant/greetings.py`) : Spectre salue une seule fois par jour, selon l'heure
+  exacte (bonjour, bonsoir, la nuit…). Le jour est gardé en base : même éteint puis rallumé dans
+  la journée, il ne redit plus bonjour et lance plutôt la conversation (une question, une
+  remarque, une suite à ce qu'il sait de l'utilisateur), puis écoute la réponse.
+- Ses répliques varient : à l'arrivée devant la caméra, une réplique fraîche est écrite à chaque
+  fois en évitant ses 12 dernières (listes variées si le modèle ne répond pas) ; le briefing du
+  matin ne commence plus toujours par « Bonjour » ; ses visites et le cerveau connaissent
+  l'heure exacte, le moment de la journée, la règle du salut et la consigne de varier.
+- Le téléphone dit aussi la réplique d'arrivée à voix haute.
+
 
 ### Added
 

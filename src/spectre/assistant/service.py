@@ -10,10 +10,11 @@ import shutil
 import threading
 import time
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import tools, winapi
+from spectre.assistant import greetings, tools, winapi
 from spectre.assistant.brain import Brain, ClaudeCLI
 from spectre.assistant.config import AGENT_NAMES, AGENT_ORDER, AGENT_ROLES, AssistantConfig
 from spectre.assistant.custom_agents import CustomAgents
@@ -422,11 +423,27 @@ class AssistantService:
         return {"faces": len(faces), "present": self.presence.present()}
 
     def _on_arrival(self, name: str, away_s: float) -> None:
-        greeting = f"Bon retour, {name}." if away_s else f"Bonjour {name}."
         self.db.log_event("presence", "camera", f"{name} est là")
-        self.publish({"type": "arrival", "name": name, "text": greeting})
-        if self.voice is not None and self.voice_state == "sleeping":
-            threading.Thread(target=self.voice.say, args=(greeting,), daemon=True).start()
+        # writing the line takes a few seconds: not on the camera's thread
+        threading.Thread(target=self.welcome, args=(name, away_s), daemon=True).start()
+
+    def welcome(self, name: str, away_s: float) -> str:
+        """Greet once a day as suits the hour; afterwards (a return, a restart) start the
+        conversation instead, never with the same words. Then listen, so they can answer."""
+        situation = (
+            f"{name} revient devant toi après {int(away_s // 60)} minutes d'absence"
+            if away_s
+            else f"tu viens de voir {name} arriver devant toi (ou tu viens d'être rallumé)"
+        )
+        now = datetime.now().astimezone()
+        text = greetings.compose(self.cli, self.db, now, name, situation)
+        self.db.set_kv("befriend_opener", f"{time.time()}|{text}")  # the brain will know it
+        speak = self.voice is not None and self.voice_state == "sleeping"
+        self.publish({"type": "arrival", "name": name, "text": text, "speak": speak})
+        if speak:
+            self.voice.say(text)
+            self.voice.trigger()
+        return text
 
     def enroll_face(self, name: str, samples: int = 6, attempts: int = 30) -> int:
         """Look through the camera until `samples` single-face shots are taken, then store them."""
