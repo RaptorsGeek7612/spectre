@@ -102,6 +102,19 @@ def test_remote_states() -> None:
     on = Remote(8765, "ts", FakeTailscale(serve=SERVING)).status(True)
     assert on["serving"] is True and "Scanne" in on["hint"]
     assert Remote(9000, "ts", FakeTailscale(serve=SERVING)).status(True)["serving"] is False
+    assert on["launcher_url"] == ""
+    both = {
+        "Web": {
+            "x": {
+                "Handlers": {
+                    "/": {"Proxy": "http://127.0.0.1:8765"},
+                    "/lanceur": {"Proxy": "http://127.0.0.1:8764"},
+                }
+            }
+        }
+    }
+    with_launcher = Remote(8765, "ts", FakeTailscale(serve=both)).status(True)
+    assert with_launcher["launcher_url"] == "https://monpc.tail0000.ts.net/lanceur/"
 
 
 def test_remote_enable() -> None:
