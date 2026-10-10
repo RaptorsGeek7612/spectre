@@ -142,6 +142,25 @@ def test_find_tailscale_and_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
 # ---- web API ------------------------------------------------------------------------------
 
 
+def test_spectre_log_skips_disconnects(capsys: pytest.CaptureFixture[str]) -> None:
+    from spectre.web import server as server_mod
+
+    for error in (ConnectionAbortedError("abandon"), BrokenPipeError("tuyau"), KeyError("vraie")):
+        try:
+            raise error
+        except Exception:  # noqa: BLE001 - handle_error reads the exception in flight
+            server_mod.ExclusiveHTTPServer.handle_error(
+                object.__new__(server_mod.ExclusiveHTTPServer), None, ("127.0.0.1", 1)
+            )
+    err = capsys.readouterr().err
+    assert "vraie" in err and "abandon" not in err and "tuyau" not in err
+
+
+def test_status_reports_power(service: AssistantService) -> None:  # noqa: F811
+    service.power = lambda: {"on_battery": True, "percent": 42}
+    assert service.status()["power"] == {"on_battery": True, "percent": 42}
+
+
 def test_agents(service: AssistantService, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
     monkeypatch.setattr(
         "spectre.assistant.service.shutil.which", lambda name: None if name == "vibe" else name
