@@ -39,6 +39,7 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "write_file": "ALWAYS",
     "reminder": "ALWAYS",
     "mission": "ALWAYS",
+    "agent": "ALWAYS",  # creating an agent; deleting one is destructive, so it still asks
     "delete_file": "ASK",
     "overwrite_file": "ASK",
     "external_send": "ASK",

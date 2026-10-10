@@ -15,6 +15,7 @@ from typing import Any
 from spectre.assistant import actions
 from spectre.assistant.actions import ActionContext, ActionError
 from spectre.assistant.config import agent_name, resolve_agent
+from spectre.assistant.custom_agents import PREFIX, AgentError, CustomAgents
 from spectre.assistant.db import now_iso
 from spectre.assistant.governance import Gate, Level
 from spectre.assistant.memory import Memory
@@ -65,6 +66,9 @@ def _start_mission(ctx: ActionContext, goal: str, kind: str = "mission", agent: 
         kind = "mission"
     plan: dict[str, str] = {"kind": kind}
     chosen = resolve_agent(agent)
+    created = CustomAgents(ctx.db).get(agent) if not chosen else None  # unknown: the setting
+    if created is not None:
+        chosen = f"{PREFIX}{created['id']}"
     if chosen:
         plan["agent"] = chosen
     stamp = now_iso()
@@ -72,11 +76,44 @@ def _start_mission(ctx: ActionContext, goal: str, kind: str = "mission", agent: 
         "INSERT INTO missions(ts, goal, status, plan, updated_at) VALUES(?, ?, 'queued', ?, ?)",
         (stamp, goal.strip(), json.dumps(plan), stamp),
     )
-    who = f", confiée à {agent_name(chosen)}" if chosen and chosen != "claude" else ""
+    name = created["name"] if created is not None else agent_name(chosen)
+    who = f", confiée à {name}" if chosen and chosen != "claude" else ""
     return (
         f"mission #{mid} lancée en arrière-plan{who} : {goal.strip()} "
         "(je te préviens quand c'est fini)"
     )
+
+
+def _create_agent(
+    ctx: ActionContext, name: str, engine: str, role: str, instructions: str = ""
+) -> str:
+    try:
+        agent = CustomAgents(ctx.db).create(name, engine, role, instructions)
+    except AgentError as exc:
+        raise ActionError(str(exc)) from exc
+    return (
+        f"agent créé : {agent['name']} (moteur {agent_name(agent['engine'])}, "
+        f"{agent['engine']}) — {agent['role']}. Confie-lui une mission avec "
+        f'start_mission(agent="{agent["name"]}").'
+    )
+
+
+def _list_agents(ctx: ActionContext) -> str:
+    builtin = (
+        "Spectre (opus, toi), Gétro (sonnet), Kaïto (haiku, vérificateur), Kyra (chatgpt, "
+        "multimédia), Syfer (mistral, cybersécurité) ; rédaction : Scout, Scribe, Warden"
+    )
+    created = CustomAgents(ctx.db).list()
+    lines = [f"- {a['name']} ({a['engine']}) : {a['role']}" for a in created]
+    return f"Agents intégrés : {builtin}\nAgents créés :\n" + ("\n".join(lines) or "(aucun)")
+
+
+def _delete_agent(ctx: ActionContext, name: str) -> str:
+    try:
+        agent = CustomAgents(ctx.db).delete(name)
+    except AgentError as exc:
+        raise ActionError(str(exc)) from exc
+    return f"agent supprimé : {agent['name']}"
 
 
 def _who_is_there(ctx: ActionContext) -> str:
@@ -196,10 +233,35 @@ TOOLS: dict[str, Tool] = {
             "agent : qui exécute les étapes, par son nom ou son modèle. Kyra (chatgpt) pour les "
             "images, vidéos et le multimédia ; Syfer (mistral) pour la cybersécurité et les tests "
             "d'intrusion autorisés ; Gétro (sonnet) ou Kaïto (haiku, rapide) pour le reste ; "
-            "vide = le réglage.",
+            "ou un agent que tu as créé (create_agent), par son nom ; vide = le réglage.",
             Level.WRITE,
             "mission",
             _start_mission,
+        ),
+        Tool(
+            "create_agent",
+            "Créer un nouvel agent spécialisé, réutilisable dans les missions. name : le nom "
+            "que l'UTILISATEUR lui a donné, mot pour mot (ne l'invente jamais : demande-le "
+            "d'abord s'il ne l'a pas dit ; unique) ; engine : le modèle qui le fait tourner, "
+            "parmi opus, sonnet, haiku, chatgpt, mistral ; role : sa spécialité en une "
+            "phrase ; instructions : ses consignes de travail (facultatif).",
+            Level.WRITE,
+            "agent",
+            _create_agent,
+        ),
+        Tool(
+            "list_agents",
+            "Tous les agents : intégrés et créés.",
+            Level.READ,
+            "read",
+            _list_agents,
+        ),
+        Tool(
+            "delete_agent",
+            "Supprimer un agent que tu as créé (par son nom).",
+            Level.DESTRUCTIVE,
+            "agent",
+            _delete_agent,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
         Tool(
