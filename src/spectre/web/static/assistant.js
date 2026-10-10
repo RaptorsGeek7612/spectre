@@ -474,7 +474,8 @@ async function speakHere(text, listen = false) {
   }
   if (listen && document.visibilityState === "visible") deviceTalk();  // then the user can simply answer
 }
-if (REMOTE) document.addEventListener("pointerdown", () => unlockAudio().catch(() => {}));
+// On a touch screen, the browser allows sound when the finger lifts, not when it presses.
+if (REMOTE) for (const type of ["pointerup", "keydown"]) document.addEventListener(type, () => unlockAudio().catch(() => {}), true);
 
 /* ---- camera of this device (phone): a picture every 2 s, analysed by Spectre like its own ---- */
 const cam = { stream: null, timer: null, canvas: document.createElement("canvas"), sending: false };
