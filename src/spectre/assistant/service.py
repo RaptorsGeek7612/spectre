@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import contextlib
 import queue
+import shutil
 import threading
 import time
 from collections.abc import Callable
@@ -14,15 +15,16 @@ from typing import Any
 
 from spectre.assistant import tools
 from spectre.assistant.brain import Brain, ClaudeCLI
-from spectre.assistant.config import AssistantConfig
+from spectre.assistant.config import AGENT_NAMES, AGENT_ORDER, AGENT_ROLES, AssistantConfig
+from spectre.assistant.custom_agents import CustomAgents
 from spectre.assistant.db import Database
-from spectre.assistant.governance import Gate
+from spectre.assistant.governance import Gate, Level
 from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
 from spectre.assistant.vision.faces import SPOOF, UNKNOWN, FaceBook, Presence
 from spectre.assistant.voice.listen import SAMPLE_RATE, to_wav
-from spectre.config import model_label
+from spectre.config import DEFAULT_SPECS, model_label
 
 Event = dict[str, Any]
 LEVEL_EVERY_S = 0.05
@@ -218,8 +220,9 @@ class AssistantService:
             "ORDER BY id DESC LIMIT 30"
         )
 
-    def start_mission(self, goal: str, kind: str = "mission") -> str:
-        return tools.execute(self.gate, self.ctx, "start_mission", {"goal": goal, "kind": kind})
+    def start_mission(self, goal: str, kind: str = "mission", agent: str = "") -> str:
+        args = {"goal": goal, "kind": kind} | ({"agent": agent} if agent else {})
+        return tools.execute(self.gate, self.ctx, "start_mission", args)
 
     def initiatives(self, status: str = "pending") -> list[Event]:
         return self.db.all(
@@ -267,6 +270,58 @@ class AssistantService:
             "camera": self.camera is not None,
             "present": self.presence.present(),
         }
+
+    def agents(self) -> Event:
+        """Every agent by name: Spectre and its sub-agents, then the writing pipeline."""
+        cfg = self.config
+        binaries = {"chatgpt": cfg.codex_bin, "mistral": cfg.vibe_bin}
+        engines = {
+            "chatgpt": f"ChatGPT{f' ({cfg.chatgpt_model})' if cfg.chatgpt_model else ''} · Codex",
+            "mistral": f"Mistral{f' ({cfg.mistral_model})' if cfg.mistral_model else ''} · Vibe",
+        }
+        assistant = [
+            {
+                "key": key,
+                "name": AGENT_NAMES[key],
+                "engine": engines.get(key) or f"{model_label(key)} · Claude Code",
+                "role": AGENT_ROLES[key],
+                "available": shutil.which(binaries.get(key, cfg.claude_bin)) is not None,
+                "default": key == cfg.mission_model,
+            }
+            for key in AGENT_ORDER
+        ]
+        redaction = [
+            {"key": spec.name, "name": spec.name.capitalize(), "engine": model_label(spec.model)}
+            for spec in DEFAULT_SPECS.values()
+        ]
+        created = [
+            {
+                "key": f"agent:{a['id']}",
+                "id": a["id"],
+                "name": a["name"],
+                "engine": next(x["engine"] for x in assistant if x["key"] == a["engine"]),
+                "role": a["role"],
+                "instructions": a["instructions"],
+            }
+            for a in CustomAgents(self.db).list()
+        ]
+        return {"assistant": assistant, "created": created, "redaction": redaction}
+
+    def create_agent(self, data: dict[str, Any]) -> str:
+        """Create an agent from the interface, through the gate like Spectre would."""
+        args = {k: str(data.get(k, "")) for k in ("name", "engine", "role", "instructions")}
+        result = tools.execute(self.gate, self.ctx, "create_agent", args)
+        if result.startswith("ÉCHEC"):
+            raise ValueError(result.removeprefix("ÉCHEC : "))
+        return result
+
+    def delete_agent(self, agent_id: int) -> Event:
+        """The user removes a created agent (their own click: no approval needed)."""
+        agent = CustomAgents(self.db).delete(f"agent:{agent_id}")
+        self.gate.record(
+            "delete_agent", {"id": agent_id}, Level.DESTRUCTIVE, "agent", "user", agent["name"]
+        )
+        return agent
 
     def update_config(self, changes: dict[str, Any]) -> Event:
         self.config.update(changes)

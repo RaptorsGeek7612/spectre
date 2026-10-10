@@ -51,6 +51,8 @@
     <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2"/></symbol>
     <symbol id="i-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="2 3"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12"/><path d="M16 8V4H4v12h4"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
   </defs>
 </svg>
@@ -72,12 +74,14 @@
       <button type="button" data-view="talk" aria-current="true"><span>Conversation</span></button>
       <button type="button" data-view="approvals"><span>Validations</span><b class="count" id="count-approvals"></b></button>
       <button type="button" data-view="missions"><span>Missions</span><b class="count" id="count-missions"></b></button>
+      <button type="button" data-view="agents"><span>Agents</span><b class="count" id="count-agents"></b></button>
       <button type="button" data-view="memory"><span>Mémoire</span><b class="count" id="count-facts"></b></button>
       <button type="button" data-view="initiatives"><span>Initiatives</span><b class="count" id="count-initiatives"></b></button>
       <button type="button" data-view="audit"><span>Journal</span></button>
       <button type="button" data-view="settings"><span>Réglages</span></button>
     </nav>
     <footer class="rail-foot">
+      <button class="btn btn-ghost remote-btn" type="button" data-action="remote"><svg class="ic"><use href="#i-phone"/></svg><span>Connexion à distance</span></button>
       <span class="meta" id="brain-model"></span>
     </footer>
   </aside>
@@ -86,6 +90,7 @@
     <div class="topbar">
       <button class="icon-btn only-compact" type="button" data-action="open-rail" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
       <span class="topbar-title">Spectre</span>
+      <button class="icon-btn remote-btn" type="button" data-action="remote" aria-label="Connexion à distance (téléphone)"><svg class="ic"><use href="#i-phone"/></svg></button>
       <a class="icon-btn" href="./" aria-label="Aller à la rédaction"><svg class="ic"><use href="#i-edit"/></svg></a>
       <button class="icon-btn only-narrow-inspector" type="button" data-action="open-inspector" aria-label="Validations"><svg class="ic"><use href="#i-shield"/></svg></button>
     </div>
@@ -149,9 +154,29 @@
       <form class="inline-form" id="mission-form" autocomplete="off">
         <input type="text" id="mission-goal" placeholder="Nouvelle mission, ex. « Compare les 3 meilleurs vélos de ville à moins de 800 € »" aria-label="Objectif de la mission">
         <select id="mission-kind" aria-label="Type"><option value="mission">Mission</option><option value="redaction">Rédaction (Scout · Scribe · Warden)</option></select>
+        <select id="mission-agent" aria-label="Agent qui exécute la mission"><option value="">Agent : selon les réglages</option></select>
         <button class="btn btn-primary" type="submit">Lancer</button>
       </form>
       <div id="missions" class="cards"></div>
+    </section>
+
+    <section class="as-view" data-view="agents" hidden>
+      <h2 class="as-h">Les agents de Spectre</h2>
+      <p class="meta">Spectre dirige ; ses sous-agents exécutent et vérifient les missions. Il confie d'office le multimédia à Kyra et la cybersécurité à Syfer.</p>
+      <div id="agents" class="ag-grid"></div>
+      <h3 class="as-h as-h-sub">Agents créés</h3>
+      <p class="meta">Spectre crée un agent quand tu le lui demandes, et c’est toi qui lui donnes son nom : s’il ne le connaît pas, il te le demande. Tu peux aussi le créer ici. Spectre lui confie ensuite les missions de son domaine.</p>
+      <form class="ag-form" id="agent-form" autocomplete="off">
+        <label><span class="label">Nom</span><input type="text" name="name" maxlength="30" required placeholder="Le nom que tu lui donnes"></label>
+        <label><span class="label">Moteur</span><select name="engine" id="agent-engine"></select></label>
+        <label class="ag-wide"><span class="label">Rôle</span><input type="text" name="role" maxlength="300" required placeholder="ex. Recettes, menus de la semaine et liste de courses"></label>
+        <label class="ag-wide"><span class="label">Consignes (facultatif)</span><textarea name="instructions" maxlength="4000" rows="3" placeholder="ex. Cuisine de saison, budget serré, pas de porc."></textarea></label>
+        <div><button class="btn btn-primary" type="submit">Créer l'agent</button></div>
+      </form>
+      <div id="agents-created" class="ag-grid"></div>
+      <h3 class="as-h as-h-sub">Rédaction</h3>
+      <p class="meta">La chaîne qui écrit les textes soignés : recherche, rédaction, contrôle.</p>
+      <div id="agents-redaction" class="ag-grid"></div>
     </section>
 
     <section class="as-view" data-view="memory" hidden>
@@ -198,6 +223,25 @@
   </aside>
   <div class="scrim" data-action="close-drawers" hidden></div>
 </div>
+<dialog id="remote" class="remote" aria-labelledby="remote-title">
+  <form method="dialog" class="remote-inner">
+    <header class="remote-head">
+      <h2 id="remote-title" class="label">Connexion à distance</h2>
+      <button class="icon-btn" value="close" aria-label="Fermer"><svg class="ic"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="remote-body">
+      <div class="remote-qr" id="remote-qr" aria-hidden="true"></div>
+      <div class="remote-info">
+        <p class="remote-hint" id="remote-hint">Vérification de Tailscale…</p>
+        <dl class="sys-list" id="remote-checks"></dl>
+        <p class="remote-url" id="remote-url-row" hidden><a id="remote-url" target="_blank" rel="noopener"></a>
+          <button class="icon-btn" type="button" id="remote-copy" aria-label="Copier le lien"><svg class="ic"><use href="#i-copy"/></svg></button></p>
+        <button class="btn btn-primary" type="button" id="remote-enable" hidden><span>Activer l'accès à distance</span></button>
+        <p class="meta">Sur le téléphone : Tailscale allumé, puis scanne le QR code avec l'appareil photo et connecte-toi avec ton mot de passe. Ajoute la page à l'écran d'accueil pour lancer Spectre comme une appli. Rien n'est ouvert sur Internet : seul ton tailnet y accède.</p>
+      </div>
+    </div>
+  </form>
+</dialog>
 <div id="toasts" class="toasts" aria-live="polite"></div>
 <script src="assistant.js" type="module"></script>
 </body>

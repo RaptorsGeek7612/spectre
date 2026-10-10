@@ -25,6 +25,7 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from spectre.assistant.brain import ClaudeCLI, extract_json, one_shot
 from spectre.assistant.codex import CodexCLI
 from spectre.assistant.config import AGENT_CHOICES, agent_name
+from spectre.assistant.custom_agents import PREFIX, CustomAgents, worker_brief
 from spectre.assistant.db import Database, now_iso
 from spectre.assistant.memory import Memory
 from spectre.assistant.mistral import VibeCLI
@@ -199,7 +200,7 @@ class MissionEngine:
             done.append(outcome)
             self._set(row["id"], steps=json.dumps(done, ensure_ascii=False))
         summary = "\n\n".join(
-            f"Étape {i + 1} ({agent_name(d.get('agent', ''))}) : {d['step']}\n"
+            f"Étape {i + 1} ({d.get('name') or agent_name(d.get('agent', ''))}) : {d['step']}\n"
             f"Résultat : {d['result']}\nVérification ({agent_name('haiku')}) : "
             f"{'OK' if d['ok'] else 'NON'} — {d['note']}"
             for i, d in enumerate(done)
@@ -227,9 +228,13 @@ class MissionEngine:
     ) -> dict[str, Any]:
         previous = "\n".join(f"- {d['step']} → {d['result'][:400]}" for d in done) or "(aucune)"
         prompt = f"Mission : {goal}\nÉtapes déjà faites :\n{previous}\n\nÉtape à faire : {step}"
-        worker, model = self._worker(agent)
-        system = WORKER.format(name=agent_name(model))
-        if model in SPECIALTIES:
+        created = CustomAgents(self.db).get(agent) if agent.startswith(PREFIX) else None
+        worker, model = self._worker(created["engine"] if created else agent)
+        name = created["name"] if created else agent_name(model)
+        system = WORKER.format(name=name)
+        if created:
+            system += f"\n\n{worker_brief(created)}"
+        elif model in SPECIALTIES:
             system += f"\n\n{SPECIALTIES[model]}"
         note, ok, result = "", False, ""
         for attempt in range(2):
@@ -251,7 +256,7 @@ class MissionEngine:
             "ok": ok,
             "note": note,
             "agent": model,
-            "name": agent_name(model),
+            "name": name,
         }
 
     # ---- persistence -----------------------------------------------------------------------
