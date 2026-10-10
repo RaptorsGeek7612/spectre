@@ -7,6 +7,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+
+- Skill `spectre-crypto` : minage, blockchains, NFT, services crypto (plateformes,
+  portefeuilles, DeFi, staking) et trading — données vérifiées en direct, sécurité (jamais de
+  phrase de récupération ni de clé), aucune transaction sans accord, pas de promesse de gain.
+
 ## [0.6.3] - 2026-10-10
 
 ### Added

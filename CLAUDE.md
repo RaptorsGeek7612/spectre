@@ -15,6 +15,9 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
 - `docs/PDR-produit.md` — périmètre par version (boucle de révision Warden → Scribe depuis la v0.4).
 - Skills : `.claude/skills/spectre-conventions` (socle commun, à charger en premier), puis
   selon le rôle `spectre-builder`, `spectre-tester`, `spectre-devops`, `spectre-reviewer`.
+- Skill (assistant) : `spectre-crypto` — minage, blockchains, NFT, services crypto et trading ;
+  sujet prioritaire, données de marché vérifiées en direct, jamais de phrase de récupération ni
+  de clé, aucune transaction sans un oui, pas de promesse de gain.
 
 ## Commandes (Windows : `uv run`, pas d'activation de venv)
 ```shell
