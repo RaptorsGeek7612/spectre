@@ -28,6 +28,8 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
   entreprenant, mais **propose et attend un oui** avant toute initiative), `spectre-amitie`
   (amitié, loyauté, respect, sans remplacer les proches) et `spectre-developpement-humain`
   (corps et psychologie de la naissance au grand âge, sans diagnostic).
+- Skill (culture) : `spectre-culture` — musique, cinéma, séries, littérature, animation et
+  mangas ; recommander selon les goûts, sans divulgâcher, en vérifiant ce qui est récent.
 - Ces skills servent aussi au **cerveau de Spectre** : `assistant/competences.py` les liste dans
   son prompt système (hors skills de développement) et l'outil `competence(name)` en lit une.
 - Skills (capacités labo, conteneurs Docker à `C:\Users\sherp\labs`) : `labs-biometrie`

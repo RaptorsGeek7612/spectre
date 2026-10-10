@@ -90,6 +90,11 @@ def test_prompt_without_competences(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
 def test_real_competences_are_well_formed() -> None:
     names = {c.name for c in competences.available(competences.skills_dir())}
-    assert {"spectre-personnalite", "spectre-amitie", "spectre-developpement-humain"} <= names
+    assert {
+        "spectre-personnalite",
+        "spectre-amitie",
+        "spectre-developpement-humain",
+        "spectre-culture",
+    } <= names
     for name in names:
         assert len(competences.read(name)) > 200
