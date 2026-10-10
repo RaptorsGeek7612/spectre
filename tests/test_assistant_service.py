@@ -378,7 +378,7 @@ class FakeTTS:
 
 
 def _utterance() -> list[bytes]:
-    return [LOUD] * 5 + [QUIET] * 10
+    return [LOUD] * 5 + [QUIET] * 15  # a pause longer than silence_s ends the turn
 
 
 def _loop(
@@ -466,6 +466,15 @@ def test_listen_helpers() -> None:
     waiting = UtteranceDetector(wait_s=0.2)
     assert [waiting.feed(QUIET) for _ in range(2)] == [False, True]
     assert not waiting.heard_speech
+    onset = UtteranceDetector()
+    soft = b"\x01\x00" * 800  # quieter than the threshold: the first syllable
+    for block in (QUIET, soft, soft, soft, soft, soft):
+        assert onset.feed(block) is False
+    onset.feed(LOUD)
+    assert onset.audio() == soft * 4 + LOUD  # 0.4 s kept before the speech started
+    patient = UtteranceDetector()
+    assert not any(patient.feed(b) for b in [LOUD] * 3 + [QUIET] * 13)  # a 1.3 s pause
+    assert patient.feed(QUIET) is True
     assert len(chime()) == int(SAMPLE_RATE * 0.12) * 2
     assert json.dumps(Reply("a", "b", False).text) == '"a"'
 

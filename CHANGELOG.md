@@ -7,6 +7,25 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-10
+
+### Fixed
+
+- Reconnaissance de la voix plus fiable :
+  - Spectre attend 1,4 s de silence (au lieu de 0,9) avant de considérer la phrase finie, et
+    1,8 s sur le téléphone : une pause naturelle ne coupe plus la phrase (« Ouvre. »).
+  - Les 0,4 s qui précèdent la parole sont gardées : la première syllabe n'est plus perdue.
+  - Filtre de voix (VAD) avant la transcription et recherche plus large (beam 5) : sur ce PC,
+    trois phrases de test passent de 6 % de mots erronés à aucun, pour environ 3 s par phrase.
+  - Le contexte donné au modèle est réduit à une phrase : l'ancienne liste d'applications était
+    recopiée comme si elle avait été dite quand l'audio était confus (« Ouvre YouTube, Google
+    Chrome, »), et un écho du contexte est ignoré.
+
+### Added
+
+- Réglage « Compréhension de ta voix » : small (rapide), medium ou large-v3-turbo (un peu plus
+  précis, 3 à 4 fois plus lents sur ce PC).
+
 ## [0.6.0] - 2026-10-10
 
 ### Added
