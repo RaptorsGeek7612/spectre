@@ -14,6 +14,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 - Le bouton « Connexion à distance » est aussi visible sur le téléphone (icône en haut de
   l'écran et menu) ; ouvert depuis le téléphone déjà connecté, il le signale.
 
+### Added
+
+- Lanceur toujours allumé (`tools/spectre_launcher.py`, bibliothèque standard seulement,
+  127.0.0.1:8764), publié par Tailscale sous `/lanceur/` : quand Spectre est fermé sur le PC,
+  le téléphone y est renvoyé automatiquement et peut le relancer avec le mot de passe (5 essais
+  puis une minute de blocage). Démarré par `tools/spectre-assistant.ps1`, il survit à
+  « Arrêter Spectre ». Le lien du lanceur apparaît dans la fenêtre « Connexion à distance ».
+
 ## [0.5.1] - 2026-10-10
 
 ### Added

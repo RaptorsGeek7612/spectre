@@ -195,6 +195,8 @@ async function loadRemote() {
   $("#remote-url-row").hidden = !r.url;
   $("#remote-url").textContent = r.url; $("#remote-url").href = r.url || "#";
   $("#remote-enable").hidden = !(r.running && r.password && !r.serving);
+  $("#remote-launcher").hidden = !r.launcher_url;
+  $("#remote-launcher-url").textContent = r.launcher_url || ""; $("#remote-launcher-url").href = r.launcher_url || "#";
 }
 function openRemote() {
   closeDrawers();
@@ -506,7 +508,11 @@ function connect() {
   es.addEventListener("approval_done", () => loadApprovals());
   es.addEventListener("initiative", (e) => { const d = JSON.parse(e.data); toast(`${d.title}${d.body ? ` — ${d.body}` : ""}`, "ok", 8000); loadInitiatives(); loadMissions(); });
   es.addEventListener("initiative_row", () => loadInitiatives());
-  es.onerror = () => setState("off", "Connexion perdue, reconnexion…");
+  es.onerror = () => {
+    setState("off", "Connexion perdue, reconnexion…");
+    // from the phone: if Spectre was closed on the PC, the launcher can start it again
+    if (REMOTE) fetch("/api/status", { cache: "no-store" }).then((r) => { if (r.status >= 502) location.href = "/lanceur/"; }).catch(() => {});
+  };
 }
 
 /* ---- wiring ---- */
