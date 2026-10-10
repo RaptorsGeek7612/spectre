@@ -9,6 +9,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [0.6.4] - 2026-10-10
 
+### Added
+
+- Skill `spectre-crypto` : minage, blockchains, NFT, services crypto (plateformes,
+  portefeuilles, DeFi, staking) et trading — données vérifiées en direct, sécurité (jamais de
+  phrase de récupération ni de clé), aucune transaction sans accord, pas de promesse de gain.
+
 ### Changed
 
 - Salutations (`assistant/greetings.py`) : Spectre salue une seule fois par jour, selon l'heure
@@ -21,6 +27,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   l'heure exacte, le moment de la journée, la règle du salut et la consigne de varier.
 - Le téléphone dit aussi la réplique d'arrivée à voix haute.
 
+## [0.6.3] - 2026-10-10
 
 ### Added
 
