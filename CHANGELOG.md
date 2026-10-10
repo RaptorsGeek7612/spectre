@@ -7,6 +7,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.7] - 2026-10-10
+
+### Fixed
+
+- L'outil `read_file` coupait tout fichier à 20 000 caractères sans moyen de lire la suite : les
+  agents ne pouvaient jamais lire la fin d'un long rapport. Il accepte maintenant `offset` et,
+  quand il reste du texte, indique combien et avec quel `offset` relire.
+
 ## [0.6.6] - 2026-10-10
 
 ### Added
