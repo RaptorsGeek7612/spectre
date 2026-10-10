@@ -34,6 +34,8 @@ def handle(
             handler._json(200, {"reply": service.chat(str(data.get("text", "")), "text")})
         case "POST", ["voice"]:
             handler._json(200, service.remote_voice(handler._raw_body()))
+        case "POST", ["speak"]:
+            handler._json(200, {"audio": service.render_speech(str(body().get("text", "")))})
         case "POST", ["frame"]:
             handler._json(200, service.remote_frame(handler._raw_body()))
         case "POST", ["talk"]:

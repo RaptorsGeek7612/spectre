@@ -155,7 +155,8 @@ def test_voice_hooks(service: AssistantService) -> None:
     while not voice.said and time.monotonic() < deadline:
         time.sleep(0.01)
     assert voice.said == ["Briefing. Beau temps."]
-    assert [e["type"] for e in _drain(q)][-1] == "initiative"
+    events = _drain(q)
+    assert events[-1]["type"] == "initiative" and events[-1]["speak"] is True
     service.stop()
     assert voice.stop.is_set()
 
@@ -569,6 +570,25 @@ def test_api_voice_route(api: Client, service: AssistantService) -> None:
     assert status == 200
     big = {**headers, "Content-Length": str(server_mod.MAX_BODY + 2)}  # announced, not sent
     assert api.request("POST", "/api/assistant/voice", raw=b"x", headers=big)[0] == 413
+
+
+def test_render_speech_and_speak_route(api: Client, service: AssistantService) -> None:
+    with pytest.raises(ValueError, match="voix"):
+        service.render_speech("Bonjour.")
+    assert api.json("POST", "/api/assistant/speak", {"text": "Bonjour."})[0] == 400
+    service.attach_voice(PhoneVoice())
+    assert service.render_speech("   ") == ""
+    status, data = api.json("POST", "/api/assistant/speak", {"text": "Bonjour."})
+    wav = base64.b64decode(data["audio"])
+    assert status == 200 and wav[:4] == b"RIFF"
+    service.attach_voice(PhoneVoice(render=False))
+    assert service.render_speech("Bonjour.") == ""
+
+
+def test_initiative_not_spoken_without_voice(service: AssistantService) -> None:
+    q = service.subscribe()
+    service.proactive.add_initiative("rappel", "Rappel", "Pain.")
+    assert [e for e in _drain(q) if e["type"] == "initiative"][0]["speak"] is False
 
 
 def test_to_wav() -> None:

@@ -7,6 +7,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-10-10
+
+### Added
+
+- Spectre parle aussi sur le téléphone : ses réponses aux messages écrits et ses initiatives
+  (dont les visites où il vient discuter, suivies de l'écoute) sont dites à voix haute sur
+  l'appareil distant. Le navigateur n'autorise le son qu'après un toucher : ce qui arrive avant
+  attend le premier toucher de l'écran. Nouvelle route `POST /api/assistant/speak`.
+
 ## [0.6.2] - 2026-10-10
 
 ### Added
