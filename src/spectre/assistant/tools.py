@@ -129,10 +129,17 @@ def _missions(ctx: ActionContext) -> str:
 
 def _write_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
     try:
-        exists = actions.resolve_path(ctx, str(args.get("path", ""))).exists()
+        path = actions.resolve_path(ctx, str(args.get("path", "")))
     except ActionError:
-        exists = False
-    return (Level.DESTRUCTIVE, "overwrite_file") if exists else (Level.WRITE, "write_file")
+        return Level.WRITE, "write_file"
+    if not path.exists():
+        return Level.WRITE, "write_file"
+    workspace = ctx.workspace.resolve()
+    if workspace in path.parents:
+        # Rewriting a draft in the agents' own folder: no approval, the previous version is
+        # always kept in Spectre's trash (outside the workspace) and in the undo journal.
+        return Level.WRITE, "write_file"
+    return Level.DESTRUCTIVE, "overwrite_file"
 
 
 TOOLS: dict[str, Tool] = {
