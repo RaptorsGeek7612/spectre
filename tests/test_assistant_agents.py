@@ -200,7 +200,9 @@ def test_mission_steps_by_chatgpt_setting(db: Database, tmp_path: Path) -> None:
     mid = _queue(db, {"kind": "mission", "steps": ["unique"], "agent": "claude"})
     engine.run_next()
     assert _steps(db, mid)[0]["agent"] == "sonnet" and len(gpt.calls) == 1
-    assert claude.calls[2]["system"] == missions.WORKER.format(name="Gétro")  # no specialty
+    assert claude.calls[2]["system"] == missions.WORKER.format(
+        name="Gétro", workspace=claude.workspace
+    )  # no specialty
 
 
 def test_mission_agent_override_and_lazy_creation(

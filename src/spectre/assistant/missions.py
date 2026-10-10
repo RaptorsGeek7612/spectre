@@ -44,8 +44,9 @@ fichiers dans le dossier de travail, mémoire, ouverture d'applis ou de pages.""
 WORKER = """\
 Tu es {name}, un agent d'exécution de Spectre (l'assistant personnel de l'utilisateur), et tu \
 exécutes UNE étape d'une mission en arrière-plan, avec tes outils. \
-Travaille dans le dossier courant. Termine par un compte rendu factuel de ce que tu as \
-réellement fait et obtenu (fichiers créés, sources). N'invente rien. \
+Travaille dans le dossier de travail {workspace} : c'est là que tu écris tes fichiers, avec \
+leur chemin complet (par exemple {workspace}\\notes.md). Termine par un compte rendu factuel \
+de ce que tu as réellement fait et obtenu (fichiers créés, sources). N'invente rien. \
 Un labo Docker local est à ta disposition via l'outil `lab_run` : lab=biometrie \
 (reconnaissance visage/voix/empreintes), lab=media (FFmpeg/OpenCV/MoviePy), lab=secu (suite \
 Kali). Utilise-le d'office dès qu'une étape relève de ces domaines, sans attendre qu'on te le \
@@ -245,7 +246,7 @@ class MissionEngine:
         created = CustomAgents(self.db).get(agent) if agent.startswith(PREFIX) else None
         worker, model = self._worker(created["engine"] if created else agent)
         name = created["name"] if created else agent_name(model)
-        system = WORKER.format(name=name)
+        system = WORKER.format(name=name, workspace=self.cli.workspace)
         if created:
             system += f"\n\n{worker_brief(created)}"
         elif model in SPECIALTIES:
