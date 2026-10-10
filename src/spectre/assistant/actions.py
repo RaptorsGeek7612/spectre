@@ -25,6 +25,8 @@ from spectre.assistant.db import Database, now_iso
 
 MAX_READ_CHARS = 20_000
 MAX_LIST = 200
+# Files that agent programs (Claude Code, Codex, Vibe) read from their folder as instructions.
+AGENT_FILES = frozenset({"claude.md", "claude.local.md", "agents.md"})
 
 
 class ActionError(Exception):
@@ -42,6 +44,11 @@ class ActionContext:
     def trash(self) -> Path:
         return self.root / "trash"
 
+    @property
+    def workspace(self) -> Path:
+        """Where mission agents work (their current folder): the only writable inner folder."""
+        return self.root / "workspace"
+
 
 # ---- paths --------------------------------------------------------------------------------
 
@@ -54,6 +61,14 @@ def resolve_path(ctx: ActionContext, raw: str) -> Path:
     if not path.is_absolute():
         path = (ctx.allowed_roots[0] if ctx.allowed_roots else Path.home()) / path
     path = path.resolve()
+    workspace = ctx.workspace.resolve()
+    if path == workspace or workspace in path.parents:
+        # The agents' working folder: open to them, except what the agent programs read as
+        # their own settings or instructions (an agent could otherwise grant itself rights).
+        inside = path.relative_to(workspace).parts
+        if any(part.startswith(".") for part in inside) or path.name.lower() in AGENT_FILES:
+            raise ActionError(f"ce fichier règle le comportement des agents : {path.name}")
+        return path
     roots = [r.resolve() for r in ctx.allowed_roots]
     if not any(path == r or r in path.parents for r in roots):
         raise ActionError(f"accès refusé hors des dossiers autorisés : {path}")

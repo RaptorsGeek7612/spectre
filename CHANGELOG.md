@@ -7,6 +7,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-10-10
+
+### Fixed
+
+- Les missions ne pouvaient pas écrire dans leur dossier de travail
+  (`~/.spectre/assistant/workspace`) : tout le dossier interne de Spectre était verrouillé, les
+  fichiers finissaient dans le dossier personnel et le vérificateur refusait les étapes. Le
+  dossier de travail est maintenant ouvert aux agents, qui reçoivent son chemin complet ; le
+  reste du dossier interne reste verrouillé.
+- Dans ce dossier, les fichiers que les programmes d'agents lisent comme consignes ou réglages
+  (`CLAUDE.md`, `AGENTS.md`, tout fichier ou dossier caché comme `.claude/` ou `.mcp.json`)
+  restent interdits en écriture, pour qu'un agent ne puisse pas s'accorder de droits.
+
 ## [0.6.4] - 2026-10-10
 
 ### Added

@@ -199,6 +199,23 @@ def test_resolve_path(ctx: ActionContext, home: Path, tmp_path: Path) -> None:
         actions.resolve_path(bare, "x.txt")
 
 
+def test_resolve_path_workspace(ctx: ActionContext, home: Path) -> None:
+    """Missions write in Spectre's workspace, but never the files agents obey."""
+    inner = ActionContext(db=ctx.db, root=home / ".spectre", allowed_roots=[home])
+    work = inner.workspace
+    assert actions.resolve_path(inner, str(work / "rapport.md")) == (work / "rapport.md").resolve()
+    assert actions.resolve_path(inner, str(work / "missions" / "a.md")).name == "a.md"
+    for locked in ("CLAUDE.md", "agents.md", ".mcp.json", ".claude/settings.local.json", "x/.env"):
+        with pytest.raises(ActionError, match="comportement des agents"):
+            actions.resolve_path(inner, str(work / locked))
+    with pytest.raises(ActionError, match="internes"):  # the rest of the folder stays locked
+        actions.resolve_path(inner, str(home / ".spectre" / "config.json"))
+    outside = ActionContext(
+        db=ctx.db, root=Path(home.anchor) / "spectre-ailleurs", allowed_roots=[home]
+    )
+    assert actions.resolve_path(outside, str(outside.workspace / "r.md")).name == "r.md"
+
+
 def test_read_actions(ctx: ActionContext, home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert actions.current_time(ctx)
     assert "Système" in actions.system_info(ctx)
