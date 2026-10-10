@@ -7,6 +7,7 @@ import queue
 from typing import Any
 from urllib.parse import unquote
 
+from spectre.assistant.remote import Remote
 from spectre.assistant.service import AssistantService
 
 HEARTBEAT_S = 15.0
@@ -45,6 +46,12 @@ def handle(
         case "POST", ["approvals", approval_id, "deny"]:
             service.deny(int(approval_id), str(body().get("reason", "")))
             handler._json(200, {"ok": True})
+        case "GET", ["agents"]:
+            handler._json(200, service.agents())
+        case "GET", ["remote"]:
+            handler._json(200, remote(handler).status(handler.app.auth.enabled))
+        case "POST", ["remote"]:
+            handler._json(200, enable_remote(handler))
         case "GET", ["missions"]:
             handler._json(200, service.missions_list())
         case "POST", ["missions"]:
@@ -53,7 +60,9 @@ def handle(
                 200,
                 {
                     "result": service.start_mission(
-                        str(data.get("goal", "")), str(data.get("kind", "mission"))
+                        str(data.get("goal", "")),
+                        str(data.get("kind", "mission")),
+                        str(data.get("agent", "")),
                     )
                 },
             )
@@ -87,6 +96,29 @@ def handle(
             handler._json(200, service.update_config(body()))
         case _:
             raise KeyError("/".join(parts))
+
+
+def remote(handler: Any) -> Remote:
+    return Remote(int(handler.server.server_address[1]))
+
+
+def enable_remote(handler: Any) -> dict[str, Any]:
+    """Publish Spectre on the tailnet and accept its host name; only with a password."""
+    if not handler.app.auth.enabled:
+        raise ValueError(
+            "définis d'abord un mot de passe (tools\\spectre-password.cmd) puis relance Spectre"
+        )
+    access = remote(handler)
+    if not access.enable():
+        raise ValueError(
+            "Tailscale n'a pas pu publier Spectre : vérifie qu'il est connecté et que HTTPS "
+            "est activé sur ton tailnet"
+        )
+    info = access.status(True)
+    allowed = handler.app.allowed_hosts
+    if info["dns"] and allowed is not None:
+        allowed.add(info["dns"].lower())
+    return info
 
 
 def stream_events(handler: Any, service: AssistantService) -> None:
