@@ -277,6 +277,8 @@ const FIELDS = [
   ["tts_pace", "Débit de la voix", ["naturel", "pose", "vif"], "naturel : comme une conversation ; pose : plus lent ; vif : plus rapide."],
   ["tts_effect", "Timbre", ["futuriste", "androide", "hologramme", "vaisseau", "aucun"], "futuriste : IA de bord grave et métallique ; androide : robot vocodé ; hologramme : chœur scintillant ; vaisseau : discret ; aucun : voix naturelle."],
   ["speak_initiatives", "Annoncer les initiatives à voix haute", "checkbox", ""],
+  ["befriend_per_day", "Spectre vient te parler (fois par jour, 0 à 4)", "number", "Pour mieux te connaître : une question sincère, ou une suite à ce que tu lui as confié. 0 = jamais. Il ne vient jamais pendant une conversation, espace ses venues et les espace davantage quand tu ne réponds pas."],
+  ["befriend_hours", "Heures où il peut venir", "text", "De telle heure à telle heure, par exemple 10-21."],
   ["camera", "Reconnaissance des visages (webcam)", "checkbox", "Au prochain lancement. Ou lance Spectre avec --camera."],
 ];
 async function loadFaces() {
