@@ -230,7 +230,18 @@ def test_read_actions(ctx: ActionContext, home: Path, monkeypatch: pytest.Monkey
         actions.list_dir(ctx, str(home / "docs" / "Rapport.md"))
     assert actions.read_file(ctx, "docs/Rapport.md") == "abcdef"
     monkeypatch.setattr(actions, "MAX_READ_CHARS", 3)
-    assert actions.read_file(ctx, "docs/Rapport.md").startswith("abc\n…")
+    first = actions.read_file(ctx, "docs/Rapport.md")
+    assert first.startswith("abc\n…") and "relis avec offset=3" in first
+    # a long file is read in pieces, to the end
+    assert actions.read_file(ctx, "docs/Rapport.md", offset=3) == "(caractères 3 à 6 sur 6)\ndef"
+    assert actions.read_file(ctx, "docs/Rapport.md", offset=2).endswith(
+        "cde\n… (suite : 1 caractères de plus ; relis avec offset=5)"
+    )
+    assert (
+        actions.read_file(ctx, "docs/Rapport.md", offset=6)
+        == "(fin du fichier : il fait 6 caractères)"
+    )
+    assert actions.read_file(ctx, "docs/Rapport.md", offset=-4).startswith("abc")
     with pytest.raises(ActionError):
         actions.read_file(ctx, "absent.md")
     assert actions.search_files(ctx, str(home), "rapport").endswith("Rapport.md")

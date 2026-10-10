@@ -181,7 +181,13 @@ TOOLS: dict[str, Tool] = {
             actions.open_app,
         ),
         Tool("list_dir", "Lister un dossier.", Level.READ, "read", actions.list_dir),
-        Tool("read_file", "Lire un fichier texte.", Level.READ, "read", actions.read_file),
+        Tool(
+            "read_file",
+            "Lire un fichier texte (20 000 caractères à la fois ; offset pour lire la suite).",
+            Level.READ,
+            "read",
+            actions.read_file,
+        ),
         Tool(
             "search_files",
             "Chercher des fichiers par nom dans un dossier.",
