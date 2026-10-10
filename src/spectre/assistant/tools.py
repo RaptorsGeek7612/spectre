@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import actions
+from spectre.assistant import actions, competences
 from spectre.assistant.actions import ActionContext, ActionError
 from spectre.assistant.config import agent_name, resolve_agent
 from spectre.assistant.custom_agents import PREFIX, AgentError, CustomAgents
@@ -52,6 +52,13 @@ def _recall(ctx: ActionContext, query: str) -> str:
     return "\n".join(
         f"#{f['id']} [{f['category']}] {f['subject']} {f['predicate']} {f['value']}" for f in facts
     )
+
+
+def _competence(ctx: ActionContext, name: str) -> str:
+    try:
+        return competences.read(name)
+    except ValueError as exc:
+        raise ActionError(str(exc)) from exc
 
 
 def _forget(ctx: ActionContext, fact_id: int) -> str:
@@ -170,6 +177,14 @@ TOOLS: dict[str, Tool] = {
             _remember,
         ),
         Tool("recall", "Chercher dans la mémoire de Spectre.", Level.READ, "memory", _recall),
+        Tool(
+            "competence",
+            "Lire une de tes compétences en entier (guide détaillé sur ce PC : personnalité, "
+            "amitié, développement humain, mémoire, savoirs, création, labos...), par son nom.",
+            Level.READ,
+            "read",
+            _competence,
+        ),
         Tool(
             "forget", "Oublier un fait mémorisé (par son numéro).", Level.WRITE, "memory", _forget
         ),

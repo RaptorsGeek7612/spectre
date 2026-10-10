@@ -24,6 +24,12 @@ ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément ins
   œuvres-repères dans `references.md`).
 - Skill (divertissement) : `spectre-astrologie` — astrologie comme fait culturel/ludique,
   jamais comme science ni base de décision.
+- Skills (caractère & relation) : `spectre-personnalite` (style inspiré de JARVIS : curieux,
+  entreprenant, mais **propose et attend un oui** avant toute initiative), `spectre-amitie`
+  (amitié, loyauté, respect, sans remplacer les proches) et `spectre-developpement-humain`
+  (corps et psychologie de la naissance au grand âge, sans diagnostic).
+- Ces skills servent aussi au **cerveau de Spectre** : `assistant/competences.py` les liste dans
+  son prompt système (hors skills de développement) et l'outil `competence(name)` en lit une.
 - Skills (capacités labo, conteneurs Docker à `C:\Users\sherp\labs`) : `labs-biometrie`
   (visage/voix/empreintes), `labs-securite` (suite Kali — cibles autorisées uniquement),
   `labs-media` (FFmpeg/OpenCV/MoviePy). Usage apprentissage/labo.

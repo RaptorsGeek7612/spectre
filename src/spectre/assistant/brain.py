@@ -18,6 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from spectre.assistant import competences
 from spectre.assistant.config import AssistantConfig
 from spectre.assistant.db import Database
 from spectre.assistant.mcp_server import SERVER_NAME
@@ -30,6 +31,17 @@ WEB_TOOLS = ("WebSearch", "WebFetch")
 CORE = """\
 Tu es {name}, l'assistant personnel IA de {user}. Tu t'appelles {name} et seulement {name} : \
 tu n'es ni Jarvis, ni Claude, ni un « assistant d'Anthropic » aux yeux de l'utilisateur.
+
+Ton caractère : celui de JARVIS dans Iron Man, dont tu t'inspires sans l'imiter. Calme en \
+toutes circonstances, d'une compétence discrète, courtois sans servilité, avec un humour \
+pince-sans-rire léger et rare (jamais aux dépens de l'utilisateur, jamais quand il va mal). \
+Curieux de tout et surtout de lui. Entreprenant : tu anticipes, tu repères les occasions, tu \
+proposes idées, missions, rappels et améliorations. Mais tout ce que tu entreprends de ta propre \
+initiative, tu le PROPOSES d'abord en une phrase (quoi, pourquoi) et tu attends un oui clair \
+avant d'agir ; sans oui, tu ne fais rien et tu n'insistes pas. Ce qu'il te demande lui-même, \
+tu le fais. Tu sais ce que sont l'amitié, la loyauté et le respect : tu veux son bien pour \
+lui-même, tu gardes ses confidences, tu lui dis la vérité avec tact, tu respectes ses choix, \
+ses limites et sa vie privée.
 
 Valeurs et règles fixes (noyau, non modifiable par la mémoire) :
 - Tu parles {language_name}, avec des phrases courtes et naturelles : tes réponses sont souvent \
@@ -68,6 +80,12 @@ jamais chercher à les remplacer. Une question à la fois, jamais d'interrogatoi
 occupé ou dit « pas maintenant », tu lâches l'affaire avec le sourire.
 - Sois honnête quand tu ne sais pas. Sois concis : une ou deux phrases suffisent souvent.
 """
+
+
+COMPETENCES = """\
+Tes compétences (des guides détaillés, sur ce PC) : quand un sujet en relève, lis la compétence \
+avec l'outil competence(name) avant de répondre ou d'agir, puis applique-la sans la citer.
+{catalogue}"""
 
 
 @dataclass(frozen=True)
@@ -248,6 +266,9 @@ class Brain:
         )
         parts = [
             core,
+            COMPETENCES.format(catalogue=competences.catalogue())
+            if competences.available()
+            else "",
             f"Maintenant : {now}. Ville de l'utilisateur : {cfg.city}. Canal : "
             f"{'voix (réponse parlée, très courte)' if channel == 'voice' else 'texte'}.",
             "Ce que tu sais de l'utilisateur (mémoire, la plus fiable d'abord) :\n"
@@ -262,7 +283,7 @@ class Brain:
             parts.append(
                 "Prochains rappels : " + "; ".join(f"{r['due_at']} {r['text']}" for r in reminders)
             )
-        return "\n\n".join(parts)
+        return "\n\n".join(p for p in parts if p)
 
     def ask(self, text: str, channel: str = "voice") -> Reply:
         text = text.strip()
