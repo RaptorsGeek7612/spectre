@@ -7,6 +7,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.8] - 2026-10-10
+
+### Changed
+
+- Dans le dossier de travail des agents (`~/.spectre/assistant/workspace`), réécrire un fichier
+  existant ne demande plus de validation : les missions ne s'enlisent plus dans les demandes et
+  ne multiplient plus les copies (`_v2`, `00b`…). L'ancienne version est toujours sauvegardée
+  dans la corbeille de Spectre (hors de portée des agents) et dans le journal d'annulation, et le
+  compte rendu de l'outil indique où. Ailleurs, réécrire un fichier demande toujours ton accord.
+
 ## [0.6.7] - 2026-10-10
 
 ### Fixed

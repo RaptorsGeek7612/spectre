@@ -245,7 +245,8 @@ def write_file(ctx: ActionContext, path: str, content: str) -> str:
         shutil.copy2(file, backup)
     file.write_text(content, encoding="utf-8")
     _journal(ctx, "write", path=str(file), backup=str(backup) if backup else None)
-    return f"fichier écrit : {file} ({len(content)} caractères)"
+    kept = f" ; ancienne version sauvegardée : {backup}" if backup else ""
+    return f"fichier écrit : {file} ({len(content)} caractères){kept}"
 
 
 def move_file(ctx: ActionContext, source: str, destination: str) -> str:

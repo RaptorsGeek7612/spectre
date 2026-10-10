@@ -378,6 +378,7 @@ def test_approval_flow(db: Database, ctx: ActionContext, home: Path) -> None:
     assert db.one("SELECT status FROM approvals WHERE id = 1")["status"] == "executed"  # type: ignore[index]
     with pytest.raises(ValueError):
         tools.run_approved(gate, ctx, 1)
+
     with pytest.raises(ValueError):
         tools.deny(ctx, 1)
     for call in (lambda: tools.run_approved(gate, ctx, 9), lambda: tools.deny(ctx, 9)):
@@ -390,6 +391,27 @@ def test_approval_flow(db: Database, ctx: ActionContext, home: Path) -> None:
     tools.deny(ctx, 3, "")
     row = db.one("SELECT * FROM approvals WHERE id = 3")
     assert row and row["status"] == "denied" and row["result"] == "refusé par l'utilisateur"
+
+
+def test_workspace_drafts_rewritten_without_approval(db: Database, ctx: ActionContext) -> None:
+    """In the agents' own folder a rewrite needs no approval: the old version is kept."""
+    gate = Gate(db)
+    draft = ctx.workspace / "missions" / "brouillon.md"
+    draft.parent.mkdir(parents=True)
+    draft.write_text("version 1", encoding="utf-8")
+    assert tools.TOOLS["write_file"].risk(ctx, {"path": str(draft)}) == (Level.WRITE, "write_file")
+    out = tools.execute(gate, ctx, "write_file", {"path": str(draft), "content": "test"})
+    assert "fichier écrit" in out and "ancienne version sauvegardée" in out
+    assert draft.read_text(encoding="utf-8") == "test"
+    kept = list(ctx.trash.glob("*-brouillon.md"))
+    assert len(kept) == 1 and kept[0].read_text(encoding="utf-8") == "version 1"
+    assert ctx.workspace.resolve() not in kept[0].resolve().parents  # out of the agents' reach
+    assert db.one("SELECT COUNT(*) AS n FROM approvals")["n"] == 0  # type: ignore[index]
+    # a file elsewhere still asks first
+    assert tools.TOOLS["write_file"].risk(ctx, {"path": str(ctx.workspace)}) == (
+        Level.DESTRUCTIVE,
+        "overwrite_file",
+    )
 
 
 def test_make_context(db: Database, tmp_path: Path) -> None:
