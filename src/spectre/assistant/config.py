@@ -82,12 +82,14 @@ class AssistantConfig:
     allowed_roots: list[str] = field(default_factory=lambda: [str(Path.home())])
     wake_word: str = "spectre"
     mic_device: str = ""  # part of the microphone's name; empty = pick a real microphone
-    stt_model: str = "small"  # faster-whisper; "base" is faster but mishears French speech
+    stt_model: str = "small"  # faster-whisper: small (fast), medium or large-v3-turbo (finer)
     tts_voice: str = "fr_FR-upmc-medium"  # male French voice (also: fr_FR-gilles-low, tom-medium)
     tts_speaker: str = "pierre"  # speaker of a multi-speaker voice (fr_FR-upmc-medium)
     tts_effect: str = "futuriste"  # onboard-AI timbre: futuriste, vaisseau (subtler) or aucun
     tts_pace: str = "naturel"  # speaking speed: pose, naturel or vif
     speak_initiatives: bool = True
+    befriend_per_day: int = 2  # times a day Spectre comes to talk to you on its own (0 = never)
+    befriend_hours: str = "10-21"  # when it may: from hour to hour
     camera: bool = False  # face recognition of enrolled people (opt-in, nothing leaves the PC)
     camera_index: int = 0
 

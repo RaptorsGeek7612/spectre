@@ -437,6 +437,19 @@ def _finish(run: dict[str, Any], event: Event) -> None:
         run["error"], run["error_agent"] = "arrêtée par l'utilisateur", event["agent"]
 
 
+class ExclusiveHTTPServer(ThreadingHTTPServer):
+    """One server per port. On Windows, SO_REUSEADDR lets a second process bind a port already
+    in use, so two Spectre instances could start side by side and fight over the microphone."""
+
+    allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self) -> None:
+        exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+        if exclusive is not None:
+            self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        super().server_bind()
+
+
 def make_server(
     host: str,
     port: int,
@@ -453,7 +466,7 @@ def make_server(
     allowed = LOCAL_HOSTS | {h.strip().rstrip(".").lower() for h in extra_hosts if h.strip()}
     app = App(store, auth, demo_delay=demo_delay, allowed_hosts=allowed if local else None)
     app.assistant = assistant
-    server = ThreadingHTTPServer((host, port), Handler)
+    server = ExclusiveHTTPServer((host, port), Handler)
     server.daemon_threads = True
     server.app = app  # type: ignore[attr-defined]
     return server

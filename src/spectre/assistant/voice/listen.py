@@ -31,8 +31,9 @@ class UtteranceDetector:
     """
 
     block_s: float = 0.1
-    silence_s: float = 0.9
-    max_s: float = 15.0
+    silence_s: float = 1.4  # a natural pause mid-sentence must not end the turn
+    max_s: float = 25.0
+    pre_roll_s: float = 0.4  # keep the audio just before speech: the first syllable
     wait_s: float = 6.0  # give up if nothing is said after the wake word
     min_speech_s: float = 0.3
     floor: float = 300.0
@@ -41,6 +42,7 @@ class UtteranceDetector:
     speech_blocks: int = 0
     quiet_blocks: int = 0
     total_blocks: int = 0
+    before: list[bytes] = field(default_factory=list)
 
     def feed(self, block: bytes) -> bool:
         self.total_blocks += 1
@@ -50,8 +52,13 @@ class UtteranceDetector:
             self.floor = 0.9 * self.floor + 0.1 * level if level < threshold else self.floor
             if level >= threshold:
                 self.speaking = True
+                self.chunks.extend(self.before)  # the onset was quieter than the threshold
             elif self.total_blocks * self.block_s >= self.wait_s:
                 return True
+            else:
+                self.before = [*self.before, block][
+                    -max(0, round(self.pre_roll_s / self.block_s)) :
+                ]
         if self.speaking:
             self.chunks.append(block)
             if level >= threshold:

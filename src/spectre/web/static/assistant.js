@@ -272,11 +272,14 @@ const FIELDS = [
   ["mistral_model", "Modèle Mistral", "text", "Vide = le modèle par défaut de Vibe (mistral-medium-3.5). Vibe utilise ton compte Le Chat, ou une clé MISTRAL_API_KEY dans ~/.spectre/assistant/vibe/.env."],
   ["briefing_hour", "Heure du briefing", "number", "Le briefing du matin apparaît à partir de cette heure."],
   ["auto_max_level", "Autonomie (0 à 2)", "number", "Au-dessus de ce niveau de risque, Spectre demande ta validation. Supprimer, envoyer ou toucher au système demande toujours ton accord."],
+  ["stt_model", "Compréhension de ta voix", ["small", "medium", "large-v3-turbo"], "small : rapide (environ 2 s par phrase sur ce PC) ; medium et large-v3-turbo : un peu plus précis mais 3 à 4 fois plus lents, et 1,5 Go à télécharger au premier lancement. Au prochain lancement."],
   ["tts_voice", "Voix", ["fr_FR-upmc-medium", "fr_FR-gilles-low", "fr_FR-tom-medium"], "Voix d'homme ; pour fr_FR-upmc-medium, mets le locuteur « pierre »."],
   ["tts_speaker", "Locuteur", "text", ""],
   ["tts_pace", "Débit de la voix", ["naturel", "pose", "vif"], "naturel : comme une conversation ; pose : plus lent ; vif : plus rapide."],
   ["tts_effect", "Timbre", ["futuriste", "androide", "hologramme", "vaisseau", "aucun"], "futuriste : IA de bord grave et métallique ; androide : robot vocodé ; hologramme : chœur scintillant ; vaisseau : discret ; aucun : voix naturelle."],
   ["speak_initiatives", "Annoncer les initiatives à voix haute", "checkbox", ""],
+  ["befriend_per_day", "Spectre vient te parler (fois par jour, 0 à 4)", "number", "Pour mieux te connaître : une question sincère, ou une suite à ce que tu lui as confié. 0 = jamais. Il ne vient jamais pendant une conversation, espace ses venues et les espace davantage quand tu ne réponds pas."],
+  ["befriend_hours", "Heures où il peut venir", "text", "De telle heure à telle heure, par exemple 10-21."],
   ["camera", "Reconnaissance des visages (webcam)", "checkbox", "Au prochain lancement. Ou lance Spectre avec --camera."],
 ];
 async function loadFaces() {
@@ -387,7 +390,7 @@ async function deviceTalk() {
     const now = performance.now();
     if (level > 0.02) { spoke = spoke || now; lastVoice = now; }
     // stops after a pause, if nothing is said, or after 25 s
-    if ((spoke && now - lastVoice > 1300) || (!spoke && now - started > 7000) || now - started > 25000) finishRecording();
+    if ((spoke && now - lastVoice > 1800) || (!spoke && now - started > 7000) || now - started > 25000) finishRecording();
   };
   source.connect(rec.node);
   rec.node.connect(rec.ctx.destination);  // outputs silence; needed for the node to run

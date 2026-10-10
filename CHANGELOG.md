@@ -7,6 +7,52 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-10
+
+### Fixed
+
+- Reconnaissance de la voix plus fiable :
+  - Spectre attend 1,4 s de silence (au lieu de 0,9) avant de considérer la phrase finie, et
+    1,8 s sur le téléphone : une pause naturelle ne coupe plus la phrase (« Ouvre. »).
+  - Les 0,4 s qui précèdent la parole sont gardées : la première syllabe n'est plus perdue.
+  - Filtre de voix (VAD) avant la transcription et recherche plus large (beam 5) : sur ce PC,
+    trois phrases de test passent de 6 % de mots erronés à aucun, pour environ 3 s par phrase.
+  - Le contexte donné au modèle est réduit à une phrase : l'ancienne liste d'applications était
+    recopiée comme si elle avait été dite quand l'audio était confus (« Ouvre YouTube, Google
+    Chrome, »), et un écho du contexte est ignoré.
+
+### Added
+
+- Réglage « Compréhension de ta voix » : small (rapide), medium ou large-v3-turbo (un peu plus
+  précis, 3 à 4 fois plus lents sur ce PC).
+
+## [0.6.0] - 2026-10-10
+
+### Added
+
+- Spectre vient de lui-même parler à l'utilisateur pour mieux le connaître (`befriend_per_day`,
+  2 par défaut, 0 à 4 ; `befriend_hours`, 10-21 par défaut) : une question sincère sur un sujet
+  qu'il connaît mal (catégories de la mémoire les moins remplies) ou une suite à ce que
+  l'utilisateur lui a confié, rédigée par l'agent supérieur sans répéter ses dernières venues.
+  Il la dit à voix haute puis écoute pour qu'on lui réponde directement ; elle apparaît aussi
+  dans la conversation et les initiatives. La réponse arrive au cerveau avec ce que Spectre
+  avait dit, et la consolidation de la nuit en retient les faits durables.
+- Garde-fous : jamais pendant une conversation ni dans les 20 minutes qui suivent un échange,
+  3 heures au moins entre deux venues (6 si la précédente est restée sans réponse), moment
+  imprévisible, rien d'intrusif, pas de culpabilisation ; Spectre reste honnête sur ce qu'il
+  est et ne cherche pas à remplacer les proches. Réglages dans « Réglages de l'assistant ».
+
+## [0.5.3] - 2026-10-10
+
+### Fixed
+
+- Spectre pouvait s'arrêter juste après son démarrage quand deux lancements se chevauchaient
+  (raccourci, démarrage de Windows, lanceur du téléphone) : sous Windows, deux instances
+  pouvaient écouter le même port et se disputer le micro et la caméra. Les serveurs de Spectre
+  et du lanceur réservent désormais leur port en exclusivité, et `spectre-assistant.ps1`
+  n'autorise qu'un démarrage à la fois et attend un Spectre encore en chargement au lieu d'en
+  lancer un second.
+
 ## [0.5.2] - 2026-10-10
 
 ### Fixed

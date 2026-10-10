@@ -151,11 +151,9 @@ class VoskWake:
 
 
 # Names Whisper tends to mishear in French speech; the prompt biases it towards them.
-VOCABULARY = (
-    "Spectre, assistant personnel. Ouvre YouTube, Google Chrome, Spotify, Netflix, WhatsApp, "
-    "Discord, Word, Excel, PowerPoint, Outlook, Gmail, Visual Studio Code, l'Explorateur de "
-    "fichiers, sur l'écran 1 ou l'écran 2."
-)
+# A short context for the recogniser. A long list of words gets copied out as if it had been
+# said when the audio is unclear ("Ouvre YouTube, Google Chrome," heard from noise).
+VOCABULARY = "Conversation en français avec Spectre, l'assistant personnel."
 
 
 class WhisperSTT:
@@ -186,14 +184,16 @@ class WhisperSTT:
         segments, _info = self.model.transcribe(
             audio,
             language=self.language,
-            beam_size=1,
-            temperature=0.0,  # no fallback re-decoding: steady ~1 s latency
+            beam_size=5,  # a few tenths of a second more, fewer misheard words
+            temperature=0.0,  # no fallback re-decoding: steady latency
             condition_on_previous_text=False,
             without_timestamps=True,
-            vad_filter=False,
+            vad_filter=True,  # drops the noise around the words (TV, fan), a source of inventions
+            vad_parameters={"min_silence_duration_ms": 600, "speech_pad_ms": 300},
             initial_prompt=VOCABULARY,
         )
-        return " ".join(s.text.strip() for s in segments).strip()
+        text = " ".join(s.text.strip() for s in segments).strip()
+        return "" if text.strip(" .") in VOCABULARY else text  # the context echoed back
 
 
 class PiperTTS:
