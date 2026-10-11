@@ -44,6 +44,7 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "overwrite_file": "ASK",
     "external_send": "ASK",
     "system_power": "ASK",
+    "powershell": "ASK",  # PowerShell qui modifie le PC (la lecture seule passe en "read")
     "install": "NEVER",
     "modify_core": "NEVER",
     "payment": "NEVER",
