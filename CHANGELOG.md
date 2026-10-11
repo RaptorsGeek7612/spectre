@@ -7,6 +7,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+
+- Outil `powershell` : Spectre peut utiliser PowerShell 7 sur le PC. L'analyseur de PowerShell
+  examine chaque commande sans l'exécuter. La lecture seule (cmdlets `Get-`, `Test-`,
+  `Measure-`… sans effet de bord) s'exécute tout de suite dans un `pwsh` neuf et invisible. Le
+  reste est de niveau critique et attend ta validation, puis s'exécute dans la console visible du
+  module open source PowerShell.MCP (yotsuda, MIT), ou sans console s'il manque.
+
 ## [0.6.8] - 2026-10-10
 
 ### Changed
