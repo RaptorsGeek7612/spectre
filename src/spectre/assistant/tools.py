@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import actions, competences
+from spectre.assistant import actions, competences, powershell
 from spectre.assistant.actions import ActionContext, ActionError
 from spectre.assistant.config import agent_name, resolve_agent
 from spectre.assistant.custom_agents import PREFIX, AgentError, CustomAgents
@@ -154,6 +154,24 @@ def _lab_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
     if str(args.get("lab", "")).strip().lower() == "secu":
         return (Level.EXTERNAL, "lab_secu")
     return (Level.WRITE, "lab")
+
+
+def _powershell_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
+    # lecture seule (cmdlets Get-/Test-... sans effet de bord) -> tout de suite ; le reste
+    # peut tout faire sur le PC -> niveau critique, toujours la validation de l'utilisateur
+    if powershell.read_only_reason(str(args.get("command", "")), ctx.pwsh_runner) is None:
+        return (Level.READ, "read")
+    return (Level.CRITICAL, "powershell")
+
+
+def _powershell(ctx: ActionContext, command: str) -> str:
+    if not command.strip():
+        raise ActionError("commande vide")
+    read_only = powershell.read_only_reason(command, ctx.pwsh_runner) is None
+    try:
+        return powershell.run(command, read_only=read_only, runner=ctx.pwsh_runner)
+    except powershell.PowerShellError as exc:
+        raise ActionError(str(exc)) from exc
 
 
 TOOLS: dict[str, Tool] = {
@@ -310,6 +328,19 @@ TOOLS: dict[str, Tool] = {
             Level.DESTRUCTIVE,
             "agent",
             _delete_agent,
+        ),
+        Tool(
+            "powershell",
+            "Exécuter une commande PowerShell 7 sur ce PC. Lecture seule (Get-, Test-, "
+            "Measure-, Select-, Sort-, Format-... sans écriture) : tout de suite, dans un pwsh "
+            "neuf et invisible. Tout le reste (modifier, installer, arrêter, réseau, programmes "
+            "externes) demande la validation de l'utilisateur, puis s'exécute dans la console "
+            "PowerShell visible sur le PC. Utilise des chemins absolus ; pour lire un fichier, "
+            "préfère read_file.",
+            Level.CRITICAL,
+            "powershell",
+            _powershell,
+            _powershell_risk,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
         Tool(

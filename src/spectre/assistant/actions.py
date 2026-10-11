@@ -40,6 +40,7 @@ class ActionContext:
     allowed_roots: list[Path] = field(default_factory=list)
     launcher: Any = None  # injectable for tests: callable(target) -> None
     runner: Any = None  # injectable for tests: subprocess.run-like, for lab containers
+    pwsh_runner: Any = None  # injectable for tests: subprocess.run-like, for PowerShell
 
     @property
     def trash(self) -> Path:

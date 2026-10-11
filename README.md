@@ -206,6 +206,17 @@ les écritures sont journalisées et annulables (« annule »), et la suppressio
 corbeille de Spectre. Les outils sont exposés au cerveau par un serveur MCP
 (`spectre.assistant.mcp_server`) qui partage la base SQLite de l'assistant.
 
+**PowerShell.** L'outil `powershell` donne à Spectre PowerShell 7 (`winget install
+Microsoft.PowerShell`). Chaque commande est d'abord analysée par l'analyseur de PowerShell, sans
+être exécutée. Une commande en lecture seule (cmdlets `Get-`, `Test-`, `Measure-`, `Select-`,
+`Sort-`, `Format-`… sans appel de méthode, affectation, redirection vers un fichier, ni lecteur
+`env:`/`cert:`) s'exécute tout de suite dans un `pwsh -NoProfile` neuf et invisible. Toute autre
+commande est **critique** : elle attend votre validation. Une fois validée, elle s'exécute dans
+la console PowerShell visible sur le PC, grâce au module open source
+[PowerShell.MCP](https://github.com/yotsuda/PowerShell.MCP) (licence MIT) :
+`Install-PSResource PowerShell.MCP` dans pwsh. Sans ce module, elle s'exécute sans console.
+Valider une commande PowerShell lui donne tous vos droits sur le PC : lisez-la avant d'accepter.
+
 **Reconnaissance des visages (optionnelle).** `uv sync --extra vision` puis
 `python -m spectre.assistant --voice --camera` : Spectre reconnaît les personnes enregistrées
 dans Réglages › Visages connus (YuNet pour la détection, licence MIT ; SFace pour la
