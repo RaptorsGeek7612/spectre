@@ -42,6 +42,7 @@ ROLES = {
     "mission_model": "exécution des étapes de mission",
     "verifier_model": "vérification de chaque étape",
     "planner_model": "plans et rapports de mission",
+    "learning_model": "apprentissage : relecture des missions réussies",
 }
 ROLE_ALIASES = {
     "cerveau": "brain_model",
@@ -56,6 +57,8 @@ ROLE_ALIASES = {
     "planner": "planner_model",
     "plans": "planner_model",
     "rapports": "planner_model",
+    "apprentissage": "learning_model",
+    "learning": "learning_model",
 }
 
 
@@ -105,6 +108,8 @@ class AssistantConfig:
     planner_model: str = ""  # plans and reports missions; empty = the brain's engine
     fallback_models: list[str] = field(default_factory=list)  # tried in order when one fails
     mission_parallel: int = 2  # missions running at the same time (1 to 4)
+    learning_model: str = ""  # reviews finished missions for skills; empty = the verifier
+    learn_from_missions: bool = True  # propose skills after successful missions
     telegram_notify: bool = True  # notifications and approvals also go to paired chats
     claude_bin: str = "claude"
     codex_bin: str = "codex"  # Codex CLI, for the ChatGPT execution agent

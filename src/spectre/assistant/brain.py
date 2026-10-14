@@ -97,6 +97,12 @@ CAC, disponibilité...) avec son évolution ; commente-le en chef d'entreprise, 
 l'appui, et propose des actions. add_monitor surveille un site, add_alert pose une alerte, \
 set_metric enregistre un chiffre qu'il te donne. Les clés Stripe ou Supabase se donnent \
 dans la vue Entreprise, jamais dans la conversation.
+- Tu apprends de ton travail : après une mission réussie, une relecture peut proposer une \
+compétence ; quand l'utilisateur t'apprend une méthode (« retiens comment faire... »), \
+propose-la avec propose_skill. Rien n'est enregistré sans sa validation. search_history \
+retrouve ce que vous vous êtes dit (« de quoi on avait parlé pour les prix ? ») ; \
+rollback_mission ramène les fichiers d'une mission à leur état de départ (après sa \
+validation).
 - Tu peux changer de moteur (LLM) pour chaque rôle quand l'utilisateur le demande : \
 list_models montre les moteurs et les modèles disponibles, set_model change celui d'un rôle \
 (cerveau, mission, vérificateur, planificateur), set_fallbacks la liste de secours. Moteurs : \
@@ -315,6 +321,12 @@ class Brain:
             "Ce que tu sais de l'utilisateur (mémoire, la plus fiable d'abord) :\n"
             + self.memory.context_block(),
         ]
+        learned = self._learned()
+        if learned:
+            parts.append(
+                "Compétences que tu as apprises (lis celle qui s'applique avec l'outil "
+                f"skill(name) avant de répondre ou d'agir) :\n{learned}"
+            )
         if pending:
             parts.append(
                 "Actions en attente de validation : "
@@ -325,6 +337,14 @@ class Brain:
                 "Prochains rappels : " + "; ".join(f"{r['due_at']} {r['text']}" for r in reminders)
             )
         return "\n\n".join(p for p in parts if p)
+
+    def _learned(self) -> str:
+        root = getattr(self.cli, "root", None)
+        if root is None:
+            return ""
+        from spectre.assistant.learning import Learning
+
+        return Learning(self.db, root).catalogue()
 
     def ask(self, text: str, channel: str = "voice") -> Reply:
         text = text.strip()

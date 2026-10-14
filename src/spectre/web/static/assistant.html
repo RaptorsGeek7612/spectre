@@ -76,6 +76,7 @@
       <button type="button" data-view="missions"><span>Missions</span><b class="count" id="count-missions"></b></button>
       <button type="button" data-view="company"><span>Entreprise</span><b class="count" id="count-company"></b></button>
       <button type="button" data-view="automation"><span>Automatisation</span><b class="count" id="count-automation"></b></button>
+      <button type="button" data-view="learning"><span>Apprentissage</span><b class="count" id="count-learning"></b></button>
       <button type="button" data-view="agents"><span>Agents</span><b class="count" id="count-agents"></b></button>
       <button type="button" data-view="memory"><span>Mémoire</span><b class="count" id="count-facts"></b></button>
       <button type="button" data-view="initiatives"><span>Initiatives</span><b class="count" id="count-initiatives"></b></button>
@@ -259,6 +260,22 @@
 
       <h3 class="as-h as-h-sub">Telegram</h3>
       <div id="telegram" class="card tg-card"></div>
+    </section>
+
+    <section class="as-view" data-view="learning" hidden>
+      <h2 class="as-h">Apprentissage</h2>
+      <p class="meta">Après chaque mission réussie, Spectre se relit et peut te proposer une compétence : une méthode réutilisable (étapes, vérifications, pièges). Tu peux aussi lui en apprendre une : « retiens comment on prépare un devis ». Rien n’est enregistré sans ton accord ; les compétences inutilisées vieillissent puis sont archivées, jamais supprimées.</p>
+      <form class="inline-form" id="search-form" autocomplete="off">
+        <input type="search" name="q" placeholder="Retrouver une conversation, ex. « prix bêta »" aria-label="Chercher dans les conversations">
+        <button class="btn" type="submit">Chercher</button>
+      </form>
+      <div id="search-results" class="cards"></div>
+      <h3 class="as-h as-h-sub">À valider</h3>
+      <div id="proposals" class="cards"></div>
+      <h3 class="as-h as-h-sub">Compétences apprises</h3>
+      <div id="skills" class="cards"></div>
+      <h3 class="as-h as-h-sub">Archivées</h3>
+      <div id="skills-archived" class="cards"></div>
     </section>
 
     <section class="as-view" data-view="agents" hidden>

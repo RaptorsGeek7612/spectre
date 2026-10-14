@@ -131,7 +131,9 @@ async function loadMissions() {
       steps.length ? h("p", {}, steps.map((s, i) => `${s.ok ? "✓" : "✗"} ${i + 1}. ${s.step}${s.name ? ` — ${s.name}` : ""}`).join("\n")) : null,
       m.error ? h("p", {}, `Erreur : ${m.error}`) : null,
       m.report ? h("details", {}, h("summary", {}, "Rapport"), h("pre", {}, m.report)) : null,
-      m.status === "running" || m.status === "queued" ? missionControls(m) : null);
+      m.status === "running" || m.status === "queued" ? missionControls(m) : null,
+      m.changes && m.status !== "running" && m.status !== "queued" ? h("div", { class: "row" },
+        h("button", { class: "btn btn-ghost", type: "button", onclick: () => rollback(m) }, h("span", {}, `Annuler ses ${m.changes} changement${m.changes > 1 ? "s" : ""} de fichiers`))) : null);
   }) : [h("p", { class: "empty-cards" }, "Aucune mission. Demande-en une à Spectre ou lance-la ici.")]));
 }
 
@@ -152,6 +154,58 @@ function missionControls(m) {
     h("button", { class: "btn", type: "submit" }, "Orienter"),
     h("button", { class: "btn btn-ghost", type: "button", onclick: stop }, h("span", {}, "Arrêter")));
 }
+
+async function rollback(m) {
+  if (!confirm(`Ramener les fichiers de la mission #${m.id} à leur état d'avant ? Les versions remplacées restent dans la corbeille de Spectre.`)) return;
+  try { toast((await api("POST", `missions/${m.id}/rollback`, {})).result, "ok", 8000); }
+  catch (err) { toast(err.message, "error"); }
+  loadMissions();
+}
+
+/* ---- learning: proposed skills, learned skills, search over past conversations ---- */
+async function loadLearning() {
+  const data = await api("GET", "learning");
+  $("#count-learning").textContent = data.proposals.length || "";
+  const decide = (p, decision) => async () => {
+    try { await api("POST", `learning/proposals/${p.id}/${decision}`, {}); toast(decision === "approve" ? `Compétence « ${p.name} » apprise.` : "Proposition écartée.", "ok"); }
+    catch (err) { toast(err.message, "error"); }
+    loadLearning();
+  };
+  $("#proposals").replaceChildren(...(data.proposals.length ? data.proposals.map((p) => h("article", { class: "card", "data-status": "running" },
+    h("h3", {}, p.name),
+    h("span", { class: "meta" }, `${p.previous ? "mise à jour · " : ""}${p.source || "conversation"} · ${date(p.ts)}`),
+    h("p", {}, p.description),
+    h("details", {}, h("summary", {}, "Le guide proposé"), h("pre", {}, p.content)),
+    p.previous ? h("details", {}, h("summary", {}, "La version actuelle"), h("pre", {}, p.previous)) : null,
+    h("div", { class: "row" },
+      h("button", { class: "btn btn-primary", type: "button", onclick: decide(p, "approve") }, h("span", {}, "Apprendre")),
+      h("button", { class: "btn btn-ghost", type: "button", onclick: decide(p, "reject") }, h("span", {}, "Écarter"))))) : [h("p", { class: "empty-cards" }, "Rien à valider.")]));
+  const act = (s, action) => async () => {
+    try { await api("POST", `learning/skills/${encodeURIComponent(s.name)}/${action}`, {}); }
+    catch (err) { toast(err.message, "error"); }
+    loadLearning();
+  };
+  const skillCard = (s, archived) => h("article", { class: "card", "data-status": archived ? "done" : s.state === "obsolète" ? "failed" : "running" },
+    h("h3", {}, s.name),
+    h("span", { class: "meta" }, `${s.state}${s.pinned ? " · épinglée" : ""} · ${s.uses} usage${s.uses > 1 ? "s" : ""}${s.last_used ? ` · dernier : ${date(s.last_used)}` : ""}`),
+    h("p", {}, s.description),
+    h("div", { class: "row" }, ...(archived
+      ? [h("button", { class: "btn", type: "button", onclick: act(s, "restore") }, h("span", {}, "Restaurer"))]
+      : [h("button", { class: "btn", type: "button", onclick: act(s, s.pinned ? "unpin" : "pin") }, h("span", {}, s.pinned ? "Désépingler" : "Épingler")),
+         h("button", { class: "btn btn-ghost", type: "button", onclick: act(s, "archive") }, h("span", {}, "Archiver"))])));
+  $("#skills").replaceChildren(...(data.skills.length ? data.skills.map((s) => skillCard(s, false)) : [h("p", { class: "empty-cards" }, "Aucune compétence apprise pour l'instant.")]));
+  $("#skills-archived").replaceChildren(...(data.archived.length ? data.archived.map((s) => skillCard(s, true)) : [h("p", { class: "empty-cards" }, "Aucune.")]));
+}
+$("#search-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = e.target.elements.q.value.trim();
+  if (!q) return;
+  const rows = await api("GET", `search?q=${encodeURIComponent(q)}`);
+  const who = { user: "toi", spectre: "Spectre", mission: "mission" };
+  $("#search-results").replaceChildren(...(rows.length ? rows.map((r) => h("article", { class: "card" },
+    h("span", { class: "meta" }, `${date(r.ts)} · ${who[r.source] || r.source}${r.kind === "mission" ? ` #${r.id}` : ""}`),
+    h("p", {}, r.excerpt))) : [h("p", { class: "empty-cards" }, "Rien trouvé.")]));
+});
 
 /* ---- companies: org chart and task board ---- */
 const TSTATUS = { todo: "À faire", doing: "En cours", blocked: "Bloquées", review: "À valider", done: "Faites", cancelled: "Annulées" };
@@ -720,7 +774,7 @@ function refreshCompany() {  // the board moves when missions finish: refresh it
   const view = document.querySelector('.as-view[data-view="company"]');
   if (view && !view.hidden) loadCompany().catch(() => {});
 }
-const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, automation: loadAutomation, agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
+const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, automation: loadAutomation, learning: loadLearning, agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
 function show(view) {
   $$(".as-nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === view)));
   $$(".as-view").forEach((v) => { v.hidden = v.dataset.view !== view; });

@@ -162,6 +162,8 @@ class Proactive:
             self.briefing(now)
         if now.hour == self.config.consolidation_hour and self._once_per_day("consolidation", now):
             self.consolidate(now)
+        if self._once_per_day("curator", now):
+            self.curate(now)
         if self.befriend_due(now):
             self.befriend(now)
         self.routines(now)
@@ -186,6 +188,23 @@ class Proactive:
             ).start()
         else:
             monitor.tick(now, self.add_initiative)
+
+    def curate(self, now: datetime) -> dict[str, list[str]]:
+        """Age the learned skills (never deletes; pinned ones are kept)."""
+        from spectre.assistant.learning import ARCHIVE_DAYS, Learning
+
+        root = getattr(self.cli, "root", None)
+        if root is None:
+            return {"stale": [], "archived": []}
+        done = Learning(self.db, root).curate(now)
+        if done["archived"]:
+            self.add_initiative(
+                "apprentissage",
+                "Compétences archivées",
+                f"Inutilisées depuis {ARCHIVE_DAYS} jours : {', '.join(done['archived'])}. "
+                "Elles restent restaurables dans la vue Apprentissage.",
+            )
+        return done
 
     def ask(self, prompt: str, system: str) -> Any:
         """The brain's engines (with the fallback chain), with tools: for routines."""

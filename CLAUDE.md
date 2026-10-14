@@ -83,6 +83,9 @@ forge fmt --check ; forge build ; forge test
   et `telegram.py` (long polling, conversations jumelées seulement). Suivi SaaS : `saas.py`
   (sources en lecture seule, clés dans le `.env` de Spectre via `write_env_value`, métriques
   historisées, KPI dérivés, alertes, rapport ; collecte depuis `Proactive.tick`).
+  Apprentissage : `learning.py` (compétences proposées puis validées, `skills/<nom>/SKILL.md`,
+  curateur, `search_history` sur l'index FTS5 `events_fts`, points de restauration des
+  missions via le journal d'annulation).
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.

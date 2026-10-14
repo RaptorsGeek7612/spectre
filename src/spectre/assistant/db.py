@@ -120,6 +120,21 @@ CREATE TABLE IF NOT EXISTS saas_alerts (
   threshold REAL NOT NULL, consecutive INTEGER NOT NULL DEFAULT 1, label TEXT NOT NULL DEFAULT '',
   cooldown_h REAL NOT NULL DEFAULT 6, last_fired TEXT, active INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS skill_usage (
+  name TEXT PRIMARY KEY, uses INTEGER NOT NULL DEFAULT 0, last_used TEXT,
+  pinned INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL DEFAULT 'active'
+);
+CREATE TABLE IF NOT EXISTS skill_proposals (
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL, content TEXT NOT NULL,
+  previous TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending',
+  ts TEXT NOT NULL, decided_at TEXT
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5(
+  text, content='events', content_rowid='id', tokenize='unicode61 remove_diacritics 2'
+);
+CREATE TRIGGER IF NOT EXISTS events_ai AFTER INSERT ON events BEGIN
+  INSERT INTO events_fts(rowid, text) VALUES (new.id, new.text);
+END;
 CREATE TABLE IF NOT EXISTS faces (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, feature TEXT NOT NULL, created_at TEXT NOT NULL
 );
@@ -143,7 +158,15 @@ class Database:
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.executescript(SCHEMA)
+        self._index_events()
         self._conn.commit()
+
+    def _index_events(self) -> None:
+        """Index the conversations written before the search existed (once)."""
+        # the index's own row table: COUNT(*) on events_fts would read the events themselves
+        indexed = self._conn.execute("SELECT COUNT(*) FROM events_fts_docsize").fetchone()[0]
+        if not indexed and self._conn.execute("SELECT 1 FROM events LIMIT 1").fetchone():
+            self._conn.execute("INSERT INTO events_fts(events_fts) VALUES('rebuild')")
 
     def close(self) -> None:
         with self._lock:

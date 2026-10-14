@@ -28,6 +28,7 @@ from spectre.assistant.config import (
 from spectre.assistant.custom_agents import CustomAgents
 from spectre.assistant.db import Database
 from spectre.assistant.governance import Gate, Level
+from spectre.assistant.learning import Learning
 from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
@@ -78,6 +79,8 @@ class AssistantService:
             parallel=self.config.mission_parallel,
         )
         self.providers = Providers(root)
+        self.missions.learn = self.config.learn_from_missions
+        self.missions.learning_model = self.config.learning_model
         self.telegram = Telegram(root, self.db, self._telegram_reply)
         self.webhooks = Webhooks(self.db)
         self._config_mtime = self._config_stamp()
@@ -197,6 +200,8 @@ class AssistantService:
         self.missions.verifier_model = cfg.verifier_model
         self.missions.fallbacks = list(cfg.fallback_models)
         self.missions.parallel = cfg.mission_parallel
+        self.missions.learn = cfg.learn_from_missions
+        self.missions.learning_model = cfg.learning_model
 
     def poll_changes(self) -> None:
         """Publish approvals/initiatives created elsewhere (e.g. by the MCP tool process)."""
@@ -297,10 +302,76 @@ class AssistantService:
         self.db.log_event("approval", "user", f"refusé #{approval_id}")
 
     def missions_list(self) -> list[Event]:
-        return self.db.all(
+        from spectre.assistant.learning import mission_changes
+
+        rows = self.db.all(
             "SELECT id, ts, goal, status, steps, report, error, updated_at FROM missions "
             "ORDER BY id DESC LIMIT 30"
         )
+        for row in rows:  # file changes a restore point can undo
+            row["changes"] = len(mission_changes(self.db, row["id"]))
+        return rows
+
+    def rollback_mission(self, mission_id: int) -> str:
+        """The user's own click: undo the mission's file changes (audited)."""
+        from spectre.assistant import actions
+
+        result = actions.rollback_mission(self.ctx, mission_id)
+        self.gate.record(
+            "rollback_mission",
+            {"mission_id": mission_id},
+            Level.DESTRUCTIVE,
+            "overwrite_file",
+            "user",
+            result,
+        )
+        return result
+
+    # ---- learning -------------------------------------------------------------------------------
+
+    def learning(self) -> Learning:
+        return Learning(self.db, self.root)
+
+    def learning_state(self) -> Event:
+        learning = self.learning()
+        return {
+            "proposals": learning.proposals(),
+            "skills": learning.skills(),
+            "archived": learning.skills(archived=True),
+            "learn": self.config.learn_from_missions,
+        }
+
+    def learning_decide(self, proposal_id: int, approve: bool) -> Event:
+        learning = self.learning()
+        row = learning.approve(proposal_id) if approve else learning.reject(proposal_id)
+        self.gate.record(
+            "skill_proposal",
+            {"id": proposal_id, "name": row["name"]},
+            Level.WRITE,
+            "skill",
+            "user",
+            row["status"],
+        )
+        return row
+
+    def learning_skill(self, name: str, action: str) -> Event:
+        learning = self.learning()
+        if action == "pin":
+            learning.pin(name, True)
+        elif action == "unpin":
+            learning.pin(name, False)
+        elif action == "archive":
+            learning.archive(name)
+        elif action == "restore":
+            learning.restore(name)
+        else:
+            raise KeyError(action)
+        return self.learning_state()
+
+    def search(self, query: str) -> list[Event]:
+        from spectre.assistant.learning import search_history
+
+        return search_history(self.db, query, 20)
 
     def start_mission(self, goal: str, kind: str = "mission", agent: str = "") -> str:
         args = {"goal": goal, "kind": kind} | ({"agent": agent} if agent else {})
