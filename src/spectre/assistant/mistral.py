@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 from spectre.assistant.brain import Reply, Runner
+from spectre.assistant.codex import mcp_env
 from spectre.assistant.config import AssistantConfig
 from spectre.assistant.mcp_server import SERVER_NAME
 
@@ -78,7 +79,7 @@ class VibeCLI:
             'transport = "stdio"',
             f"command = {toml(sys.executable)}",
             'args = ["-m", "spectre.assistant.mcp_server"]',
-            f"env = {{SPECTRE_ASSISTANT_DIR = {toml(str(self.root))}}}",
+            f"env = {{{mcp_env(self.root)}}}",
         ]
         (self.home / "config.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

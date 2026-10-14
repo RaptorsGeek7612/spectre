@@ -86,7 +86,21 @@ def gate_caller(root: Path, config: AssistantConfig) -> ToolCall:
     db = Database(root / "spectre.db")
     gate = Gate(db, auto_max_level=config.auto_max_level)
     ctx = make_context(db, root, config.allowed_roots)
-    return lambda name, args: execute(gate, ctx, name, args)
+
+    def call(name: str, args: dict[str, Any]) -> str:
+        from dataclasses import replace
+
+        from spectre.assistant import runctx
+
+        context = runctx.current()
+        return execute(
+            gate,
+            replace(ctx, agent=str(context.get("agent", "")), mission=context.get("mission")),
+            name,
+            args,
+        )
+
+    return call
 
 
 class HttpAgent:
@@ -147,9 +161,13 @@ class HttpAgent:
             body["tools"] = tool_schemas(list(TOOLS.values()))
         url = f"{provider.base_url}/chat/completions"
         headers = self.providers.headers(provider)
+        from spectre.assistant.spend import tokens_of
+
+        tokens = 0
         for _ in range(MAX_TOOL_ROUNDS):
             try:
                 data = self.transport(url, headers, body, self.config.brain_timeout_s)
+                tokens += tokens_of(data)
             except (OSError, ValueError) as exc:
                 return Reply(f"{provider.label} a échoué : {str(exc)[:300]}", "", True)
             choices = data.get("choices") or []
@@ -163,7 +181,7 @@ class HttpAgent:
                     return Reply(
                         f"{provider.label} a échoué : {detail or 'réponse vide'}", "", True
                     )
-                return Reply(text, "", False)
+                return Reply(text, "", False, None, tokens)
             messages.append(
                 {"role": "assistant", "content": message.get("content") or "", "tool_calls": calls}
             )

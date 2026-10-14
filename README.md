@@ -293,6 +293,18 @@ demandant à Spectre :
   parler à Spectre depuis Telegram. Tu y reçois aussi ses notifications et ses demandes de
   validation (`/approve 3`, `/deny 3`). Les autres conversations sont ignorées.
 
+**Autonomie méritée et coût de l'IA.** Chaque agent a un dossier : étapes vérifiées ou ratées,
+tâches que tu valides ou renvoies, actions refusées, missions annulées.
+
+- **Confirmé :** il peut travailler seul sous pilote automatique.
+- **Expert :** il remplace ou supprime des fichiers sans te demander. Tout reste annulable.
+- **Toujours ton accord :** envoyer, payer ou installer le demande quel que soit le niveau.
+- **Perte des droits :** un agent qui se trompe les perd.
+
+Chaque appel au modèle est inscrit dans un registre. La vue Agents et le tableau de bord
+montrent ce que coûte l'IA par agent, par département et par mission, en équivalent API (ton
+abonnement Claude est ce que tu paies vraiment), et sa part du MRR.
+
 **Conseil d'administration et expériences.** Pour une décision importante (« passer l'offre
 Pro à 29 € ? »), réunis le conseil depuis la vue Entreprise ou demande-le à Spectre.
 

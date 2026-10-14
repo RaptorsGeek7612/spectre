@@ -597,6 +597,41 @@ def _stop_experiment(ctx: ActionContext, experiment_id: int) -> str:
     )
 
 
+def _agent_record(ctx: ActionContext, agent: str = "") -> str:
+    from spectre.assistant.trust import Trust
+
+    trust = Trust(ctx.db)
+    if agent.strip():
+        created = CustomAgents(ctx.db).get(agent)
+        key = f"{PREFIX}{created['id']}" if created else resolve_agent(agent)
+        if not key:
+            raise ActionError(f"agent inconnu « {agent} »")
+        rows = [trust.dossier(key)]
+    else:
+        rows = trust.agents()
+    if not rows:
+        return "aucun dossier encore : les agents en gagnent un en menant des missions"
+    return "\n".join(
+        f"{d['name']} : {d['level']}, fiabilité {d['reliability']:g} % sur {d['volume']:g} "
+        f"points ({', '.join(f'{k} {n}' for k, n in sorted(d['counts'].items())) or 'rien encore'})"
+        for d in rows
+    )
+
+
+def _cost_report(ctx: ActionContext, company: str = "", days: int = 30) -> str:
+    from datetime import datetime
+
+    from spectre.assistant import spend
+
+    company_id = None
+    if company.strip():
+        try:
+            company_id = Companies(ctx.db).get(company)["id"]
+        except CompanyError as exc:
+            raise ActionError(str(exc)) from exc
+    return spend.text(ctx.db, datetime.now().astimezone(), company_id, max(1, min(int(days), 365)))
+
+
 def _delete_agent(ctx: ActionContext, name: str) -> str:
     try:
         agent = CustomAgents(ctx.db).delete(name)
@@ -824,6 +859,24 @@ TOOLS: dict[str, Tool] = {
             _set_fallbacks,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
+        Tool(
+            "agent_record",
+            "Le dossier de fiabilité d'un agent (ou de tous) : niveau (apprenti, confirmé, "
+            "expert), fiabilité, étapes vérifiées ou ratées, tâches validées ou à refaire, "
+            "actions refusées, missions annulées.",
+            Level.READ,
+            "read",
+            _agent_record,
+        ),
+        Tool(
+            "cost_report",
+            "Ce que coûte l'IA sur une période (30 jours par défaut), au total ou pour une "
+            "entreprise : appels, coût équivalent API, temps, jetons, par rôle, agent et "
+            "département, et rapporté au MRR.",
+            Level.READ,
+            "read",
+            _cost_report,
+        ),
         Tool(
             "convene_board",
             "Réunir le conseil d'administration d'une entreprise sur une décision importante "
@@ -1092,7 +1145,10 @@ def execute(gate: Gate, ctx: ActionContext, name: str, args: dict[str, Any]) -> 
     if tool is None:
         return f"outil inconnu : {name}"
     level, category = tool.risk(ctx, args)
-    decision = gate.decide(level, category)
+    from spectre.assistant.trust import Trust
+
+    trust = Trust(ctx.db).level(ctx.agent) if ctx.agent else ""
+    decision = gate.decide(level, category, trust)
     if decision.verdict == "refused":
         gate.record(name, args, level, category, "refused", decision.reason)
         return f"REFUSÉ : {decision.reason}"
@@ -1109,6 +1165,11 @@ def execute(gate: Gate, ctx: ActionContext, name: str, args: dict[str, Any]) -> 
                 decision.reason,
             ),
         )
+        if ctx.agent:  # whose request it was: the answer goes to its record
+            ctx.db.execute(
+                "INSERT OR REPLACE INTO approval_agents(approval_id, agent) VALUES(?, ?)",
+                (approval_id, ctx.agent),
+            )
         gate.record(name, args, level, category, "approval", f"demande #{approval_id}")
         return (
             f"EN ATTENTE DE VALIDATION (#{approval_id}) : {decision.reason}. "
@@ -1154,7 +1215,16 @@ def run_approved(gate: Gate, ctx: ActionContext, approval_id: int) -> str:
         "UPDATE approvals SET status = ?, result = ?, decided_at = ? WHERE id = ?",
         (status, result, now_iso(), approval_id),
     )
+    _answered(ctx, approval_id, "approval_granted")
     return result
+
+
+def _answered(ctx: ActionContext, approval_id: int, kind: str) -> None:
+    from spectre.assistant.trust import Trust
+
+    row = ctx.db.one("SELECT agent FROM approval_agents WHERE approval_id = ?", (approval_id,))
+    if row is not None:
+        Trust(ctx.db).record(row["agent"], kind)
 
 
 def deny(ctx: ActionContext, approval_id: int, reason: str = "") -> None:
@@ -1167,3 +1237,4 @@ def deny(ctx: ActionContext, approval_id: int, reason: str = "") -> None:
         "UPDATE approvals SET status = 'denied', result = ?, decided_at = ? WHERE id = ?",
         (reason or "refusé par l'utilisateur", now_iso(), approval_id),
     )
+    _answered(ctx, approval_id, "approval_denied")
