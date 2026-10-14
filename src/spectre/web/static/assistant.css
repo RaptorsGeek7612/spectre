@@ -246,6 +246,10 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .ag-card[data-agent="opus"] { --c: var(--l405); }
 .ag-card[data-agent="provider"] { --c: var(--hair-2); }
 #engine-form { margin-top: 4px; }
+.ag-form .fb { display: grid; gap: 8px; }
+.fb-list { display: grid; gap: 8px; }
+.fb-list:empty::before { content: "Aucun pour l'instant."; color: var(--dim); font-size: 0.9rem; }
+.fb-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
 .ag-card[data-agent="sonnet"] { --c: var(--l436); }
 .ag-card[data-agent="haiku"] { --c: var(--l486); }
 .ag-card[data-agent="chatgpt"] { --c: var(--l615); }
@@ -286,6 +290,6 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .ag-form label { display: grid; gap: 6px; }
 .ag-form .ag-wide { grid-column: 1 / -1; }
 .ag-form .help { font-size: 0.82rem; color: var(--dim); }
-.ag-form input, .ag-form select { min-height: 40px; padding: 0 10px; }
+.ag-form input, .ag-form select { min-height: 40px; padding: 0 10px; width: 100%; min-width: 0; }
 .ag-form textarea { padding: 8px 10px; resize: vertical; }
 @media (max-width: 600px) { .ag-form { grid-template-columns: 1fr; } }

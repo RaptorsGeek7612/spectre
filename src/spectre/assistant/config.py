@@ -41,7 +41,7 @@ ROLES = {
     "brain_model": "cerveau : la conversation avec toi",
     "mission_model": "exécution des étapes de mission",
     "verifier_model": "vérification de chaque étape",
-    "planner_model": "plans et rapports de mission (vide = le cerveau)",
+    "planner_model": "plans et rapports de mission",
 }
 ROLE_ALIASES = {
     "cerveau": "brain_model",
