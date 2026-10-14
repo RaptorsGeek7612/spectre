@@ -65,7 +65,9 @@ forge fmt --check ; forge build ; forge test
   mission `meeting` → tâches au tableau, décisions au journal ; outil via kv `meeting_request`).
   Département technique : `devteam.py` (mission `code` : worktree + branche `spectre/…`, Claude
   Code aux outils restreints ou Codex workspace-write, tests + 1 réparation, commit sans push ;
-  `open_pr` = action EXTERNAL validée).
+  `open_pr` = action EXTERNAL validée). Notifications : `webpush.py` (RFC 8291 + VAPID avec
+  `cryptography`, clé dans le `.env`) ; briefing par entreprise : `brief.py` ; crypto en lecture
+  seule : sources `btc_wallet`/`eth_wallet`/`crypto_price` de `saas.py` (adresses publiques).
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.

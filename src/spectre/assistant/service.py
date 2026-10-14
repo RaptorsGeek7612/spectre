@@ -41,6 +41,7 @@ from spectre.assistant.telegram import Telegram, save_token
 from spectre.assistant.vision.faces import SPOOF, UNKNOWN, FaceBook, Presence
 from spectre.assistant.voice.listen import SAMPLE_RATE, to_wav
 from spectre.assistant.webhooks import Rejected, Webhooks
+from spectre.assistant.webpush import WebPush
 from spectre.config import DEFAULT_SPECS, model_label
 
 Event = dict[str, Any]
@@ -90,6 +91,7 @@ class AssistantService:
         )
         self._stt: Any = None
         self.webhooks = Webhooks(self.db)
+        self.push = WebPush(self.db, root)
         self._config_mtime = self._config_stamp()
         self.voice: Any = None
         self.voice_state = "off"
@@ -165,6 +167,12 @@ class AssistantService:
         if speak and self.voice_state == "sleeping":
             threading.Thread(target=self._announce, args=(kind, title, body), daemon=True).start()
         self._to_telegram(f"{title}\n{body}" if kind != "lien" else body)
+        self._to_devices(title, body)
+
+    def _to_devices(self, title: str, body: str) -> None:
+        """A native notification on every subscribed device (in the background)."""
+        if self.push.subscriptions():
+            threading.Thread(target=self.push.send, args=(title, body), daemon=True).start()
 
     def _to_telegram(self, text: str) -> None:
         """Also send it to the paired Telegram chats (in the background: never blocks)."""
@@ -226,6 +234,10 @@ class AssistantService:
                 self._seen[table] = row["id"]
                 self.publish({"type": kind, "row": row})
                 if kind == "approval":
+                    self._to_devices(
+                        "Spectre attend ta validation",
+                        f"#{row['id']} {row['tool']} : {row['reason']}",
+                    )
                     self._to_telegram(
                         f"Spectre attend ta validation (#{row['id']}, {row['tool']}) : "
                         f"{row['reason']}.\nRéponds /approve {row['id']} ou /deny {row['id']}."
@@ -643,7 +655,7 @@ class AssistantService:
     def saas_add_source(self, company_id: int, data: dict[str, Any]) -> Event:
         """Add a source; its key goes to the assistant's .env and is never sent back."""
         Companies(self.db).get(company_id)
-        keys = ("url", "table", "date_column", "repo", "fields")
+        keys = ("url", "table", "date_column", "repo", "fields", "address", "coins", "currency")
         config: dict[str, Any] = {k: data[k] for k in keys if k in data}
         source = self.saas().add_source(
             company_id,

@@ -83,5 +83,5 @@ Total                                         0.0499 $
 | v0.12.0 | Au-delà de Hermes (1/5) : conseil d'administration (avis des départements, arbitrage, note de décision), journal des décisions réévaluées avec les vrais chiffres, expériences mesurées | PR #45 (2026-10-14) |
 | v0.13.0 | Autonomie méritée par agent (dossier de fiabilité, validations allégées ou retirées) ; coût de l'IA face au revenu | PR #46 (2026-10-14) |
 | v0.14.0 | Mode réunion local : écoute, transcription, résumé, tâches et décisions | PR #47 (2026-10-14) |
-| v0.15.0 | Département technique : worktree, tests, PR validée | En cours |
-| v0.16.0 | Notifications natives (Web Push), briefing vocal par entreprise, suivi crypto en lecture seule | Prévu |
+| v0.15.0 | Département technique : worktree, tests, PR validée | PR #48 (2026-10-14) |
+| v0.16.0 | Notifications natives (Web Push), briefing vocal par entreprise, suivi crypto en lecture seule | En cours |

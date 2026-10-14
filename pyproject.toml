@@ -1,6 +1,6 @@
 [project]
 name = "spectre"
-version = "0.15.0"
+version = "0.16.0"
 description = "Spectre: a multi-agent Claude pipeline (Scout, Scribe, Warden) orchestrated with LangGraph."
 readme = "README.md"
 license = "MIT"
@@ -23,6 +23,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "mcp>=2.3",
     "numpy>=2.0",
+    "cryptography>=43",
 ]
 
 [project.optional-dependencies]

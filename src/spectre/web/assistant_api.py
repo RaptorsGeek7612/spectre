@@ -190,6 +190,21 @@ def handle(
         case "POST", ["meetings", meeting_id, "delete"]:
             Meetings(service.db).delete(int(meeting_id))
             handler._json(200, {"ok": True})
+        case "GET", ["push"]:
+            handler._json(
+                200,
+                {"key": service.push.public_key(), "devices": len(service.push.subscriptions())},
+            )
+        case "POST", ["push", "subscribe"]:
+            data = body()
+            row = service.push.subscribe(data.get("subscription") or {}, str(data.get("label", "")))
+            handler._json(200, {"ok": True, "id": row["id"]})
+        case "POST", ["push", "unsubscribe"]:
+            service.push.unsubscribe(str(body().get("endpoint", "")))
+            handler._json(200, {"ok": True})
+        case "POST", ["push", "test"]:
+            sent = service.push.send("Spectre", "Les notifications fonctionnent sur cet appareil.")
+            handler._json(200, {"sent": sent})
         case "GET", ["trust"]:
             handler._json(200, service.trust_board())
         case "GET", ["costs"]:
