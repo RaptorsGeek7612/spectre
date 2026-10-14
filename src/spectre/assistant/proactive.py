@@ -161,6 +161,20 @@ class Proactive:
             self.consolidate(now)
         if self.befriend_due(now):
             self.befriend(now)
+        self.routines(now)
+
+    def routines(self, now: datetime, *, background: bool = True) -> list[int]:
+        """Run the routines that are due."""
+        from spectre.assistant.routines import Routines
+
+        return Routines(self.db).tick(now, self.add_initiative, self.ask, background=background)
+
+    def ask(self, prompt: str, system: str) -> Any:
+        """The brain's engines (with the fallback chain), with tools: for routines."""
+        from spectre.assistant.engines import Engines
+
+        refs = [self.config.brain_model, *self.config.fallback_models]
+        return Engines(self.cli).ask_chain(refs, prompt, system, tools=True)[0]
 
     def _once_per_day(self, key: str, now: datetime) -> bool:
         day = now.strftime("%Y-%m-%d")

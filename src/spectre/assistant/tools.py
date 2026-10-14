@@ -291,6 +291,136 @@ def _stop_mission(ctx: ActionContext, mission_id: int) -> str:
     return _company_call(lambda: stop_mission(ctx.db, int(mission_id)))
 
 
+def _routine_call(action: Callable[[], str]) -> str:
+    from spectre.assistant.company import CompanyError
+    from spectre.assistant.routines import RoutineError
+
+    try:
+        return action()
+    except (RoutineError, CompanyError) as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _create_routine(
+    ctx: ActionContext,
+    name: str,
+    schedule: str,
+    prompt: str,
+    kind: str = "mission",
+    agent: str = "",
+    company: str = "",
+) -> str:
+    from spectre.assistant.routines import Routines
+
+    def run() -> str:
+        company_id = Companies(ctx.db).get(company)["id"] if company.strip() else None
+        if agent.strip():
+            Companies(ctx.db).agent_key(agent)  # unknown agent: refused now, not at run time
+        row = Routines(ctx.db).create(
+            name, schedule, prompt, kind=kind, agent=agent, company_id=company_id
+        )
+        upcoming = row["next_run"][:16].replace("T", " à ") if row["next_run"] else "jamais"
+        return f"routine #{row['id']} « {row['name']} » : {row['when']} (prochaine : {upcoming})"
+
+    return _routine_call(run)
+
+
+def _list_routines(ctx: ActionContext) -> str:
+    from spectre.assistant.routines import Routines
+
+    rows = Routines(ctx.db).all()
+    if not rows:
+        return "aucune routine"
+    return "\n".join(
+        f"#{r['id']} {r['name']} [{r['kind']}{'' if r['enabled'] else ', en pause'}] "
+        f"{r['when']} — {r['prompt'][:80]}"
+        + (f" (dernière : {r['last_status']})" if r["last_status"] else "")
+        for r in rows
+    )
+
+
+def _update_routine(
+    ctx: ActionContext, routine: str, enabled: str = "", schedule: str = "", prompt: str = ""
+) -> str:
+    from spectre.assistant.routines import Routines
+
+    def run() -> str:
+        flag = {"oui": True, "true": True, "1": True, "non": False, "false": False, "0": False}
+        state = flag.get(enabled.strip().lower()) if enabled.strip() else None
+        row = Routines(ctx.db).update(routine, enabled=state, schedule=schedule, prompt=prompt)
+        return f"routine #{row['id']} : {row['when']}, {'active' if row['enabled'] else 'en pause'}"
+
+    return _routine_call(run)
+
+
+def _delete_routine(ctx: ActionContext, routine: str) -> str:
+    from spectre.assistant.routines import Routines
+
+    return _routine_call(lambda: f"routine supprimée : {Routines(ctx.db).delete(routine)['name']}")
+
+
+def _run_routine(ctx: ActionContext, routine: str) -> str:
+    from spectre.assistant.routines import Routines
+
+    def run() -> str:
+        row = Routines(ctx.db).get(routine)
+        ctx.db.execute(
+            "UPDATE routines SET next_run = ?, enabled = 1 WHERE id = ?", (now_iso(), row["id"])
+        )
+        return f"routine « {row['name']} » lancée (dans moins d'une minute)"
+
+    return _routine_call(run)
+
+
+def _list_webhooks(ctx: ActionContext) -> str:
+    from spectre.assistant.webhooks import Webhooks
+
+    rows = Webhooks(ctx.db).all()
+    if not rows:
+        return "aucun webhook (ils se créent dans la vue Automatisation)"
+    return "\n".join(
+        f"/hooks/{w['name']} ({w['source']}, {w['action']}"
+        f"{', ' + ', '.join(w['events']) if w['events'] else ''}) : {w['received']} reçu(s)"
+        for w in rows
+    )
+
+
+ASK_AGENT = (
+    "Tu es {name}, un agent de Spectre. Un autre agent (ou Spectre) te pose une question "
+    "dans ton domaine : réponds-lui directement, de façon précise et brève, sans outils. "
+    "Si la question sort de ton domaine, dis-le."
+)
+
+
+def _ask_agent(ctx: ActionContext, agent: str, message: str) -> str:
+    """One question to another agent, on its own engine, with its role (no tools: no loops)."""
+    from spectre.assistant.brain import ClaudeCLI
+    from spectre.assistant.config import AssistantConfig
+    from spectre.assistant.engines import Engines
+
+    created = CustomAgents(ctx.db).get(agent)
+    key = resolve_agent(agent)
+    if created is None and not key:
+        raise ActionError(f"agent inconnu « {agent} »")
+    if not message.strip():
+        raise ActionError("message vide")
+    config = AssistantConfig.load(ctx.root)
+    engine = created["engine"] if created else (config.mission_model if key == "claude" else key)
+    name = created["name"] if created else agent_name(key)
+    system = ASK_AGENT.format(name=name)
+    if created:
+        system += f"\n\nTon rôle : {created['role']}"
+        if created["instructions"]:
+            system += f"\nTes consignes : {created['instructions']}"
+    reply = Engines(ClaudeCLI(config, ctx.root)).ask_chain(
+        [engine, *config.fallback_models], message.strip()[:4000], system
+    )[0]
+    ctx.db.log_event("agent_message", "spectre", f"→ {name} : {message[:300]}", agent=name)
+    if reply.is_error:
+        raise ActionError(f"{name} n'a pas pu répondre : {reply.text[:300]}")
+    return f"{name} répond : {reply.text}"
+
+
 def _delete_agent(ctx: ActionContext, name: str) -> str:
     try:
         agent = CustomAgents(ctx.db).delete(name)
@@ -518,6 +648,55 @@ TOOLS: dict[str, Tool] = {
             _set_fallbacks,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
+        Tool(
+            "create_routine",
+            "Programmer une routine, à la demande de l'utilisateur. schedule en mots : « tous "
+            "les jours à 9h », « chaque lundi à 9h », « en semaine à 8h30 », « toutes les 2 "
+            "heures », « dans 30 minutes », « 2026-11-02 à 14h » ou cron « 0 9 * * 1 ». kind : "
+            "mission (une mission complète), question (tu réponds avec tes outils et "
+            "l'utilisateur reçoit ta réponse) ou rappel (le texte lui revient tel quel). "
+            "agent et company facultatifs.",
+            Level.WRITE,
+            "routine",
+            _create_routine,
+        ),
+        Tool("list_routines", "Les routines programmées.", Level.READ, "read", _list_routines),
+        Tool(
+            "update_routine",
+            "Modifier une routine (numéro ou nom) : enabled oui/non (pause), schedule, prompt.",
+            Level.WRITE,
+            "routine",
+            _update_routine,
+        ),
+        Tool(
+            "delete_routine",
+            "Supprimer une routine (numéro ou nom).",
+            Level.DESTRUCTIVE,
+            "routine",
+            _delete_routine,
+        ),
+        Tool(
+            "run_routine",
+            "Lancer une routine maintenant, sans attendre son horaire.",
+            Level.WRITE,
+            "routine",
+            _run_routine,
+        ),
+        Tool(
+            "list_webhooks",
+            "Les webhooks qui préviennent Spectre (GitHub, Stripe...) et ce qu'ils ont reçu.",
+            Level.READ,
+            "read",
+            _list_webhooks,
+        ),
+        Tool(
+            "ask_agent",
+            "Poser une question à un autre agent (créé ou intégré : Gétro, Kyra, Syfer...) sur "
+            "son moteur et avec son rôle, et obtenir sa réponse. Il répond sans outils.",
+            Level.READ,
+            "agent",
+            _ask_agent,
+        ),
         Tool(
             "steer_mission",
             "Donner une consigne à une mission en cours : elle la lit avant sa prochaine étape "

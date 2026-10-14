@@ -188,6 +188,13 @@ class Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         path, query = url.path, parse_qs(url.query)
         try:
+            if path.startswith("/hooks/") and method == "POST" and self.app.assistant:
+                # signed by the sender instead of logged in: the webhook checks the signature
+                status, message = self.app.assistant.hook(
+                    path.removeprefix("/hooks/").strip("/"), dict(self.headers), self._raw_body()
+                )
+                self._json(status, {"ok": status == 200, "result": message})
+                return
             if not path.startswith("/api/"):
                 if method == "GET":
                     self._static(path)

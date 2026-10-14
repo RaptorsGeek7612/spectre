@@ -273,6 +273,26 @@ Les **moteurs de secours** (`fallback_models`) prennent le relais dans l'ordre q
 ses appels d'outils passent par le même portail de gouvernance. Comparaison avec Hermes Agent
 et feuille de route : [docs/analyse-hermes.md](docs/analyse-hermes.md).
 
+**Automatisation : routines, webhooks, Telegram.** Dans la vue Automatisation, ou en le
+demandant à Spectre :
+
+- **Routines.** Spectre agit à heure fixe. L'horaire s'écrit en mots (« chaque lundi à 9h »,
+  « en semaine à 8h30 », « toutes les 2 heures », « dans 30 minutes ») ou en cron. Chaque
+  routine est une mission, une question à laquelle Spectre répond avec ses outils, ou un simple
+  rappel.
+- **Webhooks.** GitHub, Stripe ou un autre service préviennent Spectre sur
+  `/hooks/<nom>`. Chaque appel doit être signé avec le secret du webhook, sinon il est refusé.
+  Pour qu'un service sur Internet puisse appeler Spectre, il faut l'ouvrir avec Tailscale
+  Funnel. Funnel s'active par port, pas par chemin : ne l'active pas sur le port 443, sinon toute
+  l'interface devient publique. Ouvre plutôt le port public 8443, avec seulement ce chemin :
+  `tailscale funnel --bg --https=8443 --set-path /hooks http://127.0.0.1:8765/hooks`. L'adresse
+  du webhook devient `https://<pc>.<tailnet>.ts.net:8443/hooks/<nom>`. Vérifie avec
+  `tailscale funnel status` que seul `/hooks` est public.
+- **Telegram.** Crée un bot avec @BotFather, colle son jeton dans la vue Automatisation, puis
+  « Jumeler une conversation » et envoie au bot le code affiché (`/start 123456`). Tu peux alors
+  parler à Spectre depuis Telegram. Tu y reçois aussi ses notifications et ses demandes de
+  validation (`/approve 3`, `/deny 3`). Les autres conversations sont ignorées.
+
 **Entreprises : organigramme et tableau de tâches.** Dans la vue Entreprise, ou en le
 demandant à Spectre, crée une entreprise et place un agent sur chacun de ses huit postes
 (direction, finance, marketing, ventes, support, produit et technique, juridique,

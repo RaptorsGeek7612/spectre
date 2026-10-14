@@ -105,6 +105,7 @@ class AssistantConfig:
     planner_model: str = ""  # plans and reports missions; empty = the brain's engine
     fallback_models: list[str] = field(default_factory=list)  # tried in order when one fails
     mission_parallel: int = 2  # missions running at the same time (1 to 4)
+    telegram_notify: bool = True  # notifications and approvals also go to paired chats
     claude_bin: str = "claude"
     codex_bin: str = "codex"  # Codex CLI, for the ChatGPT execution agent
     chatgpt_model: str = ""  # empty = Codex's default model for the ChatGPT account

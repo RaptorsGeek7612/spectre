@@ -80,6 +80,35 @@ def handle(
             handler._json(
                 200, {"result": service.act("stop_mission", {"mission_id": int(mission_id)})}
             )
+        case "GET", ["routines"]:
+            handler._json(200, service.routines())
+        case "POST", ["routines"]:
+            fields = pick(body(), "name", "schedule", "prompt", "kind", "agent", "company")
+            handler._json(200, {"result": service.act("create_routine", dict(fields))})
+        case "POST", ["routines", routine_id]:
+            change = {"routine": routine_id} | pick(body(), "enabled", "schedule", "prompt")
+            handler._json(200, {"result": service.act("update_routine", dict(change))})
+        case "POST", ["routines", routine_id, "run"]:
+            handler._json(200, {"result": service.act("run_routine", {"routine": routine_id})})
+        case "POST", ["routines", routine_id, "delete"]:
+            from spectre.assistant.routines import Routines
+
+            row = Routines(service.db).delete(routine_id)
+            handler._json(200, {"result": f"routine supprimée : {row['name']}"})
+        case "GET", ["webhooks"]:
+            handler._json(200, service.webhooks_list(base_url(handler)))
+        case "POST", ["webhooks"]:
+            handler._json(200, service.create_webhook(body(), base_url(handler)))
+        case "POST", ["webhooks", name, "delete"]:
+            handler._json(200, service.delete_webhook(unquote(name)))
+        case "GET", ["telegram"]:
+            handler._json(200, service.telegram_status())
+        case "POST", ["telegram", "token"]:
+            handler._json(200, service.telegram_token(str(body().get("token", ""))))
+        case "POST", ["telegram", "pair"]:
+            handler._json(200, service.telegram_pair())
+        case "POST", ["telegram", "unlink"]:
+            handler._json(200, service.telegram_unlink(int(body().get("chat_id", 0))))
         case "GET", ["models"]:
             handler._json(200, service.models())
         case "GET", ["models", provider]:
@@ -134,6 +163,13 @@ def handle(
             handler._json(200, service.update_config(body()))
         case _:
             raise KeyError("/".join(parts))
+
+
+def base_url(handler: Any) -> str:
+    """The address this page was reached at (for webhook URLs)."""
+    host = handler.headers.get("Host") or "127.0.0.1"
+    scheme = "https" if host.endswith(".ts.net") else "http"
+    return f"{scheme}://{host}"
 
 
 def pick(data: dict[str, Any], *keys: str) -> dict[str, str]:

@@ -76,7 +76,7 @@ Total                                         0.0499 $
 | v0.5.0 | Nœuds extensibles (`spectre-agents.toml`), batch (API Message Batches), caching, évaluation | Livré le 2026-10-09 |
 | v0.6.x | Agents créés, lanceur et surveillance, amitié, salutations, outil PowerShell | Livré du 2026-10-10 au 2026-10-11 |
 | v0.7.0 | Moteurs : n'importe quel LLM par rôle (fournisseur:modèle, LM Studio, Ollama, OpenRouter…), `/model`, moteurs de secours (voir `docs/analyse-hermes.md`) | PR #40 (2026-10-14) |
-| v0.8.0 | Équipe d'entreprise : entreprises, organigramme de 8 départements, tableau de tâches durable (dépendances, à valider), découpage d'objectif, pilote automatique, missions en parallèle, orienter et arrêter une mission | En cours |
-| v0.9.0 | Automatisation : routines planifiées, webhooks entrants signés, passerelle Telegram, messages entre agents | Prévu |
+| v0.8.0 | Équipe d'entreprise : entreprises, organigramme de 8 départements, tableau de tâches durable (dépendances, à valider), découpage d'objectif, pilote automatique, missions en parallèle, orienter et arrêter une mission | PR #41 (2026-10-14) |
+| v0.9.0 | Automatisation : routines planifiées (horaires en mots), webhooks entrants signés (GitHub, Stripe, HMAC), passerelle Telegram jumelée, messages entre agents | En cours |
 | v0.10.0 | Suivi SaaS : Stripe, Supabase, disponibilité, erreurs, CI ; tableau de bord MRR/churn/CAC/LTV ; alertes ; rapport hebdomadaire | Prévu |
 | v0.11.0 | Apprentissage : compétences proposées après les missions, curateur, recherche dans les conversations, points de restauration | Prévu |
