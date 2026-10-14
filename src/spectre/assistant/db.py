@@ -72,6 +72,26 @@ CREATE TABLE IF NOT EXISTS custom_agents (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, engine TEXT NOT NULL, role TEXT NOT NULL,
   instructions TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS companies (
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL, pitch TEXT NOT NULL DEFAULT '',
+  autopilot INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS posts (
+  company_id INTEGER NOT NULL, department TEXT NOT NULL, agent TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (company_id, department)
+);
+CREATE TABLE IF NOT EXISTS tasks (
+  id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL, title TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT '', department TEXT NOT NULL DEFAULT '', agent TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'todo', priority INTEGER NOT NULL DEFAULT 2,
+  depends_on TEXT NOT NULL DEFAULT '[]', note TEXT NOT NULL DEFAULT '', mission_id INTEGER,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS tasks_company ON tasks(company_id, status);
+CREATE TABLE IF NOT EXISTS mission_notes (
+  id INTEGER PRIMARY KEY, mission_id INTEGER NOT NULL, ts TEXT NOT NULL, text TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS faces (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, feature TEXT NOT NULL, created_at TEXT NOT NULL
 );

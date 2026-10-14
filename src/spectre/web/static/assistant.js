@@ -119,7 +119,7 @@ async function loadApprovals() {
 }
 
 /* ---- missions ---- */
-const MSTATUS = { queued: "en file", running: "en cours", done: "terminée", failed: "échouée" };
+const MSTATUS = { queued: "en file", running: "en cours", done: "terminée", failed: "échouée", cancelled: "arrêtée" };
 async function loadMissions() {
   const rows = await api("GET", "missions");
   $("#count-missions").textContent = rows.filter((m) => m.status === "running" || m.status === "queued").length || "";
@@ -130,9 +130,131 @@ async function loadMissions() {
       h("span", { class: "meta" }, `#${m.id} · ${MSTATUS[m.status] || m.status} · ${date(m.updated_at)}`),
       steps.length ? h("p", {}, steps.map((s, i) => `${s.ok ? "✓" : "✗"} ${i + 1}. ${s.step}${s.name ? ` — ${s.name}` : ""}`).join("\n")) : null,
       m.error ? h("p", {}, `Erreur : ${m.error}`) : null,
-      m.report ? h("details", {}, h("summary", {}, "Rapport"), h("pre", {}, m.report)) : null);
+      m.report ? h("details", {}, h("summary", {}, "Rapport"), h("pre", {}, m.report)) : null,
+      m.status === "running" || m.status === "queued" ? missionControls(m) : null);
   }) : [h("p", { class: "empty-cards" }, "Aucune mission. Demande-en une à Spectre ou lance-la ici.")]));
 }
+
+function missionControls(m) {
+  const input = h("input", { type: "text", maxlength: "2000", placeholder: "Une consigne en cours de route, ex. « concentre-toi sur la France »", "aria-label": "Consigne pour la mission" });
+  const steer = async (e) => {
+    e.preventDefault();
+    if (!input.value.trim()) return;
+    try { await api("POST", `missions/${m.id}/steer`, { message: input.value }); toast("Consigne transmise : la mission la lira avant sa prochaine étape.", "ok"); input.value = ""; }
+    catch (err) { toast(err.message, "error"); }
+  };
+  const stop = async () => {
+    try { toast((await api("POST", `missions/${m.id}/stop`, {})).result, "ok"); }
+    catch (err) { toast(err.message, "error"); }
+    loadMissions();
+  };
+  return h("form", { class: "mi-steer", onsubmit: steer }, input,
+    h("button", { class: "btn", type: "submit" }, "Orienter"),
+    h("button", { class: "btn btn-ghost", type: "button", onclick: stop }, h("span", {}, "Arrêter")));
+}
+
+/* ---- companies: org chart and task board ---- */
+const TSTATUS = { todo: "À faire", doing: "En cours", blocked: "Bloquées", review: "À valider", done: "Faites", cancelled: "Annulées" };
+let companyId = null;
+try { companyId = Number(localStorage.getItem("spectre-company")) || null; } catch { /* private mode */ }
+async function loadCompany() {
+  const list = await api("GET", "company");
+  const select = $("#company-select");
+  if (list.length && !list.some((c) => c.id === companyId)) companyId = list[0].id;
+  select.replaceChildren(...(list.length ? list.map((c) => h("option", { value: c.id, selected: c.id === companyId }, c.name)) : [h("option", { value: "" }, "Aucune entreprise")]));
+  $("#company-body").hidden = !list.length;
+  $("#company-autopilot-row").hidden = !list.length;
+  if (!list.length) { $("#count-company").textContent = ""; return; }
+  const data = await api("GET", `company/${companyId}`);
+  $("#company-autopilot").checked = !!data.company.autopilot;
+  const open = data.tasks.filter((t) => t.status === "review" || t.status === "blocked").length;
+  $("#count-company").textContent = open || "";
+  const options = (current) => [h("option", { value: "", selected: !current }, "Selon les réglages"),
+    ...data.agents.map((a) => h("option", { value: a.key, selected: a.key === current }, a.name))];
+  $("#company-posts").replaceChildren(...data.departments.map((d) => {
+    const select = h("select", { "aria-label": `Agent du poste ${d.label}`, onchange: async (e) => {
+      try { await api("POST", `company/${companyId}/post`, { department: d.key, agent: e.target.value }); toast(`${d.label} : ${e.target.selectedOptions[0].textContent}`, "ok"); }
+      catch (err) { toast(err.message, "error"); loadCompany(); }
+    } }, ...options(d.agent));
+    return h("label", { class: "co-post", "data-dept": d.key }, h("span", { class: "label" }, d.label), select);
+  }));
+  const dept = $("#company-task-dept");
+  if (!dept.options.length) dept.append(h("option", { value: "" }, "Département"), ...data.departments.map((d) => h("option", { value: d.key }, d.label)));
+  $("#company-capacity").textContent = `${data.ready.length} prête${data.ready.length > 1 ? "s" : ""} · ${data.active.length}/${data.parallel} mission${data.parallel > 1 ? "s" : ""} en parallèle`;
+  $("#company-start").disabled = !data.ready.length;
+  const label = Object.fromEntries(data.departments.map((d) => [d.key, d.label]));
+  const columns = ["todo", "doing", "review", "blocked", "done"].map((status) => {
+    const tasks = data.tasks.filter((t) => t.status === status);
+    return h("section", { class: "co-col", "data-status": status },
+      h("h4", {}, TSTATUS[status], h("b", {}, tasks.length || "")),
+      ...tasks.map((t) => taskCard(t, label, data.ready.includes(t.id))));
+  });
+  $("#company-board").replaceChildren(...columns);
+}
+function taskCard(t, label, ready) {
+  const act = (status) => async () => {
+    try { await api("POST", `tasks/${t.id}`, { status }); } catch (err) { toast(err.message, "error"); }
+    loadCompany();
+  };
+  const start = async () => {
+    try { toast((await api("POST", `tasks/${t.id}/start`, {})).result, "ok"); } catch (err) { toast(err.message, "error", 7000); }
+    loadCompany();
+  };
+  const buttons = [];
+  if (t.status === "todo" && ready) buttons.push(["Lancer", start, "btn-primary"]);
+  if (t.status === "review") buttons.push(["Valider", act("done"), "btn-primary"], ["À refaire", act("todo"), ""]);
+  if (t.status === "blocked") buttons.push(["Débloquer", act("todo"), ""]);
+  if (t.status === "todo" || t.status === "doing" || t.status === "review" || t.status === "blocked") buttons.push(["Annuler", act("cancelled"), "btn-ghost"]);
+  const meta = [`#${t.id}`, label[t.department] || "sans département", ["", "urgent", "", "plus tard"][t.priority] || ""];
+  if (t.depends_on.length) meta.push(`après ${t.depends_on.map((d) => `#${d}`).join(", ")}`);
+  if (t.mission_id) meta.push(`mission #${t.mission_id}`);
+  return h("article", { class: "card co-task", "data-status": t.status },
+    h("h3", {}, t.title),
+    h("span", { class: "meta" }, meta.filter(Boolean).join(" · ")),
+    t.note ? h("p", {}, t.note) : null,
+    buttons.length ? h("div", { class: "row" }, ...buttons.map(([text, fn, cls]) => h("button", { class: `btn ${cls}`, type: "button", onclick: fn }, h("span", {}, text)))) : null);
+}
+$("#company-select").addEventListener("change", (e) => {
+  companyId = Number(e.target.value) || null;
+  try { localStorage.setItem("spectre-company", String(companyId)); } catch { /* private mode */ }
+  loadCompany();
+});
+$("#company-autopilot").addEventListener("change", async (e) => {
+  try { toast((await api("POST", `company/${companyId}/autopilot`, { on: e.target.checked })).result, "ok"); }
+  catch (err) { toast(err.message, "error"); }
+  loadCompany();
+});
+$("#company-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try {
+    toast((await api("POST", "company", data)).result, "ok", 6000);
+    const list = await api("GET", "company");
+    companyId = list[list.length - 1].id;
+    try { localStorage.setItem("spectre-company", String(companyId)); } catch { /* private mode */ }
+    e.target.reset();
+  } catch (err) { toast(err.message, "error"); }
+  loadCompany();
+});
+$("#company-plan").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const objective = e.target.elements.objective.value.trim();
+  if (!objective) return;
+  try { toast((await api("POST", `company/${companyId}/plan`, { objective })).result, "ok", 7000); e.target.reset(); }
+  catch (err) { toast(err.message, "error"); }
+});
+$("#company-task").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try { await api("POST", `company/${companyId}/tasks`, { ...data, priority: Number(data.priority) }); e.target.elements.title.value = ""; }
+  catch (err) { toast(err.message, "error"); }
+  loadCompany();
+});
+$("#company-start").addEventListener("click", async () => {
+  try { toast((await api("POST", `company/${companyId}/start`, {})).result, "ok", 7000); }
+  catch (err) { toast(err.message, "error"); }
+  loadCompany();
+});
 
 /* ---- agents ---- */
 let agentsCache = null;
@@ -417,7 +539,11 @@ async function loadStatus() {
   if (power.on_battery) $("#power-banner").textContent = `Le PC est sur batterie${power.percent != null ? ` (${power.percent} %)` : ""} : il peut se mettre en veille, et Spectre ne sera plus joignable. Branche-le pour qu'il reste disponible.`;
   if (!document.body.dataset.voice || document.body.dataset.voice === "off") setState(s.voice);
 }
-const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
+function refreshCompany() {  // the board moves when missions finish: refresh it if shown
+  const view = document.querySelector('.as-view[data-view="company"]');
+  if (view && !view.hidden) loadCompany().catch(() => {});
+}
+const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
 function show(view) {
   $$(".as-nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === view)));
   $$(".as-view").forEach((v) => { v.hidden = v.dataset.view !== view; });
@@ -616,7 +742,8 @@ function connect() {
     loadInitiatives(); loadMissions();
     if (d.speak) speakHere(d.kind === "lien" ? d.body : `${d.title}. ${d.body}`, d.kind === "lien");
   });
-  es.addEventListener("initiative_row", () => loadInitiatives());
+  es.addEventListener("initiative_row", () => { loadInitiatives(); refreshCompany(); });
+  es.addEventListener("company", () => refreshCompany());
   es.onopen = () => { $("#offline-banner").hidden = true; };
   es.onerror = () => {
     setState("off", "Connexion perdue, reconnexion…");
