@@ -7,6 +7,37 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-14
+
+### Added
+
+- Entreprises : Spectre t'aide à diriger tes entreprises (vue « Entreprise », outils
+  `create_company`, `list_companies`, `company_board`). Chacune a un organigramme de huit
+  départements : direction, finance, marketing, ventes, support, produit et technique,
+  juridique, opérations. Sur chaque poste, tu places l'agent de ton choix (`set_post`) : un
+  agent créé, que tu nommes toujours toi-même, un agent intégré, un moteur, ou le réglage par
+  défaut.
+- Tableau de tâches durable (`add_task`, `update_task`) : départements, priorités, dépendances
+  et statuts (à faire, en cours, à valider, bloquée, faite, annulée).
+  - Une tâche lancée (`start_tasks`, bouton « Lancer ») part en mission avec le brief de son
+    poste et de l'entreprise.
+  - À la fin de la mission, la tâche passe « faite » si chaque étape a été vérifiée, sinon « à
+    valider ». Elle passe « bloquée » si la mission échoue.
+- La direction découpe un objectif en tâches (`plan_company`, « Découper en tâches »), avec les
+  départements et les dépendances. La mission `company_plan` tourne en arrière-plan.
+- Pilote automatique par entreprise (`set_autopilot`, désactivé par défaut) : Spectre lance
+  lui-même les tâches prêtes.
+- Missions en parallèle (`mission_parallel`, 2 par défaut, de 1 à 4).
+- Pilotage des missions en cours :
+  - `steer_mission` et le bouton « Orienter » donnent une consigne, lue avant l'étape suivante ;
+  - `stop_mission` et le bouton « Arrêter » arrêtent une mission : tout de suite si elle est
+    en attente, après l'étape en cours sinon.
+
+### Changed
+
+- Une mission garde toutes les clés de son plan (tâche, brief) quand elle enregistre ses
+  étapes.
+
 ## [0.7.0] - 2026-10-14
 
 ### Added

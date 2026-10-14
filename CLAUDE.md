@@ -45,7 +45,9 @@ forge fmt --check ; forge build ; forge test
   d'exécution des missions externes possibles : `chatgpt` (Codex CLI, `assistant/codex.py`) et
   `mistral` (Vibe CLI, `assistant/mistral.py`), toujours avec les seuls outils MCP de Spectre ;
   noms des sous-agents dans `assistant/config.py` (`AGENT_NAMES` : Gétro, Kaïto, Kyra, Syfer) ; toute
-  action passe par `tools.execute` (portail + audit). `voice/engines.py` et `winapi.py` sont
-  exclus de la couverture (matériel).
+  action passe par `tools.execute` (portail + audit). Entreprises, organigramme, tableau de
+  tâches et pilotage des missions : `assistant/company.py` (tables dans `db.SCHEMA`) ; le
+  moteur de missions (`missions.py`) lance jusqu'à `mission_parallel` missions à la fois.
+  `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.

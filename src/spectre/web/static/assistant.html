@@ -74,6 +74,7 @@
       <button type="button" data-view="talk" aria-current="true"><span>Conversation</span></button>
       <button type="button" data-view="approvals"><span>Validations</span><b class="count" id="count-approvals"></b></button>
       <button type="button" data-view="missions"><span>Missions</span><b class="count" id="count-missions"></b></button>
+      <button type="button" data-view="company"><span>Entreprise</span><b class="count" id="count-company"></b></button>
       <button type="button" data-view="agents"><span>Agents</span><b class="count" id="count-agents"></b></button>
       <button type="button" data-view="memory"><span>Mémoire</span><b class="count" id="count-facts"></b></button>
       <button type="button" data-view="initiatives"><span>Initiatives</span><b class="count" id="count-initiatives"></b></button>
@@ -160,6 +161,37 @@
         <button class="btn btn-primary" type="submit">Lancer</button>
       </form>
       <div id="missions" class="cards"></div>
+    </section>
+
+    <section class="as-view" data-view="company" hidden>
+      <h2 class="as-h">Entreprise</h2>
+      <p class="meta">Spectre t’aide à diriger tes entreprises. Chaque département est un poste où tu places un agent ; les tâches du tableau partent en mission avec le brief de leur poste, plusieurs à la fois. Une tâche finie mais pas entièrement vérifiée attend ta validation.</p>
+      <div class="co-head">
+        <label><span class="label">Entreprise</span><select id="company-select" aria-label="Entreprise"></select></label>
+        <label class="co-switch" id="company-autopilot-row" hidden><input type="checkbox" id="company-autopilot"><span>Pilote automatique</span></label>
+      </div>
+      <form class="ag-form" id="company-form" autocomplete="off">
+        <label><span class="label">Nouvelle entreprise</span><input type="text" name="name" maxlength="60" required placeholder="Nom de l’entreprise"></label>
+        <label><span class="label">En une phrase</span><input type="text" name="pitch" maxlength="1000" placeholder="ex. SaaS de suivi de minage de cryptomonnaies"></label>
+        <div><button class="btn" type="submit">Créer l'entreprise</button></div>
+      </form>
+      <div id="company-body" hidden>
+        <h3 class="as-h as-h-sub">Organigramme</h3>
+        <div id="company-posts" class="co-posts"></div>
+        <h3 class="as-h as-h-sub">Faire avancer l'entreprise</h3>
+        <form class="inline-form" id="company-plan" autocomplete="off">
+          <input type="text" name="objective" placeholder="Un objectif à découper, ex. « Lancer la bêta payante en décembre »" aria-label="Objectif">
+          <button class="btn btn-primary" type="submit">Découper en tâches</button>
+        </form>
+        <form class="inline-form" id="company-task" autocomplete="off">
+          <input type="text" name="title" required placeholder="Nouvelle tâche, ex. « Étude des prix des concurrents »" aria-label="Titre de la tâche">
+          <select name="department" id="company-task-dept" aria-label="Département"></select>
+          <select name="priority" aria-label="Priorité"><option value="1">Urgent</option><option value="2" selected>Normal</option><option value="3">Plus tard</option></select>
+          <button class="btn" type="submit">Ajouter</button>
+        </form>
+        <div class="co-actions"><button class="btn btn-primary" type="button" id="company-start">Lancer les tâches prêtes</button><span class="meta" id="company-capacity"></span></div>
+        <div id="company-board" class="co-board"></div>
+      </div>
     </section>
 
     <section class="as-view" data-view="agents" hidden>
