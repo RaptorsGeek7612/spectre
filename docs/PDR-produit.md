@@ -78,5 +78,5 @@ Total                                         0.0499 $
 | v0.7.0 | Moteurs : n'importe quel LLM par rôle (fournisseur:modèle, LM Studio, Ollama, OpenRouter…), `/model`, moteurs de secours (voir `docs/analyse-hermes.md`) | PR #40 (2026-10-14) |
 | v0.8.0 | Équipe d'entreprise : entreprises, organigramme de 8 départements, tableau de tâches durable (dépendances, à valider), découpage d'objectif, pilote automatique, missions en parallèle, orienter et arrêter une mission | PR #41 (2026-10-14) |
 | v0.9.0 | Automatisation : routines planifiées (horaires en mots), webhooks entrants signés (GitHub, Stripe, HMAC), passerelle Telegram jumelée, messages entre agents | PR #42 (2026-10-14) |
-| v0.10.0 | Suivi SaaS : Stripe, Supabase, disponibilité, GitHub CI, API JSON (erreurs...), saisie ; tableau de bord MRR/ARR/churn/ARPA/LTV/CAC ; alertes ; rapport hebdomadaire | En cours |
-| v0.11.0 | Apprentissage : compétences proposées après les missions, curateur, recherche dans les conversations, points de restauration | Prévu |
+| v0.10.0 | Suivi SaaS : Stripe, Supabase, disponibilité, GitHub CI, API JSON (erreurs...), saisie ; tableau de bord MRR/ARR/churn/ARPA/LTV/CAC ; alertes ; rapport hebdomadaire | PR #43 (2026-10-14) |
+| v0.11.0 | Apprentissage : compétences proposées après les missions (validées par l'utilisateur), curateur, recherche plein texte dans les conversations, points de restauration des missions | En cours |

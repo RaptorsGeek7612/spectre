@@ -27,9 +27,9 @@ blakecrosley.com/guides/hermes et releasebot.io (notes de version).
 | Tâches planifiées | `cronjob_manage`, langage naturel, modèle par tâche, livraison, reprise après panne | Briefing, rappels, consolidation, visites amicales | **v0.9.0** : routines (horaires en mots ou cron ; mission, question ou rappel ; une seule reprise après panne ; alerte après 3 échecs) |
 | Messagerie | 28 plateformes (Telegram, WhatsApp, Slack, e-mail…) | Web, voix, téléphone (Tailscale) | **v0.9.0** : Telegram (jumelage par code, validations depuis Telegram) ; e-mail plus tard |
 | Webhooks et A2A | Webhooks signés (GitHub, Stripe…), protocole A2A v1.0 | Aucun | **v0.9.0** : webhooks signés GitHub, Stripe et HMAC (filtres, anti-doublon, prévenir ou lancer une mission) ; A2A plus tard |
-| Mémoire | MEMORY.md/USER.md, recherche plein texte des sessions, fournisseurs externes | Mémoire structurée (faits, persona), consolidation nocturne | v0.11.0 : recherche plein texte des conversations |
-| Compétences | Auto-création après une tâche, hub, curateur (obsolètes → archive) | Compétences écrites à la main, lues par l'outil `competence` | v0.11.0 : compétences proposées après une mission, validées par toi |
-| Sécurité | Approbations intelligentes, liste noire, conteneurs, points de restauration | Portail de gouvernance (niveaux, catégories, budget, audit), corbeille et annulation | Déjà solide ; v0.11.0 : points de restauration |
+| Mémoire | MEMORY.md/USER.md, recherche plein texte des sessions, fournisseurs externes | Mémoire structurée (faits, persona), consolidation nocturne | **v0.11.0** : recherche plein texte des conversations et des missions (`search_history`) |
+| Compétences | Auto-création après une tâche, hub, curateur (obsolètes → archive) | Compétences écrites à la main, lues par l'outil `competence` | **v0.11.0** : relecture après chaque mission réussie, `propose_skill`, validation obligatoire, historique, curateur (obsolète à 60 j, archive à 120 j) |
+| Sécurité | Approbations intelligentes, liste noire, conteneurs, points de restauration | Portail de gouvernance (niveaux, catégories, budget, audit), corbeille et annulation | Déjà solide ; **v0.11.0** : points de restauration par mission (`rollback_mission`) |
 | Voix | STT/TTS multi-fournisseurs, barge-in, mot d'éveil | Voix locale, mot d'éveil, téléphone | Déjà au niveau |
 
 ## Gestion d'entreprise et suivi d'un SaaS (au-delà de Hermes)

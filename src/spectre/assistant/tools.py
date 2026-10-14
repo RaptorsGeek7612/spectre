@@ -467,6 +467,42 @@ def _add_alert(
     return _saas(ctx, company, run)
 
 
+def _skill(ctx: ActionContext, name: str) -> str:
+    from spectre.assistant.learning import Learning, SkillError
+
+    try:
+        return Learning(ctx.db, ctx.root).read(name)
+    except SkillError as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _propose_skill(ctx: ActionContext, name: str, description: str, content: str) -> str:
+    from spectre.assistant.learning import Learning, SkillError
+
+    try:
+        row = Learning(ctx.db, ctx.root).propose(name, description, content, source="conversation")
+    except SkillError as exc:
+        raise ActionError(str(exc)) from exc
+    update = " (mise à jour d'une compétence existante)" if row["previous"] else ""
+    return (
+        f"compétence « {row['name']} » proposée{update} : elle attend la validation de "
+        "l'utilisateur dans la vue Apprentissage"
+    )
+
+
+def _search_history(ctx: ActionContext, query: str, limit: int = 10) -> str:
+    from spectre.assistant.learning import search_history
+
+    rows = search_history(ctx.db, query, int(limit))
+    if not rows:
+        return "rien trouvé dans les conversations passées"
+    who = {"user": "l'utilisateur", "spectre": "toi", "mission": "mission"}
+    return "\n".join(
+        f"{r['ts'][:16].replace('T', ' ')} ({who.get(r['source'], r['source'])}) : {r['excerpt']}"
+        for r in rows
+    )
+
+
 def _delete_agent(ctx: ActionContext, name: str) -> str:
     try:
         agent = CustomAgents(ctx.db).delete(name)
@@ -694,6 +730,39 @@ TOOLS: dict[str, Tool] = {
             _set_fallbacks,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
+        Tool(
+            "skill",
+            "Lire une compétence apprise en entier (son guide), par son nom.",
+            Level.READ,
+            "read",
+            _skill,
+        ),
+        Tool(
+            "propose_skill",
+            "Proposer une compétence apprise : name (minuscules et tirets), description (quand "
+            "l'utiliser, une phrase), content (le guide en Markdown : étapes, vérifications, "
+            "pièges). Elle n'est enregistrée qu'après la validation de l'utilisateur ; même nom "
+            "= mise à jour. Jamais de donnée personnelle ni de secret dedans.",
+            Level.WRITE,
+            "skill",
+            _propose_skill,
+        ),
+        Tool(
+            "search_history",
+            "Chercher dans les conversations passées (et les missions) par mots-clés ; rend "
+            "des extraits datés.",
+            Level.READ,
+            "read",
+            _search_history,
+        ),
+        Tool(
+            "rollback_mission",
+            "Ramener les fichiers d'une mission à leur état d'avant (annule ses écritures, "
+            "déplacements et suppressions) ; demande la validation de l'utilisateur.",
+            Level.DESTRUCTIVE,
+            "overwrite_file",
+            actions.rollback_mission,
+        ),
         Tool(
             "saas_report",
             "Le tableau de bord SaaS d'une entreprise : MRR, ARR, abonnés, churn, ARPA, LTV, "

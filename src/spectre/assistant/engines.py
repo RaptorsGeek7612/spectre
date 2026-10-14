@@ -128,7 +128,13 @@ def assign(config: AssistantConfig, providers: Providers, role: str, engine: str
             f"rôle inconnu « {role} » ; au choix : cerveau, mission, vérificateur, planificateur"
         )
     engine = engine.strip()
-    if setting == "planner_model" and engine.lower() in ("", "cerveau", "brain"):
+    if setting in ("planner_model", "learning_model") and engine.lower() in (
+        "",
+        "cerveau",
+        "brain",
+        "verificateur",
+        "vérificateur",
+    ):
         value = ""
     else:
         value = providers.check(engine)

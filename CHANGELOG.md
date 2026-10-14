@@ -7,6 +7,38 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-14
+
+### Added
+
+- Compétences apprises (`assistant/learning.py`, vue « Apprentissage »).
+  - Après une mission dont chaque étape a été vérifiée, un moteur peu coûteux relit le rapport et
+    peut proposer une compétence réutilisable : méthode, vérifications, pièges, sans donnée
+    personnelle ni secret. Ce moteur se règle avec le nouveau rôle `learning_model` ; vide, c'est
+    le vérificateur.
+  - Spectre peut aussi en proposer une quand tu lui apprends quelque chose (outil
+    `propose_skill`).
+  - Rien n'est écrit sans ta validation. Une mise à jour garde la version précédente dans
+    `skills/.history/`.
+  - Les compétences validées (`~/.spectre/assistant/skills/<nom>/SKILL.md`) sont listées dans le
+    prompt du cerveau et dans celui des agents de mission. L'outil `skill` en lit une et compte
+    ses usages.
+- Curateur, une fois par jour. Une compétence inutilisée depuis 60 jours devient « obsolète » ;
+  au bout de 120 jours, elle est archivée dans `skills/.archive/`, d'où on peut la restaurer. Il
+  ne supprime jamais rien, et les compétences épinglées sont gardées.
+- Recherche dans les conversations passées (outil `search_history`, recherche de la vue
+  Apprentissage). Index plein texte FTS5, insensible aux accents, avec les missions en plus. Les
+  anciennes conversations sont indexées une fois, au démarrage.
+- Points de restauration des missions. Chaque mission note la position du journal d'annulation
+  à son début et à sa fin. `rollback_mission` (avec ta validation) ou le bouton « Annuler ses
+  changements de fichiers » de la vue Missions défait ses écritures, déplacements et
+  suppressions.
+- Réglage `learn_from_missions` (activé par défaut).
+
+### Changed
+
+- `actions.undo_row` annule une entrée du journal. `undo_last` et `rollback_mission` s'en servent.
+
 ## [0.10.0] - 2026-10-14
 
 ### Added
