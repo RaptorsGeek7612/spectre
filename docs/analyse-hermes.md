@@ -43,11 +43,13 @@ Notion, Stripe en MCP) mais pas de direction d'entreprise intégrée. Le plan po
   pilotage d'une mission en cours.
 - **v0.9.0 Automatisation** : routines planifiées (« chaque lundi à 9 h, point des ventes »),
   webhooks entrants signés (Stripe, GitHub), passerelle Telegram, messages entre agents.
-- **v0.10.0 Suivi SaaS** :
-  - connecteurs en lecture seule : Stripe (MRR, churn, paiements échoués), Supabase
-    (inscriptions, santé de la base), disponibilité et latence, erreurs, intégration continue ;
-  - tableau de bord des indicateurs (MRR, churn, CAC, LTV) ;
-  - alertes et rapport hebdomadaire au « conseil d'administration ».
+- **v0.10.0 Suivi SaaS**, fait :
+  - sources en lecture seule : Stripe (MRR, abonnés, churn, paiements échoués, encaissé),
+    Supabase (utilisateurs, inscriptions), disponibilité et temps de réponse, GitHub (CI,
+    tickets), toute API JSON (erreurs Sentry, etc.) et chiffres saisis ;
+  - tableau de bord : MRR, ARR, churn, ARPA, LTV, CAC, LTV/CAC, disponibilité, avec leur
+    évolution sur 7 jours et leur tendance ;
+  - alertes avec retour à la normale, et rapport du lundi programmé en un clic.
 
   Toute action externe (paiement, envoi, publication) passe toujours par ta validation.
 - **v0.11.0 Apprentissage** : compétences proposées après les missions, curateur, recherche

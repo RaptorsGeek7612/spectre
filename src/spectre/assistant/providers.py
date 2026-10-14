@@ -86,6 +86,20 @@ def read_env_file(path: Path) -> dict[str, str]:
     return values
 
 
+def write_env_value(root: Path, name: str, value: str) -> None:
+    """Set (or, with an empty value, remove) `NAME=value` in the assistant folder's `.env`."""
+    path = root / ".env"
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        lines = []
+    kept = [ln for ln in lines if not ln.strip().removeprefix("export ").startswith(f"{name}=")]
+    if value:
+        kept.append(f"{name}={value}")
+    root.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(kept) + ("\n" if kept else ""), encoding="utf-8")
+
+
 class Providers:
     """The built-in providers plus the user's `providers.json`, and their API keys."""
 

@@ -80,6 +80,42 @@ def handle(
             handler._json(
                 200, {"result": service.act("stop_mission", {"mission_id": int(mission_id)})}
             )
+        case "GET", ["company", company_id, "saas"]:
+            handler._json(200, service.saas_dashboard(int(company_id)))
+        case "POST", ["company", company_id, "saas", "sources"]:
+            handler._json(200, service.saas_add_source(int(company_id), body()))
+        case "POST", ["company", company_id, "saas", "alerts"]:
+            data = body()
+            alert = {"company": str(int(company_id))} | pick(data, "metric", "op", "label")
+            handler._json(
+                200,
+                {
+                    "result": service.act(
+                        "add_alert", alert | {"threshold": float(data.get("threshold", 0))}
+                    )
+                },
+            )
+        case "POST", ["company", company_id, "saas", "metric"]:
+            data = body()
+            metric = {"company": str(int(company_id)), "metric": str(data.get("metric", ""))}
+            handler._json(
+                200,
+                {
+                    "result": service.act(
+                        "set_metric", metric | {"value": float(data.get("value", 0))}
+                    )
+                },
+            )
+        case "POST", ["company", company_id, "saas", "report"]:
+            handler._json(200, {"result": service.saas_report_routine(int(company_id))})
+        case "POST", ["saas", "sources", source_id, "check"]:
+            handler._json(200, service.saas_check(int(source_id)))
+        case "POST", ["saas", "sources", source_id, "delete"]:
+            service.saas().delete_source(int(source_id))
+            handler._json(200, {"ok": True})
+        case "POST", ["saas", "alerts", alert_id, "delete"]:
+            service.saas().delete_alert(int(alert_id))
+            handler._json(200, {"ok": True})
         case "GET", ["routines"]:
             handler._json(200, service.routines())
         case "POST", ["routines"]:
