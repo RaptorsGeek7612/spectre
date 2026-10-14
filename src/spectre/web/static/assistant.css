@@ -244,6 +244,8 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .ag-tags span { padding: 2px 8px; border: 1px solid var(--hair-2); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ash); }
 .ag-tags .off { border-style: dashed; color: var(--danger); }
 .ag-card[data-agent="opus"] { --c: var(--l405); }
+.ag-card[data-agent="provider"] { --c: var(--hair-2); }
+#engine-form { margin-top: 4px; }
 .ag-card[data-agent="sonnet"] { --c: var(--l436); }
 .ag-card[data-agent="haiku"] { --c: var(--l486); }
 .ag-card[data-agent="chatgpt"] { --c: var(--l615); }
@@ -283,6 +285,7 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .ag-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; max-width: 84ch; margin: 0 0 18px; }
 .ag-form label { display: grid; gap: 6px; }
 .ag-form .ag-wide { grid-column: 1 / -1; }
+.ag-form .help { font-size: 0.82rem; color: var(--dim); }
 .ag-form input, .ag-form select { min-height: 40px; padding: 0 10px; }
 .ag-form textarea { padding: 8px 10px; resize: vertical; }
 @media (max-width: 600px) { .ag-form { grid-template-columns: 1fr; } }

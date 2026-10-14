@@ -54,6 +54,12 @@ def handle(
             handler._json(200, {"result": service.create_agent(body())})
         case "POST", ["agents", agent_id, "delete"]:
             handler._json(200, service.delete_agent(int(agent_id)))
+        case "GET", ["models"]:
+            handler._json(200, service.models())
+        case "GET", ["models", provider]:
+            handler._json(200, service.provider_models(unquote(provider)))
+        case "POST", ["models"]:
+            handler._json(200, service.set_engine(body()))
         case "GET", ["remote"]:
             handler._json(200, remote(handler).status(handler.app.auth.enabled))
         case "POST", ["remote"]:

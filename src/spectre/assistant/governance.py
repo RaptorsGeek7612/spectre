@@ -40,6 +40,7 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "reminder": "ALWAYS",
     "mission": "ALWAYS",
     "agent": "ALWAYS",  # creating an agent; deleting one is destructive, so it still asks
+    "model": "ALWAYS",  # switching an engine: reversible, asked for by the user
     "delete_file": "ASK",
     "overwrite_file": "ASK",
     "external_send": "ASK",

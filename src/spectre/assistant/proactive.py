@@ -310,7 +310,16 @@ class Proactive:
             "Tes dernières venues et répliques (ne reprends ni leurs mots ni leur tournure) :\n"
             + ("\n".join(f"- {line}" for line in [r["body"] for r in recent] + lines) or "(aucune)")
         )
-        reply = one_shot(self.cli, prompt, BEFRIEND, model=self.config.brain_model)
+        if self.config.brain_model in ("opus", "sonnet", "haiku") and not (
+            self.config.fallback_models
+        ):
+            reply = one_shot(self.cli, prompt, BEFRIEND, model=self.config.brain_model)
+        else:
+            from spectre.assistant.engines import Engines
+
+            reply = Engines(self.cli).ask_chain(
+                [self.config.brain_model, *self.config.fallback_models], prompt, BEFRIEND
+            )[0]
         try:
             data = extract_json(reply.text)
             text, topic = str(data.get("text", "")).strip(), str(data.get("topic", "")).strip()

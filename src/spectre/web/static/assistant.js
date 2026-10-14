@@ -161,7 +161,52 @@ async function loadAgents() {
   const engine = $("#agent-engine");
   if (!engine.options.length) engine.append(...data.assistant.map((a) => h("option", { value: a.key, selected: a.key === "sonnet" }, `${a.name} · ${a.engine}`)));
   $("#agents-redaction").replaceChildren(...data.redaction.map(agentCard));
+  loadEngines().catch((err) => toast(err.message, "error"));
 }
+/* ---- engines: which LLM serves each role, and the fallback chain ---- */
+async function loadEngines() {
+  const data = await api("GET", "models");
+  const ready = data.providers.filter((p) => p.ready);
+  const lists = await Promise.all(ready.map((p) => api("GET", `models/${encodeURIComponent(p.id)}`).catch(() => ({ models: [] }))));
+  const refs = ready.flatMap((p, i) => lists[i].models.map((m) => `${p.id}:${m}`));
+  $("#engine-options").replaceChildren(...[...data.cli, ...refs].map((v) => h("option", { value: v })));
+  const field = (name, label, value, help) => h("label", { class: "ag-wide" }, h("span", { class: "label" }, label),
+    h("input", { type: "text", name, value, list: "engine-options", placeholder: name === "planner_model" ? "vide = le moteur du cerveau" : "opus, sonnet, haiku, chatgpt, mistral ou fournisseur:modèle" }),
+    help ? h("span", { class: "help" }, help) : null);
+  $("#engine-form").replaceChildren(
+    ...data.roles.map((r) => field(r.role, r.label.charAt(0).toUpperCase() + r.label.slice(1), r.engine)),
+    field("fallbacks", "Moteurs de secours, dans l'ordre", data.fallbacks.join(", "), "Séparés par des virgules ; vide = aucun. Par exemple : lmstudio:google/gemma-4-e4b, haiku"),
+    h("div", {}, h("button", { class: "btn btn-primary", type: "submit" }, "Enregistrer les moteurs")));
+  $("#providers").replaceChildren(...data.providers.map((p, i) => {
+    const index = ready.indexOf(p);
+    const count = index >= 0 ? lists[index].models.length : 0;
+    const state = p.ready ? (p.local && !count ? "serveur éteint" : `${count} modèle${count > 1 ? "s" : ""}`) : `clé ${p.key_env} à ajouter`;
+    return h("article", { class: "ag-card", "data-agent": "provider" },
+      h("h3", { class: "ag-name" }, p.label),
+      h("p", { class: "ag-engine" }, p.id),
+      h("div", { class: "ag-tags" }, h("span", { class: p.local && !count ? "off" : "" }, state), p.local ? h("span", {}, "local") : null));
+  }));
+  const engine = $("#agent-engine");
+  engine.querySelectorAll("option[data-ref]").forEach((o) => o.remove());
+  engine.append(...refs.map((v) => h("option", { value: v, "data-ref": "1" }, v)));
+}
+$("#engine-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  try {
+    const data = await api("GET", "models");
+    for (const r of data.roles) {
+      const value = form.elements[r.role].value.trim();
+      if (value !== r.engine) await api("POST", "models", { role: r.role, engine: value });
+    }
+    const chain = form.elements.fallbacks.value.split(",").map((v) => v.trim()).filter(Boolean);
+    if (chain.join(",") !== data.fallbacks.join(",")) await api("POST", "models", { fallbacks: chain });
+    toast("Moteurs enregistrés : ils servent dès le prochain message.", "ok");
+    loadStatus();
+  } catch (err) { toast(err.message, "error", 7000); }
+  loadEngines();
+});
+
 async function fillAgentSelect() {
   const select = $("#mission-agent");
   const data = await fetchAgents();
@@ -266,8 +311,6 @@ const AGENT_NAMES = { sonnet: "Gétro", haiku: "Kaïto", chatgpt: "Kyra", mistra
 const FIELDS = [
   ["user_name", "Ton prénom", "text", "Spectre l'utilise pour s'adresser à toi."],
   ["city", "Ta ville", "text", "Pour la météo du briefing."],
-  ["brain_model", "Spectre, l'agent supérieur", ["opus", "sonnet", "haiku"], "opus = Opus 5.5 : le plus capable ; il planifie aussi les missions et rédige leurs rapports."],
-  ["mission_model", "Agents d'exécution des missions", ["sonnet", "opus", "haiku", "chatgpt", "mistral"], "Gétro = Sonnet 5.5 ; Kaïto = Haiku 4.5, plus rapide (il vérifie aussi chaque étape) ; Kyra = ChatGPT via Codex (compte ChatGPT) ; Syfer = Mistral via Vibe (compte Le Chat). Quoi qu'il en soit, Spectre confie d'office le multimédia à Kyra et la cybersécurité à Syfer."],
   ["chatgpt_model", "Modèle ChatGPT", "text", "Vide = le modèle par défaut de Codex pour ton compte ChatGPT (par exemple gpt-5.5)."],
   ["mistral_model", "Modèle Mistral", "text", "Vide = le modèle par défaut de Vibe (mistral-medium-3.5). Vibe utilise ton compte Le Chat, ou une clé MISTRAL_API_KEY dans ~/.spectre/assistant/vibe/.env."],
   ["briefing_hour", "Heure du briefing", "number", "Le briefing du matin apparaît à partir de cette heure."],

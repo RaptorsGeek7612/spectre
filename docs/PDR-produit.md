@@ -60,7 +60,8 @@ Total                                         0.0499 $
 ## 7. Hors objectifs
 
 - Remplacer un rédacteur humain sur des sujets sensibles sans relecture.
-- Supporter d'autres fournisseurs que Claude.
+- Supporter d'autres fournisseurs que Claude pour la chaîne de rédaction (Scout, Scribe,
+  Warden). L'assistant, lui, choisit son moteur depuis la v0.7.0.
 
 ## 8. Feuille de route
 
@@ -73,3 +74,9 @@ Total                                         0.0499 $
 | v0.3.x | Agents d'exécution Kyra (ChatGPT) et Syfer (Mistral), accès et voix depuis le téléphone (Tailscale) | Livré le 2026-10-09 |
 | v0.4.0 | Boucle de révision, verdict structuré, streaming de la CLI | Livré le 2026-10-09 |
 | v0.5.0 | Nœuds extensibles (`spectre-agents.toml`), batch (API Message Batches), caching, évaluation | Livré le 2026-10-09 |
+| v0.6.x | Agents créés, lanceur et surveillance, amitié, salutations, outil PowerShell | Livré du 2026-10-10 au 2026-10-11 |
+| v0.7.0 | Moteurs : n'importe quel LLM par rôle (fournisseur:modèle, LM Studio, Ollama, OpenRouter…), `/model`, moteurs de secours (voir `docs/analyse-hermes.md`) | En cours |
+| v0.8.0 | Équipe d'entreprise : organigramme d'agents, tableau de tâches durable, délégation parallèle, pilotage des missions en cours | Prévu |
+| v0.9.0 | Automatisation : routines planifiées, webhooks entrants signés, passerelle Telegram | Prévu |
+| v0.10.0 | Suivi SaaS : Stripe, Supabase, disponibilité, erreurs, CI ; tableau de bord MRR/churn/CAC/LTV ; alertes ; rapport hebdomadaire | Prévu |
+| v0.11.0 | Apprentissage : compétences proposées après les missions, curateur, recherche dans les conversations, points de restauration | Prévu |
