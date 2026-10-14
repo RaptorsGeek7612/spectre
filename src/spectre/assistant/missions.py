@@ -3,9 +3,10 @@
 `kind=redaction` runs Spectre's own pipeline (Scout -> Scribe -> Warden) with the three agents
 served by the Claude Code CLI, so it works on the subscription without API credit.
 Mission steps are executed by Claude (`mission_model` = sonnet, opus or haiku), by ChatGPT through
-the Codex CLI (chatgpt) or by Mistral through the Vibe CLI (mistral), set in the settings or chosen
-for one mission (`agent`); Spectre still plans, the Haiku verifier still checks each step, and
-Spectre writes the report.
+the Codex CLI (chatgpt), by Mistral through the Vibe CLI (mistral) or by any `provider:model`
+engine (LM Studio, Ollama, OpenRouter...), set in the settings or chosen for one mission
+(`agent`); Spectre still plans, the verifier (`verifier_model`) still checks each step, and
+Spectre writes the report. Every call falls back on `fallback_models` when its engine fails.
 Missions persist step by step; one interrupted by a restart resumes where it stopped.
 """
 
@@ -22,16 +23,16 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
-from spectre.assistant.brain import ClaudeCLI, extract_json, one_shot
-from spectre.assistant.codex import CodexCLI
+from spectre.assistant.brain import ClaudeCLI, Reply, extract_json, failed, one_shot
 from spectre.assistant.config import AGENT_CHOICES, agent_name
 from spectre.assistant.custom_agents import PREFIX, CustomAgents, worker_brief
 from spectre.assistant.db import Database, now_iso
+from spectre.assistant.engines import EXTERNAL as EXTERNAL  # re-exported for tests
+from spectre.assistant.engines import Engines
 from spectre.assistant.memory import Memory
-from spectre.assistant.mistral import VibeCLI
+from spectre.assistant.providers import split_ref
 
 MAX_STEPS = 6
-EXTERNAL: dict[str, Any] = {"chatgpt": CodexCLI, "mistral": VibeCLI}  # non-Claude agents
 AGENTS = AGENT_CHOICES
 Notify = Callable[[str, str, str], object]  # (kind, title, body)
 
@@ -131,15 +132,34 @@ class MissionEngine:
         model: str = "sonnet",
         lead_model: str = "opus",
         agents: dict[str, Any] | None = None,
+        verifier_model: str = "haiku",
+        fallbacks: list[str] | None = None,
     ) -> None:
         self.db = db
         self.cli = cli
         self.notify = notify
-        self.model = model  # execution agents: a Claude alias, "chatgpt" or "mistral"
+        self.model = model  # execution agents: an engine reference (sonnet, chatgpt, lmstudio:...)
         self.lead_model = lead_model  # Spectre itself plans and reports
-        self.agents = dict(agents or {})  # ChatGPT and Mistral agents, created on first use
+        self.verifier_model = verifier_model  # Kaïto checks each step
+        self.fallbacks = list(fallbacks or [])
+        self.engines = Engines(cli, agents=agents)  # other agents, created on first use
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+
+    @property
+    def agents(self) -> dict[str, Any]:
+        return self.engines.agents
+
+    def _call(self, ref: str, prompt: str, system: str) -> Reply:
+        """A tool-less call on `ref`, falling back on the chain when it fails."""
+        if not self.fallbacks:
+            return self._one(ref, prompt, system)
+        return self.engines.ask_chain([ref, *self.fallbacks], prompt, system)[0]
+
+    def _one(self, ref: str, prompt: str, system: str) -> Reply:
+        if ref in ("opus", "sonnet", "haiku"):  # the CLI's one-shot path (kept for its tests)
+            return one_shot(self.cli, prompt, system, model=ref)
+        return self.engines.ask(ref, prompt, system)
 
     # ---- lifecycle -----------------------------------------------------------------------
 
@@ -192,11 +212,8 @@ class MissionEngine:
         steps_plan: list[str] = (plan.get("steps") if isinstance(plan, dict) else None) or []
         if not steps_plan:
             context = Memory(self.db).context_block(20)
-            reply = one_shot(
-                self.cli,
-                f"Mission : {row['goal']}\n\nContexte :\n{context}",
-                PLANNER,
-                model=self.lead_model,
+            reply = self._call(
+                self.lead_model, f"Mission : {row['goal']}\n\nContexte :\n{context}", PLANNER
             )
             steps_plan = [str(s) for s in extract_json(reply.text).get("steps", [])][:MAX_STEPS]
             if not steps_plan:
@@ -220,23 +237,20 @@ class MissionEngine:
             f"{'OK' if d['ok'] else 'NON'} — {d['note']}"
             for i, d in enumerate(done)
         )
-        report = one_shot(
-            self.cli, f"Objectif : {row['goal']}\n\n{summary}", REPORTER, model=self.lead_model
+        report = self._call(
+            self.lead_model, f"Objectif : {row['goal']}\n\n{summary}", REPORTER
         ).text
-        failed = sum(1 for d in done if not d["ok"])
-        body = "Toutes les étapes sont vérifiées." if not failed else f"{failed} étape(s) à revoir."
+        missed = sum(1 for d in done if not d["ok"])
+        body = "Toutes les étapes sont vérifiées." if not missed else f"{missed} étape(s) à revoir."
         self._finish(row, report, "Mission terminée", body)
 
     def _worker(self, agent: str) -> tuple[Any, str]:
         """Who executes a step: the mission's own choice, else the `mission_model` setting."""
-        name = agent if agent in AGENTS else self.model
+        remote = split_ref(agent)[0] and not agent.startswith(PREFIX)  # provider:model
+        name = agent if agent in AGENTS or remote else self.model
         if name == "claude":  # Claude asked for one mission while the setting names another
-            name = "sonnet" if self.model in EXTERNAL else self.model
-        if name not in EXTERNAL:
-            return self.cli, name
-        if name not in self.agents:
-            self.agents[name] = EXTERNAL[name](self.cli.config, self.cli.root)
-        return self.agents[name], name
+            name = self.model if self.model in ("opus", "sonnet", "haiku") else "sonnet"
+        return self.engines.worker(name)
 
     def _run_step(
         self, goal: str, step: str, done: list[dict[str, Any]], agent: str = ""
@@ -254,9 +268,14 @@ class MissionEngine:
         note, ok, result = "", False, ""
         for attempt in range(2):
             extra = f"\n\nTentative précédente insuffisante : {note}" if attempt else ""
-            result = worker.ask(prompt + extra, system=system, model=model, with_tools=True).text
-            check = one_shot(
-                self.cli, f"Étape : {step}\n\nCompte rendu :\n{result}", VERIFIER, model="haiku"
+            answer = worker.ask(prompt + extra, system=system, model=model, with_tools=True)
+            if failed(answer) and self.fallbacks:
+                answer, model = self.engines.ask_chain(
+                    self.fallbacks, prompt + extra, system, tools=True
+                )
+            result = answer.text
+            check = self._call(
+                self.verifier_model, f"Étape : {step}\n\nCompte rendu :\n{result}", VERIFIER
             )
             try:
                 verdict = extract_json(check.text)

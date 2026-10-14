@@ -252,6 +252,27 @@ ChatGPT et Mistral n'ont que les outils de Spectre (par MCP, donc le même porta
 et la recherche web ; le shell de Codex tourne dans son bac à sable en lecture seule.
 `chatgpt_model` et `mistral_model` choisissent le modèle (vide = celui par défaut).
 
+**Moteurs : n'importe quel LLM, rôle par rôle.** Le cerveau, l'exécution des étapes, le
+vérificateur et le planificateur ont chacun leur moteur : `opus`, `sonnet`, `haiku`,
+`chatgpt`, `mistral` ou `fournisseur:modèle` pour tout point d'accès compatible OpenAI. Les
+fournisseurs intégrés sont LM Studio et Ollama (locaux, gratuits, rien ne quitte le PC),
+OpenRouter, Groq, Gemini, Mistral (API), DeepSeek, OpenAI, xAI et Anthropic (API). Pour en
+ajouter, créez `~/.spectre/assistant/providers.json`. Les clés se lisent dans l'environnement ou
+dans `~/.spectre/assistant/.env` (`GROQ_API_KEY=...`), jamais dans la configuration. On
+change de moteur de trois façons :
+
+- dans la vue Agents › Moteurs ;
+- en tapant `/model` dans la conversation : `/model lmstudio:google/gemma-4-e4b` pour le
+  cerveau, `/model verificateur haiku` pour un autre rôle, `/model secours lmstudio:…, haiku`
+  pour les secours ;
+- en le demandant à Spectre (outils `list_models`, `set_model`, `set_fallbacks`).
+
+Les **moteurs de secours** (`fallback_models`) prennent le relais dans l'ordre quand un moteur
+échoue ou atteint la limite de l'abonnement. Un agent créé peut lui aussi tourner sur
+`fournisseur:modèle`. Un moteur autre que Claude reçoit le fil récent de la conversation, et
+ses appels d'outils passent par le même portail de gouvernance. Comparaison avec Hermes Agent
+et feuille de route : [docs/analyse-hermes.md](docs/analyse-hermes.md).
+
 ### Plusieurs demandes d'un coup : `spectre batch`
 
 ```shell
@@ -484,6 +505,7 @@ cast call <VOTING_ADDRESS> "workflowStatus()(uint8)" --rpc-url sepolia
 - [PDR produit](docs/PDR-produit.md)
 - [PDR architecture](docs/PDR-architecture.md)
 - [Brainstorming](docs/brainstorming.md)
+- [Hermes Agent face à Spectre](docs/analyse-hermes.md)
 - Foundry Book — https://book.getfoundry.sh/
 - OpenZeppelin Contracts — https://docs.openzeppelin.com/contracts/5.x/
 

@@ -1,6 +1,7 @@
-"""Agents Spectre creates on request: a name, an engine (one of the built-in agents' models) and
-a role. A mission given to one runs its steps on that engine, with the role added to the
-worker's instructions; the plan, the verifier (Kaïto) and the report do not change.
+"""Agents Spectre creates on request: a name, an engine (one of the built-in agents' models, or
+any `provider:model` engine such as `lmstudio:google/gemma-4-e4b`) and a role. A mission given
+to one runs its steps on that engine, with the role added to the worker's instructions; the
+plan, the verifier (Kaïto) and the report do not change.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from typing import Any
 
 from spectre.assistant.config import AGENT_ORDER, agent_name, resolve_agent
 from spectre.assistant.db import Database, now_iso
+from spectre.assistant.providers import ProviderError, Providers, split_ref
 
 ENGINES = AGENT_ORDER  # opus, sonnet, haiku, chatgpt, mistral
 PREFIX = "agent:"  # a mission's `agent` for a created agent: "agent:<id>"
@@ -31,8 +33,9 @@ def _plain(text: str) -> str:
 class CustomAgents:
     """The created agents, in the assistant's database (shared with the MCP tool process)."""
 
-    def __init__(self, db: Database) -> None:
+    def __init__(self, db: Database, providers: Providers | None = None) -> None:
         self.db = db
+        self.providers = providers  # needed to create an agent on a provider:model engine
 
     def list(self) -> list[dict[str, Any]]:
         return self.db.all("SELECT * FROM custom_agents ORDER BY id")
@@ -57,9 +60,17 @@ class CustomAgents:
         if self.get(name):
             raise AgentError(f"un agent s'appelle déjà « {name} »")
         key = resolve_agent(engine)
-        if key not in ENGINES:
+        if split_ref(engine)[0] and self.providers is not None:
+            try:
+                key = self.providers.check(engine)
+            except ProviderError as exc:
+                raise AgentError(str(exc)) from exc
+        elif key not in ENGINES:
             names = ", ".join(f"{agent_name(e)} ({e})" for e in ENGINES)
-            raise AgentError(f"moteur inconnu « {engine} » ; au choix : {names}")
+            raise AgentError(
+                f"moteur inconnu « {engine} » ; au choix : {names}, ou fournisseur:modèle "
+                "(par exemple lmstudio:google/gemma-4-e4b)"
+            )
         if not role:
             raise AgentError("décris le rôle de l'agent (sa spécialité)")
         if len(role) > MAX_ROLE or len(instructions) > MAX_INSTRUCTIONS:

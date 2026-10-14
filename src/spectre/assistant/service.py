@@ -14,15 +14,23 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import greetings, tools, winapi
+from spectre.assistant import engines, greetings, tools, winapi
 from spectre.assistant.brain import Brain, ClaudeCLI
-from spectre.assistant.config import AGENT_NAMES, AGENT_ORDER, AGENT_ROLES, AssistantConfig
+from spectre.assistant.config import (
+    AGENT_NAMES,
+    AGENT_ORDER,
+    AGENT_ROLES,
+    ROLES,
+    AssistantConfig,
+    resolve_role,
+)
 from spectre.assistant.custom_agents import CustomAgents
 from spectre.assistant.db import Database
 from spectre.assistant.governance import Gate, Level
 from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
+from spectre.assistant.providers import ProviderError, Providers, split_ref
 from spectre.assistant.vision.faces import SPOOF, UNKNOWN, FaceBook, Presence
 from spectre.assistant.voice.listen import SAMPLE_RATE, to_wav
 from spectre.config import DEFAULT_SPECS, model_label
@@ -59,8 +67,12 @@ class AssistantService:
             self.cli,
             lambda kind, title, body: self.proactive.add_initiative(kind, title, body),
             model=self.config.mission_model,
-            lead_model=self.config.brain_model,
+            lead_model=self.config.planner_model or self.config.brain_model,
+            verifier_model=self.config.verifier_model,
+            fallbacks=self.config.fallback_models,
         )
+        self.providers = Providers(root)
+        self._config_mtime = self._config_stamp()
         self.voice: Any = None
         self.voice_state = "off"
         self.faces = FaceBook(self.db)
@@ -142,8 +154,36 @@ class AssistantService:
         row = self.db.one(f"SELECT COALESCE(MAX(id), 0) AS n FROM {table}")  # noqa: S608 - fixed
         return int(row["n"]) if row else 0
 
+    def _config_stamp(self) -> float:
+        try:
+            return (self.root / "config.json").stat().st_mtime
+        except OSError:
+            return 0.0
+
+    def reload_config(self) -> bool:
+        """Pick up `config.json` changed by another process (the brain's `set_model` tool runs
+        in the MCP server); the same config object is shared by the brain and proactivity."""
+        stamp = self._config_stamp()
+        if stamp == self._config_mtime:
+            return False
+        self._config_mtime = stamp
+        fresh = AssistantConfig.load(self.root)
+        self.config.__dict__.update(fresh.__dict__)
+        self._apply_config()
+        self.publish({"type": "config", "brain_model": self.config.brain_model})
+        return True
+
+    def _apply_config(self) -> None:
+        cfg = self.config
+        self.gate.auto_max_level = cfg.auto_max_level
+        self.missions.model = cfg.mission_model
+        self.missions.lead_model = cfg.planner_model or cfg.brain_model
+        self.missions.verifier_model = cfg.verifier_model
+        self.missions.fallbacks = list(cfg.fallback_models)
+
     def poll_changes(self) -> None:
         """Publish approvals/initiatives created elsewhere (e.g. by the MCP tool process)."""
+        self.reload_config()
         for table, kind in (("approvals", "approval"), ("initiatives", "initiative_row")):
             rows = self.db.all(
                 f"SELECT * FROM {table} WHERE id > ? ORDER BY id",  # noqa: S608 - fixed names
@@ -179,6 +219,10 @@ class AssistantService:
         if not text:
             raise ValueError("message vide")
         self.publish({"type": "message", "role": "user", "text": text, "channel": channel})
+        if text.split(maxsplit=1)[0].lower() == "/model":
+            answer = self.model_command(text)
+            self.publish({"type": "message", "role": "spectre", "text": answer, "channel": channel})
+            return answer
         with self._busy:
             if channel == "text":
                 self.publish({"type": "state", "state": "thinking", "detail": ""})
@@ -316,13 +360,20 @@ class AssistantService:
                 "key": f"agent:{a['id']}",
                 "id": a["id"],
                 "name": a["name"],
-                "engine": next(x["engine"] for x in assistant if x["key"] == a["engine"]),
+                "engine": self._engine_label(a["engine"], assistant),
                 "role": a["role"],
                 "instructions": a["instructions"],
             }
             for a in CustomAgents(self.db).list()
         ]
         return {"assistant": assistant, "created": created, "redaction": redaction}
+
+    def _engine_label(self, engine: str, assistant: list[Event]) -> str:
+        provider, model = split_ref(engine)
+        if not provider:
+            return next((x["engine"] for x in assistant if x["key"] == engine), engine)
+        found = self.providers.all().get(provider)
+        return f"{model} · {found.label if found else provider}"
 
     def create_agent(self, data: dict[str, Any]) -> str:
         """Create an agent from the interface, through the gate like Spectre would."""
@@ -341,11 +392,73 @@ class AssistantService:
         return agent
 
     def update_config(self, changes: dict[str, Any]) -> Event:
+        changes = dict(changes)
+        probe = AssistantConfig()
+        for key, value in changes.items():  # engines are checked like `set_model` would
+            if key in ROLES and isinstance(value, str):
+                engines.assign(probe, self.providers, key, value)
+                changes[key] = getattr(probe, key)
+            elif key == "fallback_models" and isinstance(value, list):
+                engines.set_fallbacks(probe, self.providers, [str(v) for v in value])
+                changes[key] = probe.fallback_models
         self.config.update(changes)
         self.config.save(self.root)
-        self.gate.auto_max_level = self.config.auto_max_level
-        self.missions.model = self.config.mission_model
+        self._config_mtime = self._config_stamp()
+        self._apply_config()
         return self.config.__dict__.copy()
+
+    # ---- engines (LLM providers) -------------------------------------------------------------
+
+    def models(self) -> Event:
+        """Each role's engine, the fallback chain and the providers (never their keys)."""
+        return {
+            "roles": engines.roles(self.config),
+            "fallbacks": list(self.config.fallback_models),
+            "cli": ["opus", "sonnet", "haiku", "chatgpt", "mistral"],
+            "providers": self.providers.describe(),
+        }
+
+    def provider_models(self, provider: str) -> Event:
+        return {"provider": provider, "models": self.providers.models(provider)}
+
+    def set_engine(self, data: dict[str, Any]) -> Event:
+        """Switch a role's engine, or replace the fallback chain, from the interface."""
+        if "fallbacks" in data:
+            raw = data["fallbacks"]
+            items = raw if isinstance(raw, list) else str(raw).replace(";", ",").split(",")
+            self.update_config({"fallback_models": [str(i) for i in items]})
+        else:
+            role = resolve_role(str(data.get("role", "")))
+            if not role:
+                raise ValueError("rôle inconnu")
+            self.update_config({role: str(data.get("engine", "")).strip()})
+        return self.models()
+
+    def model_command(self, text: str) -> str:
+        """Hermes-style `/model`: show the engines, or switch one, without asking the brain.
+        `/model` · `/model <engine>` (the brain) · `/model <role> <engine>` ·
+        `/model secours <engine>, <engine>` (empty = none)."""
+        args = text.split()[1:]
+        try:
+            if not args:
+                return engines.summary(self.config, self.providers)
+            if args[0].lower() in ("secours", "fallback", "fallbacks"):
+                self.set_engine({"fallbacks": " ".join(args[1:])})
+                return "Moteurs de secours : " + (", ".join(self.config.fallback_models) or "aucun")
+            if len(args) == 1:
+                role, engine = "brain_model", args[0]
+            else:
+                role, engine = resolve_role(args[0]), " ".join(args[1:])
+                if not role:
+                    raise ProviderError(
+                        f"rôle inconnu « {args[0]} » : cerveau, mission, verificateur ou "
+                        "planificateur"
+                    )
+            self.set_engine({"role": role, "engine": engine})
+        except (ProviderError, ValueError) as exc:
+            return f"Impossible : {exc}"
+        value = getattr(self.config, role) or "le cerveau"
+        return f"C'est fait : {ROLES[role].split(' :')[0]} sur {value}."
 
     # ---- voice -----------------------------------------------------------------------------
 

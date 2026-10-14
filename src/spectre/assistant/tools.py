@@ -19,6 +19,7 @@ from spectre.assistant.custom_agents import PREFIX, AgentError, CustomAgents
 from spectre.assistant.db import now_iso
 from spectre.assistant.governance import Gate, Level
 from spectre.assistant.memory import Memory
+from spectre.assistant.providers import ProviderError, Providers
 from spectre.assistant.vision.faces import describe_presence
 
 
@@ -95,7 +96,7 @@ def _create_agent(
     ctx: ActionContext, name: str, engine: str, role: str, instructions: str = ""
 ) -> str:
     try:
-        agent = CustomAgents(ctx.db).create(name, engine, role, instructions)
+        agent = CustomAgents(ctx.db, Providers(ctx.root)).create(name, engine, role, instructions)
     except AgentError as exc:
         raise ActionError(str(exc)) from exc
     return (
@@ -113,6 +114,46 @@ def _list_agents(ctx: ActionContext) -> str:
     created = CustomAgents(ctx.db).list()
     lines = [f"- {a['name']} ({a['engine']}) : {a['role']}" for a in created]
     return f"Agents intégrés : {builtin}\nAgents créés :\n" + ("\n".join(lines) or "(aucun)")
+
+
+def _engine_change(ctx: ActionContext, change: Callable[[Any, Providers], str]) -> str:
+    """Apply a change to the engine settings in `config.json` (the service reloads it)."""
+    from spectre.assistant.config import AssistantConfig
+
+    config = AssistantConfig.load(ctx.root)
+    try:
+        message = change(config, Providers(ctx.root))
+    except (ProviderError, ValueError) as exc:
+        raise ActionError(str(exc)) from exc
+    config.save(ctx.root)
+    return message
+
+
+def _list_models(ctx: ActionContext) -> str:
+    from spectre.assistant import engines
+    from spectre.assistant.config import AssistantConfig
+
+    return engines.summary(AssistantConfig.load(ctx.root), Providers(ctx.root))
+
+
+def _set_model(ctx: ActionContext, role: str, engine: str) -> str:
+    from spectre.assistant import engines
+
+    def change(config: Any, providers: Providers) -> str:
+        setting = engines.assign(config, providers, role, engine)
+        return f"moteur changé : {setting} = {getattr(config, setting) or '(le cerveau)'}"
+
+    return _engine_change(ctx, change)
+
+
+def _set_fallbacks(ctx: ActionContext, engines: str) -> str:
+    from spectre.assistant.engines import set_fallbacks
+
+    def change(config: Any, providers: Providers) -> str:
+        set_fallbacks(config, providers, engines.replace(";", ",").split(","))
+        return "moteurs de secours : " + (", ".join(config.fallback_models) or "(aucun)")
+
+    return _engine_change(ctx, change)
 
 
 def _delete_agent(ctx: ActionContext, name: str) -> str:
@@ -310,7 +351,8 @@ TOOLS: dict[str, Tool] = {
             "que l'UTILISATEUR lui a donné, mot pour mot (ne l'invente jamais : demande-le "
             "d'abord s'il ne l'a pas dit ; unique) ; engine : le modèle qui le fait tourner, "
             "parmi opus, sonnet, haiku, chatgpt, mistral ; role : sa spécialité en une "
-            "phrase ; instructions : ses consignes de travail (facultatif).",
+            "phrase ; instructions : ses consignes de travail (facultatif). Le moteur peut "
+            "aussi être fournisseur:modèle (list_models montre lesquels sont prêts).",
             Level.WRITE,
             "agent",
             _create_agent,
@@ -341,6 +383,32 @@ TOOLS: dict[str, Tool] = {
             "powershell",
             _powershell,
             _powershell_risk,
+        ),
+        Tool(
+            "list_models",
+            "Les moteurs (LLM) : celui de chaque rôle, les moteurs de secours, les fournisseurs "
+            "prêts (LM Studio, Ollama, OpenRouter, Groq, Gemini...) et leurs modèles.",
+            Level.READ,
+            "read",
+            _list_models,
+        ),
+        Tool(
+            "set_model",
+            "Changer le moteur (LLM) d'un rôle, à la demande de l'utilisateur. role : cerveau, "
+            "mission, verificateur ou planificateur ; engine : opus, sonnet, haiku, chatgpt, "
+            "mistral ou fournisseur:modèle (ex. lmstudio:google/gemma-4-e4b). Le changement "
+            "vaut dès le prochain message.",
+            Level.WRITE,
+            "model",
+            _set_model,
+        ),
+        Tool(
+            "set_fallbacks",
+            "Définir les moteurs de secours, essayés dans l'ordre quand un moteur échoue ou "
+            "atteint sa limite (ex. « lmstudio:google/gemma-4-e4b, haiku ») ; vide = aucun.",
+            Level.WRITE,
+            "model",
+            _set_fallbacks,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
         Tool(
