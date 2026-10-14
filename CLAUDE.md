@@ -50,7 +50,9 @@ forge fmt --check ; forge build ; forge test
   moteur de missions (`missions.py`) lance jusqu'à `mission_parallel` missions à la fois.
   Automatisation : `routines.py` (horaires en mots → `cron:`/`every:`/`once:`, exécutées par
   `Proactive.tick`), `webhooks.py` (`/hooks/<nom>`, signature obligatoire, payload = données)
-  et `telegram.py` (long polling, conversations jumelées seulement).
+  et `telegram.py` (long polling, conversations jumelées seulement). Suivi SaaS : `saas.py`
+  (sources en lecture seule, clés dans le `.env` de Spectre via `write_env_value`, métriques
+  historisées, KPI dérivés, alertes, rapport ; collecte depuis `Proactive.tick`).
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.

@@ -162,12 +162,27 @@ class Proactive:
         if self.befriend_due(now):
             self.befriend(now)
         self.routines(now)
+        self.saas(now)
 
     def routines(self, now: datetime, *, background: bool = True) -> list[int]:
         """Run the routines that are due."""
         from spectre.assistant.routines import Routines
 
         return Routines(self.db).tick(now, self.add_initiative, self.ask, background=background)
+
+    def saas(self, now: datetime, *, background: bool = True) -> None:
+        """Collect the SaaS sources that are due (network: off the proactive thread)."""
+        from spectre.assistant.saas import Saas
+
+        monitor = Saas(self.db, getattr(self.cli, "root", None))
+        if not monitor.due(now):
+            return
+        if background:  # pragma: no cover - thread wrapper around tick
+            threading.Thread(
+                target=monitor.tick, args=(now, self.add_initiative), daemon=True
+            ).start()
+        else:
+            monitor.tick(now, self.add_initiative)
 
     def ask(self, prompt: str, system: str) -> Any:
         """The brain's engines (with the fallback chain), with tools: for routines."""

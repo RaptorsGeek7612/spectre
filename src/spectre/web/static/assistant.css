@@ -260,6 +260,26 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .co-task h3 { font-size: 0.95rem; }
 .co-task[data-status="review"] { border-color: var(--l589); }
 .co-task[data-status="blocked"] { border-style: dashed; }
+.sa-status { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.sa-chip { padding: 4px 10px; border: 1px solid var(--hair); font-size: 0.85rem; color: var(--bone); }
+.sa-chip.good { border-color: var(--l546); }
+.sa-chip.bad { border-color: var(--danger); border-style: dashed; }
+.sa-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 10px; margin: 0 0 12px; }
+.sa-tile { display: grid; gap: 2px; align-content: start; padding: 12px 14px; border: 1px solid var(--hair); background: var(--plate); }
+.sa-label { font-size: 0.78rem; color: var(--dim); }
+.sa-value { font-size: 1.6rem; font-weight: 600; color: var(--bone); line-height: 1.15; }
+.sa-delta { font-size: 0.8rem; color: var(--ash); }
+.sa-delta.good { color: var(--l546); }
+.sa-delta.bad { color: var(--danger); }
+.sa-spark { width: 100%; height: 32px; margin-top: 4px; overflow: visible; }
+.sa-line { fill: none; stroke: var(--hair-2); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.sa-dot { fill: var(--l486); stroke: var(--plate); stroke-width: 2; }
+.sa-setup { margin: 0 0 18px; }
+.sa-setup summary { cursor: pointer; color: var(--dim); font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 10px; }
+.sa-setup > * + * { margin-top: 10px; }
+.sa-alerts { display: flex; flex-wrap: wrap; gap: 8px; }
+.sa-rule { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border: 1px solid var(--hair); font-size: 0.85rem; color: var(--ash); }
+.sa-rule.on { border-color: var(--danger); color: var(--bone); }
 .wh-created { border-color: var(--l589); }
 .wh-created code, .tg-code code, #webhooks code { overflow-wrap: anywhere; }
 .tg-card { display: grid; gap: 8px; }

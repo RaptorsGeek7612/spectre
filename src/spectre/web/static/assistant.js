@@ -190,7 +190,96 @@ async function loadCompany() {
       ...tasks.map((t) => taskCard(t, label, data.ready.includes(t.id))));
   });
   $("#company-board").replaceChildren(...columns);
+  loadSaas().catch((err) => toast(err.message, "error"));
 }
+/* ---- SaaS dashboard: stat tiles (value, signed change over 7 days, 12-point trend) ---- */
+const compact = (v) => Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(1).replace(".", ",")} M` : Math.abs(v) >= 1e4 ? `${(v / 1e3).toFixed(1).replace(".", ",")} k` : Number.isInteger(v) ? String(v) : v.toFixed(2).replace(".", ",");
+function sparkline(values, label) {
+  if (values.length < 2) return null;
+  const w = 120, hgt = 32, pad = 4;
+  const lo = Math.min(...values), hi = Math.max(...values), span = hi - lo || 1;
+  const pts = values.map((v, i) => [pad + (i * (w - 2 * pad)) / (values.length - 1), hgt - pad - ((v - lo) * (hgt - 2 * pad)) / span]);
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${hgt}`); svg.setAttribute("preserveAspectRatio", "xMinYMid meet"); svg.setAttribute("class", "sa-spark"); svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `${label} : tendance, de ${compact(values[0])} à ${compact(values[values.length - 1])}`);
+  const line = document.createElementNS(ns, "polyline");
+  line.setAttribute("points", pts.map((p) => p.join(",")).join(" ")); line.setAttribute("class", "sa-line");
+  const dot = document.createElementNS(ns, "circle");
+  const [x, y] = pts[pts.length - 1];
+  dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", "3"); dot.setAttribute("class", "sa-dot");
+  const tip = document.createElementNS(ns, "title");
+  tip.textContent = values.map(compact).join(" → ");
+  svg.append(tip, line, dot);
+  return svg;
+}
+function statTile(t) {
+  let delta = null;
+  if (t.delta !== null && t.delta !== 0) {
+    const better = t.good === null || t.good === undefined ? "flat" : (t.delta > 0) === t.good ? "good" : "bad";
+    delta = h("span", { class: `sa-delta ${better}` }, `${t.delta > 0 ? "▲ +" : "▼ −"}${compact(Math.abs(t.delta))} sur 7 j`);
+  } else if (t.delta === 0) delta = h("span", { class: "sa-delta flat" }, "= sur 7 j");
+  return h("article", { class: "sa-tile", title: t.metric },
+    h("span", { class: "sa-label" }, t.label),
+    h("span", { class: "sa-value" }, compact(t.value)),
+    delta, sparkline(t.trend, t.label));
+}
+async function loadSaas() {
+  const data = await api("GET", `company/${companyId}/saas`);
+  const chips = [];
+  if ("up" in data.status) chips.push(h("span", { class: `sa-chip ${data.status.up ? "good" : "bad"}` }, data.status.up ? "✓ Site en ligne" : "✗ Site hors ligne"));
+  if ("ci_ok" in data.status) chips.push(h("span", { class: `sa-chip ${data.status.ci_ok ? "good" : "bad"}` }, data.status.ci_ok ? "✓ CI au vert" : "✗ CI en échec"));
+  const broken = data.sources.filter((s) => s.last_error);
+  if (broken.length) chips.push(h("span", { class: "sa-chip bad" }, `! ${broken.length} source${broken.length > 1 ? "s" : ""} en erreur`));
+  $("#saas-status").replaceChildren(...chips);
+  $("#saas-tiles").replaceChildren(...(data.tiles.length ? data.tiles.map(statTile) : [h("p", { class: "empty-cards" }, data.sources.length ? "Les premiers chiffres arrivent : la collecte est en cours." : "Aucun chiffre encore. Ouvre « Sources, alertes et rapport » pour brancher Stripe, Supabase ou ton site.")]));
+  if (!data.sources.length) $("#saas-setup").open = true;
+  const KIND = { uptime: "site", stripe: "Stripe", supabase: "Supabase", github: "GitHub", http_json: "API JSON", manual: "saisie" };
+  $("#saas-sources").replaceChildren(...data.sources.map((s) => h("article", { class: "card", "data-status": s.last_error ? "failed" : "done" },
+    h("h3", {}, s.name),
+    h("span", { class: "meta" }, `${KIND[s.kind] || s.kind}${s.config.url ? ` · ${s.config.url}` : ""}${s.config.repo ? ` · ${s.config.repo}` : ""}${s.config.table ? ` · table ${s.config.table}` : ""} · ${s.last_check ? `relevé ${date(s.last_check)}` : "pas encore relevé"}${s.has_key ? " · clé enregistrée" : ""}`),
+    s.last_error ? h("p", {}, `Erreur : ${s.last_error}`) : null,
+    h("div", { class: "row" },
+      h("button", { class: "btn", type: "button", onclick: async () => { try { const r = await api("POST", `saas/sources/${s.id}/check`, {}); toast(r.error ? `Erreur : ${r.error}` : `Relevé : ${Object.keys(r.metrics).length} chiffre(s).`, r.error ? "error" : "ok"); } catch (err) { toast(err.message, "error"); } loadSaas(); } }, h("span", {}, "Relever maintenant")),
+      h("button", { class: "btn btn-ghost", type: "button", onclick: async () => { await api("POST", `saas/sources/${s.id}/delete`, {}); loadSaas(); } }, h("span", {}, "Supprimer"))))));
+  $("#saas-alerts").replaceChildren(...data.alerts.map((a) => h("span", { class: `sa-rule${a.active ? " on" : ""}` },
+    `${a.active ? "! " : ""}${a.label || a.metric} : ${a.metric} ${a.op} ${a.threshold}`,
+    h("button", { class: "btn btn-ghost", type: "button", "aria-label": `Supprimer l'alerte ${a.label || a.metric}`, onclick: async () => { await api("POST", `saas/alerts/${a.id}/delete`, {}); loadSaas(); } }, "×"))));
+}
+function saasKindFields() {
+  const kind = $("#saas-kind").value;
+  document.querySelectorAll("#saas-source-form [data-for]").forEach((el) => { el.hidden = !el.dataset.for.split(" ").includes(kind); });
+}
+$("#saas-kind").addEventListener("change", saasKindFields);
+saasKindFields();
+$("#saas-source-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const kind = $("#saas-kind").value;
+  const data = Object.fromEntries([...new FormData(e.target)].filter(([k]) => { const el = e.target.elements[k]; return !el.closest("[data-for]") || !el.closest("[data-for]").hidden; }));
+  data.kind = kind;
+  try { await api("POST", `company/${companyId}/saas/sources`, data); toast("Source ajoutée : premier relevé en cours.", "ok"); e.target.reset(); saasKindFields(); }
+  catch (err) { toast(err.message, "error", 8000); }
+  setTimeout(loadSaas, 2500);
+});
+$("#saas-alert-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try { toast((await api("POST", `company/${companyId}/saas/alerts`, { ...data, threshold: Number(data.threshold) })).result, "ok"); e.target.reset(); }
+  catch (err) { toast(err.message, "error"); }
+  loadSaas();
+});
+$("#saas-metric-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try { toast((await api("POST", `company/${companyId}/saas/metric`, { metric: data.metric, value: Number(data.value) })).result, "ok"); e.target.elements.value.value = ""; }
+  catch (err) { toast(err.message, "error"); }
+  loadSaas();
+});
+$("#saas-report").addEventListener("click", async () => {
+  try { toast((await api("POST", `company/${companyId}/saas/report`, {})).result, "ok", 7000); }
+  catch (err) { toast(err.message, "error", 7000); }
+});
+
 function taskCard(t, label, ready) {
   const act = (status) => async () => {
     try { await api("POST", `tasks/${t.id}`, { status }); } catch (err) { toast(err.message, "error"); }

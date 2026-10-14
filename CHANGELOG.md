@@ -7,6 +7,45 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-14
+
+### Added
+
+- Suivi SaaS par entreprise (`assistant/saas.py`, section « Tableau de bord » de la vue
+  Entreprise). Les sources sont toutes en lecture seule :
+  - disponibilité d'un site : vérifiée toutes les 5 minutes, avec le temps de réponse ;
+  - Stripe : MRR (abonnements actifs ramenés au mois), abonnés, nouveaux abonnés, résiliations
+    et churn sur 30 jours, paiements échoués, encaissé net des remboursements. Une clé
+    restreinte en lecture suffit ;
+  - Supabase : comptage exact d'une table, et inscriptions sur 7 jours avec une colonne de date
+    (requête HEAD avec `Prefer: count=exact`) ;
+  - GitHub : dernière CI de la branche par défaut, tickets et PR ouverts ;
+  - n'importe quelle API JSON : des nombres choisis par chemin, par exemple
+    `errors=data.count` ;
+  - chiffres saisis à la main, comme les dépenses marketing pour le CAC.
+- Les clés restent dans `~/.spectre/assistant/.env`. Elles ne sont jamais renvoyées par l'API et
+  sont effacées avec leur source.
+- Indicateurs calculés : ARR, ARPA, LTV (ARPA / churn mensuel), CAC (dépenses marketing /
+  nouveaux abonnés), LTV/CAC et disponibilité sur 7 jours.
+- Tuiles du tableau de bord : valeur, évolution sur 7 jours (avec signe et flèche, verte ou
+  rouge selon que la hausse est bonne ou non) et tendance sur 12 points. Pastilles d'état : site
+  en ligne, CI, sources en erreur.
+- Alertes : seuil, nombre d'échecs d'affilée, délai avant de réalerter, et message quand la
+  situation revient à la normale.
+  - Une source « site » crée l'alerte « site indisponible » (2 échecs d'affilée).
+  - Une source GitHub crée l'alerte « CI en échec ».
+  - Une source Stripe crée l'alerte « paiements échoués ».
+- Rapport : outil `saas_report` (indicateurs et évolution, sources en erreur, alertes de la
+  semaine). Le bouton « Programmer le rapport du lundi 9h » crée une routine qui le commente en
+  chef d'entreprise et propose trois actions.
+- Outils `saas_report`, `set_metric`, `add_monitor`, `add_alert`. Collecte en arrière-plan
+  depuis la boucle proactive. Historique de 120 jours.
+
+### Changed
+
+- `providers.write_env_value` écrit ou retire une valeur du `.env` de Spectre. La passerelle
+  Telegram l'utilise aussi.
+
 ## [0.9.0] - 2026-10-14
 
 ### Added
