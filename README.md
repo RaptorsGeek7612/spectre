@@ -293,6 +293,15 @@ demandant à Spectre :
   parler à Spectre depuis Telegram. Tu y reçois aussi ses notifications et ses demandes de
   validation (`/approve 3`, `/deny 3`). Les autres conversations sont ignorées.
 
+**Département technique.** Dans la vue Entreprise › Développement, indique le dépôt git de ton
+SaaS et sa commande de tests, puis confie-lui un changement.
+
+- L'agent du poste Produit et technique code dans une branche isolée, avec des outils
+  restreints.
+- Il lance les tests, et les corrige une fois s'ils échouent.
+- Il ne pousse rien : tu vois les changements et la sortie des tests, puis tu ouvres la PR d'un
+  clic, avec ton accord.
+
 **Mode réunion.** Dans la vue Réunions, ou en disant « Spectre, lance le mode réunion », Spectre
 écoute avec le micro du PC et transcrit sur place.
 

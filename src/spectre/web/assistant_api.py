@@ -63,6 +63,15 @@ def handle(
             )
         case "GET", ["company", company_id]:
             handler._json(200, service.company(int(company_id)))
+        case "GET", ["company", company_id, "dev"]:
+            handler._json(200, service.dev(int(company_id)))
+        case "POST", ["company", company_id, "dev", "config"]:
+            handler._json(200, service.dev_configure(int(company_id), body()))
+        case "POST", ["company", company_id, "dev"]:
+            dev_args = {"company": str(int(company_id)), "request": str(body().get("request", ""))}
+            handler._json(200, {"result": service.act("dev_task", dev_args)})
+        case "POST", ["dev", job_id, action]:
+            handler._json(200, {"result": service.dev_action(int(job_id), action)})
         case "GET", ["company", company_id, "decisions"]:
             handler._json(200, service.decisions(int(company_id)))
         case "POST", ["company", company_id, "decisions"]:

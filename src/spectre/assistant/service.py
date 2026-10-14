@@ -388,6 +388,51 @@ class AssistantService:
         args = {"goal": goal, "kind": kind} | ({"agent": agent} if agent else {})
         return tools.execute(self.gate, self.ctx, "start_mission", args)
 
+    # ---- technical department ---------------------------------------------------------------
+
+    def dev(self, company_id: int) -> Event:
+        from spectre.assistant.devteam import DevTeam
+
+        company = Companies(self.db).get(company_id)
+        devteam = DevTeam(self.db, self.root)
+        return {"config": devteam.config(company["id"]), "jobs": devteam.jobs(company["id"])}
+
+    def dev_configure(self, company_id: int, data: dict[str, Any]) -> Event:
+        """The user's own form: configure the repository (audited)."""
+        from spectre.assistant import actions
+        from spectre.assistant.devteam import DevTeam
+
+        company = Companies(self.db).get(company_id)
+        repo = actions.resolve_path(self.ctx, str(data.get("path", "")))
+        setup = DevTeam(self.db, self.root).configure(
+            company["id"],
+            str(repo),
+            str(data.get("test_command", "")),
+            str(data.get("base_branch", "")),
+        )
+        self.gate.record("set_dev_repo", setup, Level.CRITICAL, "dev_config", "user", "")
+        return setup
+
+    def dev_action(self, job_id: int, action: str) -> str:
+        """The user's own click: open the PR or discard the work (audited)."""
+        from spectre.assistant.devteam import DevTeam
+
+        devteam = DevTeam(self.db, self.root)
+        if action == "pr":
+            result = devteam.open_pr(job_id)
+            self.gate.record(
+                "open_pr", {"job": job_id}, Level.EXTERNAL, "external_send", "user", result
+            )
+        elif action == "discard":
+            result = devteam.discard(job_id)
+            self.gate.record(
+                "discard_dev_job", {"job": job_id}, Level.DESTRUCTIVE, "delete_file", "user", result
+            )
+        else:
+            raise KeyError(action)
+        self.publish({"type": "company"})
+        return result
+
     # ---- meetings ------------------------------------------------------------------------------
 
     def _meeting_stt(self) -> Any:

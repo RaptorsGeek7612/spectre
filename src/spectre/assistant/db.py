@@ -166,6 +166,16 @@ CREATE TABLE IF NOT EXISTS meetings (
   result TEXT NOT NULL DEFAULT '{}', seconds REAL NOT NULL DEFAULT 0, started_at TEXT NOT NULL,
   ended_at TEXT, mission_id INTEGER
 );
+CREATE TABLE IF NOT EXISTS dev_config (
+  company_id INTEGER PRIMARY KEY, repo_path TEXT NOT NULL, test_command TEXT NOT NULL,
+  base_branch TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS dev_jobs (
+  id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL, request TEXT NOT NULL, status TEXT NOT NULL,
+  branch TEXT NOT NULL DEFAULT '', worktree TEXT NOT NULL DEFAULT '', tests_ok INTEGER NOT NULL DEFAULT 0,
+  test_output TEXT NOT NULL DEFAULT '', diffstat TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '',
+  pr_url TEXT NOT NULL DEFAULT '', mission_id INTEGER, created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS faces (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, feature TEXT NOT NULL, created_at TEXT NOT NULL
 );

@@ -239,6 +239,8 @@ class MissionEngine:
                 self._run_board(row, plan)
             elif isinstance(plan, dict) and plan.get("kind") == "meeting":
                 self._run_meeting(row, plan)
+            elif isinstance(plan, dict) and plan.get("kind") == "code":
+                self._run_code(row, plan)
             else:
                 self._run_mission(row)
         except Exception as exc:  # noqa: BLE001 - a mission must never kill the engine
@@ -315,6 +317,39 @@ class MissionEngine:
             board.failed(decision["id"], str(exc))
             raise
         self._finish(row, report, title, body, ok=True)
+
+    def _run_code(self, row: dict[str, Any], plan: dict[str, Any]) -> None:
+        """The technical department: branch, coding agent, tests, commit (no push)."""
+        from spectre.assistant.devteam import DevTeam
+
+        devteam = DevTeam(self.db, self.cli.root)
+        job = devteam.job(int(plan["job"]))
+        company = Companies(self.db).get(job["company_id"])
+        key = Companies(self.db).posts(company["id"]).get("produit", "")
+        engine, _ = self._seat(company["id"], "produit")
+        engine = engine if engine in ("opus", "sonnet", "haiku", "chatgpt") else "sonnet"
+        start = time.perf_counter()
+        try:
+            with runctx.scope(agent=key or engine, role="développement"):
+                report = devteam.work(job["id"], engine, self.cli.config, company["name"])
+        except Exception as exc:
+            devteam.failed(job["id"], str(exc))
+            raise
+        finally:
+            spend.record(
+                self.db,
+                Reply("", "", False),
+                time.perf_counter() - start,
+                engine=engine,
+                role="développement",
+                agent=key or engine,
+            )
+        done = devteam.job(job["id"])
+        Trust(self.db).record(
+            key or engine, "step_ok" if done["tests_ok"] else "step_fail", row["id"]
+        )
+        title = "Code prêt" if done["status"] == "ready" else "Code à revoir"
+        self._finish(row, report, title, done["request"][:200], ok=done["status"] == "ready")
 
     def _run_meeting(self, row: dict[str, Any], plan: dict[str, Any]) -> None:
         """A meeting's report: summary, then its tasks and decisions filed."""

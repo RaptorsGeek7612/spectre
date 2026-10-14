@@ -246,6 +246,8 @@ async function loadCompany() {
   $("#company-board").replaceChildren(...columns);
   loadSaas().catch((err) => toast(err.message, "error"));
   loadDecisions().catch((err) => toast(err.message, "error"));
+  delete $("#dev-config").dataset.filled;
+  loadDev().catch((err) => toast(err.message, "error"));
   api("GET", `costs?company=${companyId}`).then((c) => {
     const parts = c.calls ? [`Coût de l'IA sur 30 jours : ${c.cost_usd.toFixed(2).replace(".", ",")} $ (équivalent API), ${c.calls} appels`] : [];
     if (c.calls && c.mrr) parts.push(`soit ${String(c.cost_per_mrr).replace(".", ",")} % du MRR`);
@@ -371,6 +373,46 @@ $("#experiment-form").addEventListener("submit", async (e) => {
   try { toast((await api("POST", `company/${companyId}/experiments`, { ...data, min_change: Number(data.min_change), days: Number(data.days) })).result, "ok", 8000); e.target.elements.hypothesis.value = ""; }
   catch (err) { toast(err.message, "error", 8000); }
   loadDecisions();
+});
+
+/* ---- technical department: isolated branch, tests, PR you open ---- */
+const DEVSTATUS = { queued: "en file", working: "en cours", ready: "prêt (tests au vert)", tests_failed: "tests en échec", no_change: "aucun changement", pr: "PR ouverte", discarded: "abandonné", failed: "échec" };
+async function loadDev() {
+  const data = await api("GET", `company/${companyId}/dev`);
+  const form = $("#dev-config");
+  if (data.config && !form.dataset.filled) {
+    form.elements.path.value = data.config.repo_path; form.elements.test_command.value = data.config.test_command; form.elements.base_branch.value = data.config.base_branch;
+    form.dataset.filled = "1";
+  }
+  $("#dev-config-state").textContent = data.config ? `Dépôt : ${data.config.repo_path} · base ${data.config.base_branch} · tests : ${data.config.test_command}` : "Aucun dépôt configuré pour cette entreprise.";
+  $("#dev-form").hidden = !data.config;
+  const act = (j, action, question) => async () => {
+    if (question && !confirm(question)) return;
+    try { toast((await api("POST", `dev/${j.id}/${action}`, {})).result, "ok", 9000); } catch (err) { toast(err.message, "error", 9000); }
+    loadDev();
+  };
+  $("#dev-jobs").replaceChildren(...data.jobs.map((j) => h("article", { class: "card", "data-status": j.status === "ready" || j.status === "pr" ? "done" : ["tests_failed", "failed"].includes(j.status) ? "failed" : "running" },
+    h("h3", {}, j.request),
+    h("span", { class: "meta" }, `#${j.id} · ${DEVSTATUS[j.status] || j.status}${j.branch ? ` · ${j.branch}` : ""}`),
+    j.diffstat ? h("pre", {}, j.diffstat) : null,
+    j.pr_url ? h("p", {}, h("a", { href: j.pr_url, target: "_blank", rel: "noopener" }, j.pr_url)) : null,
+    j.notes ? h("details", {}, h("summary", {}, "Compte rendu de l'agent"), h("pre", {}, j.notes)) : null,
+    j.test_output ? h("details", {}, h("summary", {}, "Sortie des tests"), h("pre", {}, j.test_output)) : null,
+    ["ready", "tests_failed"].includes(j.status) ? h("div", { class: "row" },
+      h("button", { class: "btn btn-primary", type: "button", onclick: act(j, "pr", `Pousser la branche ${j.branch} et ouvrir la PR sur GitHub ?${j.tests_ok ? "" : " Attention : les tests échouent."}`) }, h("span", {}, "Ouvrir la PR")),
+      h("button", { class: "btn btn-ghost", type: "button", onclick: act(j, "discard", "Abandonner ce travail (branche et copie supprimées) ?") }, h("span", {}, "Abandonner"))) : null)));
+}
+$("#dev-config").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { await api("POST", `company/${companyId}/dev/config`, Object.fromEntries(new FormData(e.target))); toast("Dépôt enregistré.", "ok"); }
+  catch (err) { toast(err.message, "error", 8000); }
+  loadDev();
+});
+$("#dev-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { toast((await api("POST", `company/${companyId}/dev`, { request: e.target.elements.request.value })).result, "ok", 8000); e.target.reset(); }
+  catch (err) { toast(err.message, "error", 8000); }
+  loadDev();
 });
 
 function taskCard(t, label, ready) {

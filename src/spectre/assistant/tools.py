@@ -669,6 +669,78 @@ def _list_meetings(ctx: ActionContext) -> str:
     )
 
 
+def _dev_call(action: Callable[[Any], str]) -> str:
+    from spectre.assistant.devteam import DevError
+
+    try:
+        return action(None)
+    except (DevError, CompanyError) as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _set_dev_repo(
+    ctx: ActionContext, company: str, path: str, test_command: str, base_branch: str = ""
+) -> str:
+    from spectre.assistant.devteam import DevTeam
+
+    def run(_: Any) -> str:
+        found = Companies(ctx.db).get(company)
+        repo = actions.resolve_path(ctx, path)
+        setup = DevTeam(ctx.db, ctx.root).configure(
+            found["id"], str(repo), test_command, base_branch
+        )
+        return (
+            f"dépôt de {found['name']} : {setup['repo_path']} (branche {setup['base_branch']}, "
+            f"tests : {setup['test_command']})"
+        )
+
+    return _dev_call(run)
+
+
+def _dev_task(ctx: ActionContext, company: str, request: str) -> str:
+    from spectre.assistant.devteam import DevTeam
+
+    def run(_: Any) -> str:
+        found = Companies(ctx.db).get(company)
+        job, mid = DevTeam(ctx.db, ctx.root).request(found["id"], request)
+        return (
+            f"travail #{job['id']} confié au département technique (mission #{mid}) : branche "
+            "isolée, tests, puis je te propose la PR"
+        )
+
+    return _dev_call(run)
+
+
+def _list_dev_jobs(ctx: ActionContext, company: str = "") -> str:
+    from spectre.assistant.devteam import DevTeam
+
+    def run(_: Any) -> str:
+        rows = DevTeam(ctx.db, ctx.root).jobs(Companies(ctx.db).get(company)["id"])
+        return (
+            "\n".join(
+                f"#{j['id']} [{j['status']}] {j['request'][:120]}"
+                + (f" — {j['branch']}" if j["branch"] else "")
+                + (f" — {j['pr_url']}" if j["pr_url"] else "")
+                for j in rows
+            )
+            or "aucun travail de développement"
+        )
+
+    return _dev_call(run)
+
+
+def _open_pr(ctx: ActionContext, job_id: int) -> str:
+    from spectre.assistant.devteam import DevTeam
+
+    return _dev_call(lambda _: DevTeam(ctx.db, ctx.root).open_pr(int(job_id)))
+
+
+def _discard_dev_job(ctx: ActionContext, job_id: int) -> str:
+    from spectre.assistant.devteam import DevTeam
+
+    return _dev_call(lambda _: DevTeam(ctx.db, ctx.root).discard(int(job_id)))
+
+
 def _delete_agent(ctx: ActionContext, name: str) -> str:
     try:
         agent = CustomAgents(ctx.db).delete(name)
@@ -896,6 +968,45 @@ TOOLS: dict[str, Tool] = {
             _set_fallbacks,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
+        Tool(
+            "set_dev_repo",
+            "Configurer le dépôt de code d'une entreprise pour le département technique : path "
+            "(un dépôt git sur ce PC), test_command (ce qui lance les tests), base_branch "
+            "(facultatif). Demande la validation de l'utilisateur.",
+            Level.CRITICAL,
+            "dev_config",
+            _set_dev_repo,
+        ),
+        Tool(
+            "dev_task",
+            "Confier un changement de code au département technique d'une entreprise : il "
+            "travaille dans une branche isolée, lance les tests, et la PR n'est ouverte "
+            "qu'avec l'accord de l'utilisateur.",
+            Level.WRITE,
+            "mission",
+            _dev_task,
+        ),
+        Tool(
+            "list_dev_jobs",
+            "Les travaux du département technique d'une entreprise.",
+            Level.READ,
+            "read",
+            _list_dev_jobs,
+        ),
+        Tool(
+            "open_pr",
+            "Pousser la branche d'un travail et ouvrir sa PR sur GitHub (validation requise).",
+            Level.EXTERNAL,
+            "external_send",
+            _open_pr,
+        ),
+        Tool(
+            "discard_dev_job",
+            "Abandonner un travail : supprime sa branche et sa copie isolée.",
+            Level.DESTRUCTIVE,
+            "delete_file",
+            _discard_dev_job,
+        ),
         Tool(
             "meeting",
             "Mode réunion, quand l'utilisateur le demande : action=start (écouter avec le micro "
