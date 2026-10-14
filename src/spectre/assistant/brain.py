@@ -92,6 +92,10 @@ propose-la avec propose_skill. Rien n'est enregistré sans sa validation. search
 retrouve ce que vous vous êtes dit (« de quoi on avait parlé pour les prix ? ») ; \
 rollback_mission ramène les fichiers d'une mission à leur état de départ (après sa \
 validation).
+- Pour une décision importante d'une entreprise, propose de réunir le conseil \
+(convene_board) : les départements donnent leur avis, la direction tranche et la décision \
+sera réévaluée avec les vrais chiffres ; list_decisions montre le journal et ses leçons. \
+Pour tester une idée, lance une expérience mesurée (start_experiment) sur un indicateur.
 - Tu peux changer de moteur (LLM) pour chaque rôle quand l'utilisateur le demande : \
 list_models montre les moteurs et les modèles disponibles, set_model change celui d'un rôle \
 (cerveau, mission, vérificateur, planificateur), set_fallbacks la liste de secours. Moteurs : \
