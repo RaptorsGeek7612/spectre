@@ -293,6 +293,15 @@ demandant à Spectre :
   parler à Spectre depuis Telegram. Tu y reçois aussi ses notifications et ses demandes de
   validation (`/approve 3`, `/deny 3`). Les autres conversations sont ignorées.
 
+**Mode réunion.** Dans la vue Réunions, ou en disant « Spectre, lance le mode réunion », Spectre
+écoute avec le micro du PC et transcrit sur place.
+
+- **Confidentialité :** le son n'est jamais gardé, seul le texte reste, et rien ne quitte le PC.
+- **Compte rendu :** à la fin, Spectre résume la réunion. Avec une entreprise, les tâches
+  vont au tableau et les décisions au journal.
+- **Enregistrements :** tu peux aussi lui donner un fichier WAV.
+- **Prévenir :** pense à dire aux participants que tu enregistres.
+
 **Autonomie méritée et coût de l'IA.** Chaque agent a un dossier : étapes vérifiées ou ratées,
 tâches que tu valides ou renvoies, actions refusées, missions annulées.
 

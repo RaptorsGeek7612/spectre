@@ -160,6 +160,12 @@ CREATE TABLE IF NOT EXISTS usage_ledger (
   failed INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS usage_ts ON usage_ledger(ts);
+CREATE TABLE IF NOT EXISTS meetings (
+  id INTEGER PRIMARY KEY, company_id INTEGER, title TEXT NOT NULL, status TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'micro', transcript TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL DEFAULT '',
+  result TEXT NOT NULL DEFAULT '{}', seconds REAL NOT NULL DEFAULT 0, started_at TEXT NOT NULL,
+  ended_at TEXT, mission_id INTEGER
+);
 CREATE TABLE IF NOT EXISTS faces (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, feature TEXT NOT NULL, created_at TEXT NOT NULL
 );

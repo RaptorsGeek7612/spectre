@@ -438,6 +438,66 @@ $("#company-start").addEventListener("click", async () => {
   loadCompany();
 });
 
+/* ---- meetings: local listening, transcript, report ---- */
+const MTSTATUS = { recording: "écoute en cours", transcribing: "transcription", summarizing: "compte rendu en cours", done: "terminée", failed: "échec" };
+let meetingTimer = null;
+async function loadMeetings() {
+  const [data, companies] = await Promise.all([api("GET", "meetings"), api("GET", "company")]);
+  const select = $("#meeting-company");
+  const chosen = select.value;
+  select.replaceChildren(h("option", { value: "" }, "Sans entreprise"), ...companies.map((c) => h("option", { value: c.id, selected: String(c.id) === chosen }, c.name)));
+  const live = data.meetings.find((m) => m.status === "recording");
+  $("#meeting-toggle").textContent = data.recording ? "Arrêter et faire le compte rendu" : "Démarrer l'écoute";
+  $("#meeting-toggle").classList.toggle("btn-danger", data.recording);
+  $("#count-meetings").textContent = data.recording ? "●" : "";
+  const liveBox = $("#meeting-live");
+  liveBox.hidden = !(data.recording && live);
+  if (data.recording && live) {
+    liveBox.textContent = `● J'écoute « ${live.title} » depuis ${Math.max(1, Math.round((Date.now() - new Date(live.started_at)) / 60000))} min · ${live.chars || 0} caractères transcrits`;
+  }
+  clearTimeout(meetingTimer);
+  if (data.recording) meetingTimer = setTimeout(() => { if (!document.querySelector('.as-view[data-view="meetings"]').hidden) loadMeetings(); }, 5000);
+  $("#meetings").replaceChildren(...(data.meetings.length ? data.meetings.map(meetingCard) : [h("p", { class: "empty-cards" }, "Aucune réunion.")]));
+}
+function meetingCard(m) {
+  const transcript = h("pre", {}, "…");
+  const details = h("details", { ontoggle: async () => { if (details.open && transcript.textContent === "…") transcript.textContent = (await api("GET", `meetings/${m.id}`)).transcript || "(vide)"; } }, h("summary", {}, "Transcription"), transcript);
+  return h("article", { class: "card", "data-status": m.status === "failed" ? "failed" : m.status === "done" ? "done" : "running" },
+    h("h3", {}, m.title),
+    h("span", { class: "meta" }, `#${m.id} · ${MTSTATUS[m.status] || m.status} · ${m.source} · ${Math.round((m.seconds || 0) / 60)} min · ${date(m.started_at)}${m.mission_id ? ` · mission #${m.mission_id}` : ""}`),
+    m.summary ? h("p", {}, m.summary) : null,
+    m.chars ? details : null,
+    m.status !== "recording" ? h("div", { class: "row" }, h("button", { class: "btn btn-ghost", type: "button", onclick: async () => {
+      if (!confirm("Supprimer cette réunion et sa transcription ?")) return;
+      await api("POST", `meetings/${m.id}/delete`, {}); loadMeetings();
+    } }, h("span", {}, "Supprimer"))) : null);
+}
+$("#meeting-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  const recording = $("#meeting-toggle").textContent.startsWith("Arrêter");
+  try {
+    if (recording) { await api("POST", "meetings/stop", {}); toast("Réunion arrêtée : le compte rendu arrive.", "ok"); }
+    else { await api("POST", "meetings/start", data); toast("J'écoute. Pense à prévenir les participants.", "ok", 7000); }
+  } catch (err) { toast(err.message, "error", 8000); }
+  loadMeetings();
+});
+$("#meeting-upload").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = e.target.elements.file.files[0];
+  if (!file) return;
+  const params = new URLSearchParams({ title: $("#meeting-form").elements.title.value || file.name, company: $("#meeting-company").value });
+  toast("Transcription en cours… (environ le dixième de la durée de l'enregistrement)", "ok", 8000);
+  try {
+    const res = await fetch(`/api/assistant/meetings/upload?${params}`, { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "audio/wav" }, body: file });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    toast("Transcrit : le compte rendu arrive.", "ok");
+    e.target.reset();
+  } catch (err) { toast(err.message, "error", 8000); }
+  loadMeetings();
+});
+
 /* ---- automation: routines, webhooks, Telegram ---- */
 const RKIND = { mission: "mission", question: "question", rappel: "rappel" };
 async function loadAutomation() {
@@ -832,7 +892,7 @@ function refreshCompany() {  // the board moves when missions finish: refresh it
   const view = document.querySelector('.as-view[data-view="company"]');
   if (view && !view.hidden) loadCompany().catch(() => {});
 }
-const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, automation: loadAutomation, learning: loadLearning, agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
+const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, meetings: loadMeetings, automation: loadAutomation, learning: loadLearning, agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
 function show(view) {
   $$(".as-nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === view)));
   $$(".as-view").forEach((v) => { v.hidden = v.dataset.view !== view; });
@@ -1033,6 +1093,7 @@ function connect() {
   });
   es.addEventListener("initiative_row", () => { loadInitiatives(); refreshCompany(); });
   es.addEventListener("company", () => refreshCompany());
+  es.addEventListener("meeting", () => { const v = document.querySelector('.as-view[data-view="meetings"]'); if (v && !v.hidden) loadMeetings().catch(() => {}); });
   es.onopen = () => { $("#offline-banner").hidden = true; };
   es.onerror = () => {
     setState("off", "Connexion perdue, reconnexion…");

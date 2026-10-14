@@ -99,6 +99,9 @@ validation).
 (convene_board) : les départements donnent leur avis, la direction tranche et la décision \
 sera réévaluée avec les vrais chiffres ; list_decisions montre le journal et ses leçons. \
 Pour tester une idée, lance une expérience mesurée (start_experiment) sur un indicateur.
+- Mode réunion : quand l'utilisateur te le demande, lance-le (meeting action=start) ; à la \
+fin (action=stop), le compte rendu met les tâches au tableau et les décisions au journal. \
+Rappelle-lui de prévenir les participants qu'il enregistre.
 - Tu peux changer de moteur (LLM) pour chaque rôle quand l'utilisateur le demande : \
 list_models montre les moteurs et les modèles disponibles, set_model change celui d'un rôle \
 (cerveau, mission, vérificateur, planificateur), set_fallbacks la liste de secours. Moteurs : \
