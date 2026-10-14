@@ -256,6 +256,94 @@ $("#company-start").addEventListener("click", async () => {
   loadCompany();
 });
 
+/* ---- automation: routines, webhooks, Telegram ---- */
+const RKIND = { mission: "mission", question: "question", rappel: "rappel" };
+async function loadAutomation() {
+  const [routines, hooks, tg, agents] = await Promise.all([api("GET", "routines"), api("GET", "webhooks"), api("GET", "telegram"), fetchAgents()]);
+  const failing = routines.filter((r) => r.failures > 0).length;
+  $("#count-automation").textContent = failing || "";
+  const agentSel = $("#routine-agent");
+  if (agentSel.options.length < 2) agentSel.append(...[...agents.assistant.filter((a) => a.key !== "opus"), ...agents.created].map((a) => h("option", { value: a.name }, a.name)));
+  $("#routines").replaceChildren(...(routines.length ? routines.map(routineCard) : [h("p", { class: "empty-cards" }, "Aucune routine. Programme-en une ici ou demande-la à Spectre.")]));
+  $("#webhooks").replaceChildren(...(hooks.length ? hooks.map(webhookCard) : [h("p", { class: "empty-cards" }, "Aucun webhook.")]));
+  renderTelegram(tg);
+}
+function routineCard(r) {
+  const call = (path, body, done) => async () => {
+    try { const res = await api("POST", `routines/${r.id}${path}`, body); toast(res.result || done, "ok"); }
+    catch (err) { toast(err.message, "error"); }
+    loadAutomation();
+  };
+  const next = r.enabled && r.next_run ? `prochaine : ${date(r.next_run)}` : "en pause";
+  return h("article", { class: "card", "data-status": r.enabled ? (r.failures ? "failed" : "running") : "done" },
+    h("h3", {}, r.name),
+    h("span", { class: "meta" }, `#${r.id} · ${RKIND[r.kind] || r.kind} · ${r.when} · ${next}${r.agent ? ` · ${r.agent}` : ""}`),
+    h("p", {}, r.prompt),
+    r.last_status ? h("p", { class: "meta" }, `Dernière exécution : ${r.last_status}${r.failures ? ` (${r.failures} échec${r.failures > 1 ? "s" : ""} d'affilée)` : ""}`) : null,
+    h("div", { class: "row" },
+      h("button", { class: "btn", type: "button", onclick: call("/run", {}, "Lancée.") }, h("span", {}, "Lancer maintenant")),
+      h("button", { class: "btn", type: "button", onclick: call("", { enabled: r.enabled ? "non" : "oui" }) }, h("span", {}, r.enabled ? "Mettre en pause" : "Reprendre")),
+      h("button", { class: "btn btn-ghost", type: "button", onclick: call("/delete", {}) }, h("span", {}, "Supprimer"))));
+}
+function webhookCard(w) {
+  const remove = async () => {
+    try { await api("POST", `webhooks/${encodeURIComponent(w.name)}/delete`, {}); toast(`Webhook ${w.name} supprimé.`, "ok"); }
+    catch (err) { toast(err.message, "error"); }
+    loadAutomation();
+  };
+  return h("article", { class: "card" },
+    h("h3", {}, w.name),
+    h("span", { class: "meta" }, `${w.source} · ${w.action === "mission" ? "lance une mission" : "prévient"} · ${w.received} reçu${w.received > 1 ? "s" : ""}${w.last_at ? ` · dernier : ${date(w.last_at)}` : ""}`),
+    h("p", {}, h("code", {}, w.url)),
+    w.events.length ? h("p", { class: "meta" }, `Événements : ${w.events.join(", ")}`) : null,
+    h("div", { class: "row" }, h("button", { class: "btn btn-ghost", type: "button", onclick: remove }, h("span", {}, "Supprimer"))));
+}
+function renderTelegram(tg) {
+  const box = $("#telegram");
+  const rows = [];
+  if (!tg.configured) {
+    rows.push(h("p", {}, "Crée un bot avec @BotFather dans Telegram (commande /newbot), puis colle ici le jeton qu'il te donne. Il reste sur ce PC, dans ~/.spectre/assistant/.env."));
+  } else {
+    rows.push(h("p", {}, tg.running ? `Bot actif${tg.username ? ` : @${tg.username}` : ""}.` : "Bot arrêté.", tg.error ? ` Erreur : ${tg.error}` : ""));
+    rows.push(h("p", { class: "meta" }, tg.chats.length ? `Conversations reconnues : ${tg.chats.map((c) => c.name || c.id).join(", ")}` : "Aucune conversation jumelée."));
+    if (tg.code) rows.push(h("p", { class: "tg-code" }, "Envoie au bot : ", h("code", {}, `/start ${tg.code}`), " (valable 10 minutes)"));
+    rows.push(h("div", { class: "row" },
+      h("button", { class: "btn btn-primary", type: "button", onclick: async () => { try { renderTelegram(await api("POST", "telegram/pair", {})); } catch (err) { toast(err.message, "error"); } } }, h("span", {}, "Jumeler une conversation")),
+      ...tg.chats.map((c) => h("button", { class: "btn btn-ghost", type: "button", onclick: async () => { renderTelegram(await api("POST", "telegram/unlink", { chat_id: c.id })); } }, h("span", {}, `Oublier ${c.name || c.id}`)))));
+  }
+  const form = h("form", { class: "inline-form", autocomplete: "off", onsubmit: async (e) => {
+    e.preventDefault();
+    try { renderTelegram(await api("POST", "telegram/token", { token: e.target.elements.token.value })); toast("Bot Telegram connecté.", "ok"); }
+    catch (err) { toast(err.message, "error", 7000); }
+  } }, h("input", { type: "password", name: "token", placeholder: tg.configured ? "Remplacer le jeton du bot" : "Jeton du bot, ex. 123456789:ABC…", autocomplete: "off", "aria-label": "Jeton du bot Telegram" }),
+    h("button", { class: "btn", type: "submit" }, tg.configured ? "Remplacer" : "Connecter"));
+  box.replaceChildren(...rows, form);
+}
+$("#routine-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try { toast((await api("POST", "routines", data)).result, "ok", 7000); e.target.reset(); }
+  catch (err) { toast(err.message, "error", 9000); }
+  loadAutomation();
+});
+$("#webhook-form").addEventListener("change", (e) => { if (e.target.name === "source") $("#webhook-secret-row").hidden = e.target.value !== "stripe"; });
+$("#webhook-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try {
+    const w = await api("POST", "webhooks", data);
+    const box = $("#webhook-created");
+    box.hidden = false;
+    box.replaceChildren(h("h3", {}, `Webhook ${w.name} créé`),
+      h("p", {}, "Adresse à donner au service : ", h("code", {}, w.url)),
+      w.source === "stripe" ? h("p", {}, "Signature : le secret Stripe que tu as collé.") : h("p", {}, "Secret de signature (affiché une seule fois) : ", h("code", {}, w.secret)),
+      h("p", { class: "meta" }, w.source === "github" ? "Dans GitHub : Settings › Webhooks › Add webhook, Content type application/json, Secret ci-dessus." : w.source === "generic" ? "Le service doit envoyer l'en-tête X-Spectre-Signature: sha256=<HMAC-SHA256 du corps avec ce secret>." : "Dans Stripe : Développeurs › Webhooks, cette adresse comme point de terminaison."));
+    e.target.reset();
+    $("#webhook-secret-row").hidden = true;
+  } catch (err) { toast(err.message, "error", 9000); }
+  loadAutomation();
+});
+
 /* ---- agents ---- */
 let agentsCache = null;
 async function fetchAgents() {
@@ -543,7 +631,7 @@ function refreshCompany() {  // the board moves when missions finish: refresh it
   const view = document.querySelector('.as-view[data-view="company"]');
   if (view && !view.hidden) loadCompany().catch(() => {});
 }
-const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
+const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, automation: loadAutomation, agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
 function show(view) {
   $$(".as-nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === view)));
   $$(".as-view").forEach((v) => { v.hidden = v.dataset.view !== view; });

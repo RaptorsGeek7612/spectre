@@ -7,6 +7,38 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-14
+
+### Added
+
+- Routines (vue « Automatisation », outils `create_routine`, `list_routines`, `update_routine`,
+  `delete_routine`, `run_routine`) : ce que Spectre fait à heure fixe.
+  - L'horaire s'écrit en mots : « tous les jours à 9h », « chaque lundi à 9h », « en semaine à
+    8h30 », « toutes les 2 heures », « dans 30 minutes », « 2026-11-02 à 14h ». Une expression
+    cron est aussi acceptée.
+  - Trois types : `mission` (une mission complète, avec un agent et le brief d'une entreprise
+    si besoin), `question` (le cerveau répond avec ses outils et tu reçois la réponse) et
+    `rappel` (le texte tel quel, sans appel au modèle).
+  - Après une panne, une routine en retard ne tourne qu'une fois.
+  - Les échecs sont comptés, et tu es prévenu après 3 échecs d'affilée.
+  - Pas plus d'une exécution toutes les 5 minutes.
+- Webhooks entrants signés (`/hooks/<nom>`, vue Automatisation, outil `list_webhooks`).
+  - Signatures vérifiées : GitHub (`X-Hub-Signature-256`), Stripe (`Stripe-Signature`, 5
+    minutes de tolérance) ou HMAC générique (`X-Spectre-Signature`). Sans signature valide,
+    l'appel est refusé.
+  - Filtres d'événements et anti-doublon (renvois). Limites : 30 appels par minute et 1 Mo par
+    appel.
+  - Deux actions possibles : « me prévenir », avec un résumé sans appel au modèle, ou « lancer
+    une mission ». Dans ce cas, l'événement est transmis comme des données, jamais comme des
+    instructions.
+- Passerelle Telegram : parler à Spectre depuis Telegram, et recevoir ses notifications et ses
+  demandes de validation (`/approve N`, `/deny N`, `/status`, `/model`).
+  - Le jeton du bot reste dans `~/.spectre/assistant/.env`.
+  - Une conversation doit être jumelée par un code à usage unique, valable 10 minutes. Les
+    autres conversations et les groupes sont ignorés.
+- Messages entre agents (`ask_agent`) : un agent, ou Spectre, pose une question à un autre
+  agent. Celui-ci répond sur son propre moteur, avec son rôle et sans outils.
+
 ## [0.8.0] - 2026-10-14
 
 ### Added
