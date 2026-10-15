@@ -144,8 +144,9 @@
 .cl-node small { color: var(--dim); }
 .cl-board { display: grid; gap: 8px; }
 .cl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 8px; }
-.cl-card { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--hair); border-left: 3px solid var(--st); background: var(--plate); }
+.cl-card { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--hair); background: var(--plate); }
 .cl-card h4 { margin: 0; font-weight: 500; font-size: 0.95rem; overflow-wrap: anywhere; }
+.cl-card h4::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--st); vertical-align: 0.1em; }
 .cl-card .meta { margin: 0; }
 .cl-card[data-status="running"] { --st: var(--l615); }
 .cl-card[data-status="failed"] { --st: var(--danger); }
