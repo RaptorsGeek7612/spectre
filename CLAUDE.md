@@ -4,88 +4,68 @@ Spectre est un orchestrateur multi-agents **100 % Claude** en Python : Scout (`c
 → Scribe (`claude-sonnet-5-5`) → Warden (`claude-opus-5-5`), orchestré par LangGraph via
 `langchain-anthropic`. Package dans `src/spectre/`, CLI `spectre`.
 
-Le dépôt est **hybride** : il conserve la partie **Foundry** du template d'origine — contrat
-`src/Voting.sol`, `test/Voting.t.sol`, `script/Voting.s.sol`, submodules `lib/`, `foundry.toml`,
-`foundry.lock`, `remappings.txt`, `.gitmodules` — en **Solidity 0.8.35**. **Ne jamais supprimer
-ces fichiers.** La CI les vérifie (job `test`) ; forge n'est pas forcément installé localement.
+Dépôt **hybride** : il conserve la partie **Foundry** du template (`src/Voting.sol`,
+`test/Voting.t.sol`, `script/Voting.s.sol`, `lib/`, `foundry.toml`, `foundry.lock`,
+`remappings.txt`, `.gitmodules`, Solidity 0.8.35). **Ne jamais supprimer ces fichiers** ; la CI
+les vérifie (job `test`).
 
 ## À lire avant de travailler
-- `docs/cahier-des-charges.md` — exigences et critères d'acceptation.
-- `docs/PDR-architecture.md` — arborescence, signatures, état, erreurs, tests, CI (à respecter).
-- `docs/PDR-produit.md` — périmètre par version (boucle de révision Warden → Scribe depuis la v0.4).
-- Skills : `.claude/skills/spectre-conventions` (socle commun, à charger en premier), puis
-  selon le rôle `spectre-builder`, `spectre-tester`, `spectre-devops`, `spectre-reviewer`.
-- Skill (assistant) : `spectre-crypto` — minage, blockchains, NFT, services crypto et trading ;
-  sujet prioritaire, données de marché vérifiées en direct, jamais de phrase de récupération ni
-  de clé, aucune transaction sans un oui, pas de promesse de gain.
+- `docs/cahier-des-charges.md`, `docs/PDR-architecture.md` (arborescence, signatures, tests, CI),
+  `docs/PDR-produit.md` (périmètre par version), `CHANGELOG.md` (historique détaillé).
+- Skills du **pipeline de dev** : charger `spectre-conventions` en premier, puis `spectre-builder`,
+  `spectre-tester`, `spectre-devops`, `spectre-reviewer` selon le rôle.
+
+## Skills du cerveau de Spectre (`.claude/skills/*`)
+`assistant/competences.py` les liste dans le prompt système (hors skills de dev) ; l'outil
+`competence(name)` en lit une. Les principaux : `spectre-memoire` (relation, couche persona, pose
+des questions avec tact), `spectre-personnalite` (style JARVIS : **propose et attend un oui**
+avant toute initiative), `spectre-amitie`, `spectre-developpement-humain` (sans diagnostic),
+`spectre-savoirs` (sciences, rigueur ; l'astrologie n'est pas une science), `spectre-creation`
+(romans/films/clips/manga, sans plagiat), `spectre-culture`, `spectre-astrologie` (fait culturel),
+`spectre-crypto` (**sujet prioritaire** : jamais de clé/phrase, aucune transaction sans un oui, pas
+de promesse de gain), `spectre-langage` / `spectre-langage-anglais` (comprendre tout, employer peu),
+`spectre-entrepreneur` (parler en chef d'entreprise), `spectre-animaux` (vers vétérinaire pour la
+santé), `spectre-jeux-argent` (risques, jeu responsable, crypto). Skills **labo** (Docker à
+`C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
+charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
 
 ## Commandes (Windows : `uv run`, pas d'activation de venv)
 ```shell
-uv sync
 uv run ruff format --check . ; uv run ruff check .
 uv run mypy src                  # si Windows bloque mypy : uv run python -m mypy --no-native-parser src
 uv run pytest -m "not live" --cov=spectre --cov-report=term-missing
-uv run python -m spectre.web             # interface web (spectre-web.exe peut être bloqué par Windows)
-uv run spectre batch demandes.txt       # lots (API Message Batches) ; --direct pour un par un
-uv run spectre eval cas.jsonl --demo    # évaluation ; --judge pour les critères
-uv run python -m spectre.assistant --voice   # assistant vocal (uv sync --extra voice)
-
-# Partie Foundry
-forge fmt --check ; forge build ; forge test
+uv run python -m spectre.assistant --voice   # assistant (uv sync --extra voice --extra vision)
+uv run python -m spectre.web ; uv run spectre batch demandes.txt ; uv run spectre eval cas.jsonl --demo
+forge fmt --check ; forge build ; forge test   # partie Foundry
 ```
 
 ## Règles essentielles
 - Le produit s'appelle **Spectre**. IDs de modèles uniquement dans `src/spectre/config.py`.
-- Jamais de `temperature`/`top_p`/`top_k` vers Sonnet 5.5 / Opus 5.5 : régler l'effort.
-  Haiku 4.5 : `temperature` OK, pas d'effort. `max_tokens`, pas de prefill, pas de `budget_tokens`.
-- Assistant : moteurs en références (`assistant/providers.py`) : alias Claude Code (`haiku`,
-  `sonnet`, `opus`, jamais d'ID), `chatgpt`, `mistral` ou `fournisseur:modèle` (tout point
-  d'accès compatible OpenAI, `assistant/llm.py`) ; routage et secours dans
-  `assistant/engines.py`, un moteur par rôle (`config.ROLES`) ; agents
-  d'exécution des missions externes possibles : `chatgpt` (Codex CLI, `assistant/codex.py`) et
-  `mistral` (Vibe CLI, `assistant/mistral.py`), toujours avec les seuls outils MCP de Spectre ;
-  noms des sous-agents dans `assistant/config.py` (`AGENT_NAMES` : Gétro, Kaïto, Kyra, Syfer,
-  Octavya, Clarke, Simon) ; toute
-  action passe par `tools.execute` (portail + audit). Entreprises, organigramme, tableau de
-  tâches et pilotage des missions : `assistant/company.py` (tables dans `db.SCHEMA`) ; le
-  moteur de missions (`missions.py`) lance jusqu'à `mission_parallel` missions à la fois.
-  Automatisation : `routines.py` (horaires en mots → `cron:`/`every:`/`once:`, exécutées par
-  `Proactive.tick`), `webhooks.py` (`/hooks/<nom>`, signature obligatoire, payload = données)
-  et `telegram.py` (long polling, conversations jumelées seulement). Suivi SaaS : `saas.py`
-  (sources en lecture seule, clés dans le `.env` de Spectre via `write_env_value`, métriques
-  historisées, KPI dérivés, alertes, rapport ; collecte depuis `Proactive.tick`).
-  Apprentissage : `learning.py` (compétences proposées puis validées, `skills/<nom>/SKILL.md`,
-  curateur, `search_history` sur l'index FTS5 `events_fts`, points de restauration des
-  missions via le journal d'annulation). Conseil d'administration : `board.py` (missions
-  `board`/`board_review`, avis des postes, arbitrage, réévaluation) et `experiments.py`
-  (verdict avant/après sans modèle, réévaluées depuis `Proactive.tick`). Autonomie méritée :
-  `trust.py` (dossier → apprenti/confirmé/expert, lu par `Gate.decide` et le pilote auto) ;
-  l'agent en cours voyage via `runctx.py` (thread-local → env `SPECTRE_AGENT` du serveur MCP) ;
-  coûts : `spend.py` (registre `usage_ledger`, par rôle/agent/département, face au MRR).
-  Réunions : `meeting.py` (micro → STT local par morceaux de 30 s, son jamais gardé ;
-  mission `meeting` → tâches au tableau, décisions au journal ; outil via kv `meeting_request`).
-  Département technique : `devteam.py` (mission `code` : worktree + branche `spectre/…`, Claude
-  Code aux outils restreints ou Codex workspace-write, tests + 1 réparation, commit sans push ;
-  `open_pr` = action EXTERNAL validée). Notifications : `webpush.py` (RFC 8291 + VAPID avec
-  `cryptography`, clé dans le `.env`) ; briefing par entreprise : `brief.py` ; crypto en lecture
-  seule : sources `btc_wallet`/`eth_wallet`/`crypto_price` de `saas.py` (adresses publiques).
-  Agents sur outil : `cursor` (Octavya), `antigravity` (Clarke, une femme) dans `cli_agents.py` ;
-  Simon (`simon`) travaille sur un modèle hébergé (`AGENT_DEFAULT_ENGINES` de `spectre/config.py`,
-  DeepSeek) ; `agent_engines` déplace un agent sur un autre moteur. Équipe : `team.py`
-  (moteur, modèle, voix, apparence, photo) ; visio : `call.py` (statuts et répliques depuis la
-  table `activity`, sans modèle) et `sessions.py` (sessions Claude Code/Codex/Vibe en lecture
-  seule) ; Laya : `laya.py`, outil `laya_decide` réservé à Spectre (`Tool.lead_only`).
-  Boîte à outils par métier : `toolkit.py` (outils libres CLI via `toolkit`, calculs via
-  `finance`, réservés par `Tool.agents`/`Kit.agents` ; scan local = READ, scan distant = ASK).
-  Studio de Kyra : `media.py` (ComfyUI local, `generate_image`/`generate_video` réservés à
-  Kyra via `Tool.agents`, tâches `media_jobs` relevées par `Proactive.media`).
-  Licence GPL-3.0-or-later.
-  `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
-- **Logique métier** : les agents respectent toujours les règles de logique métier du projet
-  en cours de construction (contraintes du domaine, invariants, validations, enchaînement
-  attendu) ; en cas de doute ils le signalent plutôt que de contourner la règle (prompt WORKER
-  de `missions.py`). Agents conseil (hébergés) : Simon (DeepSeek), Shelby (animalier), Ysyss
-  (sciences et humain), Lexy (jeux, paris, bourse, crypto) — sur Claude Sonnet par défaut,
-  changeables dans la page Équipe ; `AGENT_DEFAULT_ENGINES`, `HOSTED_AGENTS`.
+- Jamais de `temperature`/`top_p`/`top_k` vers Sonnet 5.5 / Opus 5.5 : régler l'effort. Haiku 4.5 :
+  `temperature` OK, pas d'effort. `max_tokens`, pas de prefill, pas de `budget_tokens`.
+- **Portail** : toute action de l'assistant passe par `tools.execute` (gouvernance + audit) ;
+  niveaux READ/UI/WRITE/DESTRUCTIVE/EXTERNAL/CRITICAL. Un outil peut être réservé à des agents
+  (`Tool.agents`) ou à Spectre (`Tool.lead_only`).
+- **Moteurs** (`assistant/providers.py`) : alias Claude Code (`haiku`/`sonnet`/`opus`, jamais d'ID),
+  `chatgpt` (Codex, `codex.py`), `mistral` (Vibe, `mistral.py`), `cursor`/`antigravity` (CLI,
+  `cli_agents.py`), ou `fournisseur:modèle` (OpenAI-compatible, `llm.py`) ; routage + secours dans
+  `engines.py`, un moteur par rôle (`config.ROLES`). Agents dans `config.AGENT_*` : hébergés
+  (`HOSTED_AGENTS`, moteur par défaut dans `AGENT_DEFAULT_ENGINES` de `spectre/config.py`) =
+  Simon (DeepSeek), Shelby, Ysyss, Lexy (Claude Sonnet) ; `agent_engines` déplace un agent. Les
+  CLI externes n'ont que les outils MCP de Spectre.
+- **Carte des modules** (`assistant/`) : missions `missions.py` (prompt WORKER, `SPECIALTIES`,
+  `mission_parallel`) ; entreprises/tâches `company.py` ; automatisation `routines.py` +
+  `webhooks.py` (signature obligatoire) + `telegram.py` ; suivi SaaS `saas.py` (clés via
+  `write_env_value`) ; apprentissage `learning.py` (FTS5 `events_fts`) ; conseil `board.py` +
+  `experiments.py` ; autonomie `trust.py` ; coûts `spend.py` ; agent courant `runctx.py` ; réunions
+  `meeting.py` ; dev `devteam.py` (`open_pr` = EXTERNAL) ; notifications `webpush.py` ; briefing
+  `brief.py` ; équipe `team.py` ; visio `call.py` (+ `activity`) ; sessions `sessions.py` ; Laya
+  `laya.py` ; outils par métier `toolkit.py` (`toolkit`/`finance`/`science`/`paris`, scan local =
+  READ, distant = ASK) ; studio de Kyra `media.py` (ComfyUI, `generate_image`/`generate_video`).
+  `voice/engines.py` et `winapi.py` hors couverture (matériel).
+- **Logique métier** : les agents respectent toujours les règles de logique métier du projet en
+  construction (contraintes, invariants, validations, enchaînement) ; en cas de doute ils le
+  signalent plutôt que de contourner (prompt WORKER de `missions.py`).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.
+- Licence **GPL-3.0-or-later**.
