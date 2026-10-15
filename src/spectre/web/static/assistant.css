@@ -280,6 +280,9 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .sa-alerts { display: flex; flex-wrap: wrap; gap: 8px; }
 .sa-rule { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border: 1px solid var(--hair); font-size: 0.85rem; color: var(--ash); }
 .sa-rule.on { border-color: var(--danger); color: var(--bone); }
+.ex-form input[name="min_change"], .ex-form input[name="days"] { flex: 0 0 6.5em; width: 6.5em; }
+#decisions { margin-bottom: 14px; }
+#board-form, #experiment-form { margin-bottom: 10px; }
 .wh-created { border-color: var(--l589); }
 .wh-created code, .tg-code code, #webhooks code { overflow-wrap: anywhere; }
 .tg-card { display: grid; gap: 8px; }

@@ -503,6 +503,100 @@ def _search_history(ctx: ActionContext, query: str, limit: int = 10) -> str:
     )
 
 
+def _board_call(action: Callable[[], str]) -> str:
+    from spectre.assistant.board import BoardError
+    from spectre.assistant.experiments import ExperimentError
+
+    try:
+        return action()
+    except (BoardError, ExperimentError, CompanyError) as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _convene_board(ctx: ActionContext, company: str, question: str) -> str:
+    from spectre.assistant.board import Board
+
+    def run() -> str:
+        decision, mid = Board(ctx.db, ctx.root).convene(company, question)
+        return (
+            f"conseil réuni (décision #{decision['id']}, mission #{mid}) : les départements "
+            "donnent leur avis, puis la direction tranche ; je te préviens avec la note"
+        )
+
+    return _board_call(run)
+
+
+def _list_decisions(ctx: ActionContext, company: str = "") -> str:
+    from spectre.assistant.board import Board
+
+    def run() -> str:
+        rows = Board(ctx.db, ctx.root).all(Companies(ctx.db).get(company)["id"])
+        if not rows:
+            return "aucune décision"
+        return "\n".join(
+            f"#{d['id']} [{d['status']}{' : ' + d['outcome'] if d['outcome'] else ''}] "
+            f"{d['question']} → {d['decision'][:150] or '(en délibération)'}"
+            + (f" — leçon : {d['lesson']}" if d["lesson"] else "")
+            for d in rows[:20]
+        )
+
+    return _board_call(run)
+
+
+def _review_decision(ctx: ActionContext, decision_id: int) -> str:
+    from spectre.assistant.board import Board
+
+    def run() -> str:
+        mission = Board(ctx.db, ctx.root).queue_review(int(decision_id))
+        return f"réévaluation lancée (mission #{mission})"
+
+    return _board_call(run)
+
+
+def _start_experiment(
+    ctx: ActionContext,
+    company: str,
+    hypothesis: str,
+    metric: str,
+    direction: str = "up",
+    min_change: float = 5.0,
+    days: int = 14,
+) -> str:
+    from spectre.assistant.experiments import Experiments, describe
+
+    def run() -> str:
+        found = Companies(ctx.db).get(company)
+        row = Experiments(ctx.db, ctx.root).start(
+            found["id"], hypothesis, metric, direction, float(min_change), int(days)
+        )
+        return f"expérience #{row['id']} lancée : {describe(row)}"
+
+    return _board_call(run)
+
+
+def _list_experiments(ctx: ActionContext, company: str = "") -> str:
+    from spectre.assistant.experiments import Experiments, describe
+
+    def run() -> str:
+        rows = Experiments(ctx.db, ctx.root).all(Companies(ctx.db).get(company)["id"])
+        return (
+            "\n".join(f"#{r['id']} [{r['status']}] {describe(r)}" for r in rows)
+            or "aucune expérience"
+        )
+
+    return _board_call(run)
+
+
+def _stop_experiment(ctx: ActionContext, experiment_id: int) -> str:
+    from spectre.assistant.experiments import Experiments
+
+    return _board_call(
+        lambda: (
+            f"expérience #{Experiments(ctx.db, ctx.root).stop(int(experiment_id))['id']} arrêtée"
+        )
+    )
+
+
 def _delete_agent(ctx: ActionContext, name: str) -> str:
     try:
         agent = CustomAgents(ctx.db).delete(name)
@@ -730,6 +824,53 @@ TOOLS: dict[str, Tool] = {
             _set_fallbacks,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
+        Tool(
+            "convene_board",
+            "Réunir le conseil d'administration d'une entreprise sur une décision importante "
+            "(prix, lancement, recrutement, pivot...) : les départements concernés donnent leur "
+            "avis, la direction tranche, une note de décision est écrite et la décision sera "
+            "réévaluée avec les vrais chiffres.",
+            Level.WRITE,
+            "company",
+            _convene_board,
+        ),
+        Tool(
+            "list_decisions",
+            "Le journal des décisions d'une entreprise : décidé, résultat, leçon.",
+            Level.READ,
+            "read",
+            _list_decisions,
+        ),
+        Tool(
+            "review_decision",
+            "Réévaluer une décision maintenant, avec les chiffres depuis qu'elle a été prise.",
+            Level.WRITE,
+            "company",
+            _review_decision,
+        ),
+        Tool(
+            "start_experiment",
+            "Lancer une expérience mesurée : hypothesis (ce qu'on change et ce qu'on attend), "
+            "metric (un indicateur suivi, ex. mrr, churn_rate, signups_7d), direction up ou "
+            "down, min_change (variation minimale en %), days (durée). Verdict automatique.",
+            Level.WRITE,
+            "company",
+            _start_experiment,
+        ),
+        Tool(
+            "list_experiments",
+            "Les expériences d'une entreprise et leurs verdicts.",
+            Level.READ,
+            "read",
+            _list_experiments,
+        ),
+        Tool(
+            "stop_experiment",
+            "Arrêter une expérience en cours.",
+            Level.WRITE,
+            "company",
+            _stop_experiment,
+        ),
         Tool(
             "skill",
             "Lire une compétence apprise en entier (son guide), par son nom.",

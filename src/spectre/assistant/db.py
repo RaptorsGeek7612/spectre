@@ -135,6 +135,19 @@ CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5(
 CREATE TRIGGER IF NOT EXISTS events_ai AFTER INSERT ON events BEGIN
   INSERT INTO events_fts(rowid, text) VALUES (new.id, new.text);
 END;
+CREATE TABLE IF NOT EXISTS decisions (
+  id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL, question TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'deliberating', opinions TEXT NOT NULL DEFAULT '[]',
+  verdict TEXT NOT NULL DEFAULT '{}', decision TEXT NOT NULL DEFAULT '', kpis_before TEXT NOT NULL DEFAULT '{}',
+  experiment_id INTEGER, mission_id INTEGER, review_at TEXT, outcome TEXT NOT NULL DEFAULT '',
+  lesson TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, decided_at TEXT, reviewed_at TEXT
+);
+CREATE TABLE IF NOT EXISTS experiments (
+  id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL, hypothesis TEXT NOT NULL, metric TEXT NOT NULL,
+  direction TEXT NOT NULL DEFAULT 'up', min_change REAL NOT NULL DEFAULT 5, baseline REAL NOT NULL,
+  start_at TEXT NOT NULL, end_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'running', result REAL,
+  change REAL, verdict TEXT NOT NULL DEFAULT '', decision_id INTEGER, created_at TEXT NOT NULL, done_at TEXT
+);
 CREATE TABLE IF NOT EXISTS faces (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, feature TEXT NOT NULL, created_at TEXT NOT NULL
 );

@@ -245,6 +245,7 @@ async function loadCompany() {
   });
   $("#company-board").replaceChildren(...columns);
   loadSaas().catch((err) => toast(err.message, "error"));
+  loadDecisions().catch((err) => toast(err.message, "error"));
 }
 /* ---- SaaS dashboard: stat tiles (value, signed change over 7 days, 12-point trend) ---- */
 const compact = (v) => Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(1).replace(".", ",")} M` : Math.abs(v) >= 1e4 ? `${(v / 1e3).toFixed(1).replace(".", ",")} k` : Number.isInteger(v) ? String(v) : v.toFixed(2).replace(".", ",");
@@ -332,6 +333,38 @@ $("#saas-metric-form").addEventListener("submit", async (e) => {
 $("#saas-report").addEventListener("click", async () => {
   try { toast((await api("POST", `company/${companyId}/saas/report`, {})).result, "ok", 7000); }
   catch (err) { toast(err.message, "error", 7000); }
+});
+
+/* ---- board decisions and measured experiments ---- */
+const DSTATUS = { deliberating: "en délibération", decided: "décidée", reviewing: "en réévaluation", reviewed: "réévaluée", failed: "échec" };
+async function loadDecisions() {
+  const data = await api("GET", `company/${companyId}/decisions`);
+  $("#decisions").replaceChildren(...(data.decisions.length ? data.decisions.map((d) => h("article", { class: "card", "data-status": d.outcome === "ratée" ? "failed" : d.status === "reviewed" ? "done" : "running" },
+    h("h3", {}, d.question),
+    h("span", { class: "meta" }, `#${d.id} · ${DSTATUS[d.status] || d.status}${d.outcome ? ` · ${d.outcome}` : ""}${d.review_at && d.status === "decided" ? ` · réévaluation le ${date(d.review_at)}` : ""}`),
+    d.decision ? h("p", {}, d.decision) : null,
+    d.lesson ? h("p", { class: "meta" }, `${d.status === "failed" ? "Erreur" : "Leçon"} : ${d.lesson}`) : null,
+    d.memo ? h("details", {}, h("summary", {}, "Note de décision"), h("pre", {}, d.memo)) : null,
+    d.status === "decided" ? h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: async () => { try { toast((await api("POST", `decisions/${d.id}/review`, {})).result, "ok"); } catch (err) { toast(err.message, "error"); } loadDecisions(); } }, h("span", {}, "Réévaluer maintenant"))) : null)) : [h("p", { class: "empty-cards" }, "Aucune décision au journal.")]));
+  const metric = $("#experiment-metric");
+  metric.replaceChildren(...(data.metrics.length ? data.metrics.map((m) => h("option", { value: m }, m)) : [h("option", { value: "" }, "aucun indicateur : branche une source")]));
+  $("#experiments").replaceChildren(...data.experiments.map((e) => h("article", { class: "card", "data-status": e.verdict === "infirmée" ? "failed" : e.status === "done" ? "done" : "running" },
+    h("span", { class: "meta" }, `Expérience #${e.id} · ${e.status === "running" ? "en cours" : e.status === "cancelled" ? "arrêtée" : e.verdict}`),
+    h("p", {}, e.text),
+    e.status === "running" ? h("div", { class: "row" }, h("button", { class: "btn btn-ghost", type: "button", onclick: async () => { await api("POST", `experiments/${e.id}/stop`, {}); loadDecisions(); } }, h("span", {}, "Arrêter"))) : null)));
+}
+$("#board-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { toast((await api("POST", `company/${companyId}/decisions`, { question: e.target.elements.question.value })).result, "ok", 8000); e.target.reset(); }
+  catch (err) { toast(err.message, "error"); }
+  loadDecisions();
+});
+$("#experiment-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try { toast((await api("POST", `company/${companyId}/experiments`, { ...data, min_change: Number(data.min_change), days: Number(data.days) })).result, "ok", 8000); e.target.elements.hypothesis.value = ""; }
+  catch (err) { toast(err.message, "error", 8000); }
+  loadDecisions();
 });
 
 function taskCard(t, label, ready) {

@@ -466,6 +466,24 @@ class AssistantService:
             return exc.status, exc.reason
         return 200, done
 
+    # ---- board and experiments ----------------------------------------------------------------
+
+    def decisions(self, company_id: int) -> Event:
+        from spectre.assistant.board import Board, memo
+        from spectre.assistant.experiments import Experiments, describe
+
+        company = Companies(self.db).get(company_id)
+        rows = Board(self.db, self.root).all(company["id"])
+        experiments = Experiments(self.db, self.root).all(company["id"])
+        return {
+            "decisions": [
+                d | {"memo": memo(d, company["name"]) if d["status"] != "deliberating" else ""}
+                for d in rows
+            ],
+            "experiments": [e | {"text": describe(e)} for e in experiments],
+            "metrics": sorted(self.saas().kpis(company["id"], datetime.now().astimezone())),
+        }
+
     # ---- SaaS monitoring -------------------------------------------------------------------------
 
     def saas(self) -> Saas:

@@ -55,7 +55,9 @@ forge fmt --check ; forge build ; forge test
   historisées, KPI dérivés, alertes, rapport ; collecte depuis `Proactive.tick`).
   Apprentissage : `learning.py` (compétences proposées puis validées, `skills/<nom>/SKILL.md`,
   curateur, `search_history` sur l'index FTS5 `events_fts`, points de restauration des
-  missions via le journal d'annulation).
+  missions via le journal d'annulation). Conseil d'administration : `board.py` (missions
+  `board`/`board_review`, avis des postes, arbitrage, réévaluation) et `experiments.py`
+  (verdict avant/après sans modèle, réévaluées depuis `Proactive.tick`).
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.
