@@ -500,6 +500,30 @@ def _propose_skill(ctx: ActionContext, name: str, description: str, content: str
     )
 
 
+def _toolkit(ctx: ActionContext, name: str, target: str = "", options: str = "") -> str:
+    from spectre.assistant import toolkit
+
+    try:
+        return toolkit.run(ctx, name, target, options)
+    except ActionError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _toolkit_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
+    from spectre.assistant import toolkit
+
+    kit = toolkit.KITS.get(str(args.get("name", "")))
+    return (kit.level, kit.category) if kit else (Level.READ, "read")
+
+
+def _finance(ctx: ActionContext, operation: str, values: list[float]) -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.finance(operation, list(values))
+
+
 def _studio(ctx: ActionContext) -> Any:
     from spectre.assistant.config import AssistantConfig
     from spectre.assistant.media import Studio
@@ -1181,6 +1205,31 @@ TOOLS: dict[str, Tool] = {
             Level.WRITE,
             "skill",
             _propose_skill,
+        ),
+        Tool(
+            "toolkit",
+            "Outils libres installés sur ce PC, chacun pour son métier. name : gitleaks (fuite "
+            "de secrets), trivy (vulnérabilités), semgrep (analyse de code), nuclei (scan d'une "
+            "adresse — autorisée, demande ta validation), vale et languagetool (style et "
+            "grammaire d'un texte ; options = langue, fr par défaut), pandoc (conversion : "
+            "options = fichier de sortie), ocr (texte d'une image ; options = langue). target : "
+            "le fichier, le dossier ou l'adresse. Chaque agent ne voit que les outils de son "
+            "domaine.",
+            Level.READ,
+            "scan",
+            _toolkit,
+            _toolkit_risk,
+        ),
+        Tool(
+            "finance",
+            "Calcul financier (Clarke, Simon). operation : mensualite (taux, périodes, "
+            "capital), van (taux puis flux), tri (flux, le premier négatif), valeur_future "
+            "(taux, périodes, versement, valeur présente). values : la liste des nombres. Les "
+            "taux sont par période (mensuel ou annuel selon les périodes).",
+            Level.READ,
+            "read",
+            _finance,
+            agents=("antigravity", "simon"),
         ),
         Tool(
             "generate_image",

@@ -309,6 +309,11 @@ demandant à Spectre :
   - l'enregistrement vidéo.
 
   Tes sessions Claude Code, Codex et Mistral Vibe s'y suivent aussi, avec leurs sous-agents.
+- **Des logiciels libres par métier.** Chaque agent reçoit les outils de son domaine, tous
+  open source et installés sur ce PC : Syfer scanne le code et les failles (Gitleaks, Trivy,
+  Semgrep, Nuclei), Octavya et les rédacteurs vérifient le style (Vale, LanguageTool), Clarke
+  et Simon font les calculs financiers, et tous convertissent des documents (Pandoc) ou lisent
+  le texte d'une image (Tesseract).
 - **Le studio de Kyra.** Kyra crée des images et de courtes vidéos sur ton PC avec ComfyUI
   (logiciel libre), et te prévient quand elles sont prêtes dans `workspace\medias`. Sans carte
   graphique dédiée, compte environ 30 min par image.

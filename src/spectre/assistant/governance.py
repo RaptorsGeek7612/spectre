@@ -47,6 +47,10 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "routine": "ALWAYS",  # programmed at the user's request; deleting one still asks
     "model": "ALWAYS",  # switching an engine: reversible, asked for by the user
     "media": "ALWAYS",  # an image or a video made on this PC by ComfyUI, into the workspace
+    "scan": "ALWAYS",  # analysis of local files (secrets, vulnerabilities, code, prose)
+    "prose": "ALWAYS",  # grammar and style of a local document
+    "convert": "ALWAYS",  # document conversion into the workspace
+    "scan_remote": "ASK",  # probing a remote address: only on your go, and authorized
     "delete_file": "ASK",
     "overwrite_file": "ASK",
     "external_send": "ASK",

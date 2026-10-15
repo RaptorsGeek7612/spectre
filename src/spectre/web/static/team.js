@@ -147,6 +147,9 @@ async function details(agent) {
     h("header", { class: "tm-head" }, face.el, h("div", {}, h("h3", { class: "tm-name" }, agent.name), h("p", { class: "tm-dept" }, `${agent.department} · ${agent.moved ? agent.engine : agent.tool}`)),
       h("button", { class: "icon-btn", type: "button", "aria-label": "Fermer", onclick: () => dialog.close() }, "✕")),
     h("h4", {}, "Consignes et spécialité"), h("pre", { class: "tm-prompt" }, data.prompt || agent.role),
+    data.toolkit && data.toolkit.length ? h("h4", {}, "Logiciels de son métier") : null,
+    data.toolkit && data.toolkit.length ? h("div", { class: "ag-tags tm-kit" }, data.toolkit.map((t) =>
+      h("span", { class: t.installed ? "" : "off", title: t.installed ? "installé sur ce PC" : "à installer" }, t.label))) : null,
     h("h4", {}, "Outils utilisés"), h("p", { class: "meta" }, counts),
     h("h4", {}, "Dernières actions"), h("div", { class: "tm-acts" }, recent)));
   dialog.showModal();
