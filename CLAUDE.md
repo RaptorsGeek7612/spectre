@@ -111,5 +111,11 @@ forge fmt --check ; forge build ; forge test
   Kyra via `Tool.agents`, tâches `media_jobs` relevées par `Proactive.media`).
   Licence GPL-3.0-or-later.
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
+- **Logique métier** : les agents respectent toujours les règles de logique métier du projet
+  en cours de construction (contraintes du domaine, invariants, validations, enchaînement
+  attendu) ; en cas de doute ils le signalent plutôt que de contourner la règle (prompt WORKER
+  de `missions.py`). Agents conseil (hébergés) : Simon (DeepSeek), Shelby (animalier), Ysyss
+  (sciences et humain), Lexy (jeux, paris, bourse, crypto) — sur Claude Sonnet par défaut,
+  changeables dans la page Équipe ; `AGENT_DEFAULT_ENGINES`, `HOSTED_AGENTS`.
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.

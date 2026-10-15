@@ -15,6 +15,9 @@ export const LOOKS = {
   cursor: { g: "f", skin: "#8b5838", shade: "#663d24", hair: "#18100c", eyes: "#3a2214", lips: "#7a3b35", outfit: "#1f2b4a", shirt: "#f1ece4", accent: "#7d86ff", style: "bun", beard: "", jewel: true, blazer: true, bg: "#26305a" },
   antigravity: { g: "f", skin: "#f0cdb2", shade: "#c99c7d", hair: "#87552d", eyes: "#4a6f92", lips: "#c0656a", outfit: "#3a3f47", shirt: "#eef1f5", accent: "#ef5f6f", style: "bob", beard: "", blazer: true, jewel: true, bg: "#4a2a33" },
   simon: { g: "m", skin: "#e5bd9d", shade: "#bd8f6f", hair: "#3b2c22", eyes: "#4a3826", lips: "#ad7462", outfit: "#5a4632", shirt: "#e9e4d8", accent: "#ffd23f", style: "receding", beard: "", glasses: "square", age: 1, cardigan: true, bg: "#4a4022" },
+  shelby: { g: "f", skin: "#edc7a6", shade: "#c79a76", hair: "#9a5b2a", eyes: "#3a7d4a", lips: "#c06a5e", outfit: "#2f5b4a", shirt: "#f1ece0", accent: "#8bd450", style: "long", beard: "", jewel: true, bg: "#2a4a3a" },
+  ysyss: { g: "f", skin: "#c89a73", shade: "#9c7250", hair: "#1a1512", eyes: "#4a5a7a", lips: "#a85c52", outfit: "#2b3550", shirt: "#dfe6f0", accent: "#7d86ff", style: "bun", beard: "", glasses: "round", bg: "#233050" },
+  lexy: { g: "f", skin: "#f2d3bc", shade: "#cba588", hair: "#d8b84a", eyes: "#5a7a8a", lips: "#c85a68", outfit: "#39323f", shirt: "#f2e7ea", accent: "#ffd23f", style: "bob", beard: "", jewel: true, bg: "#46323a" },
 };
 const CREATED = [
   { g: "m", skin: "#d8b08f", shade: "#b0835f", hair: "#3a2a1e", eyes: "#3b5a40", lips: "#a96a58", outfit: "#2c3e50", shirt: "#e6e6e6", accent: "#8bd450", style: "side", beard: "", bg: "#2a3d36" },

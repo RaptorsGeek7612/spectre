@@ -168,7 +168,7 @@ def test_agents(service: AssistantService, monkeypatch: pytest.MonkeyPatch) -> N
     service.config.update({"mission_model": "chatgpt", "chatgpt_model": "gpt-5.5"})
     data = service.agents()
     names = [a["name"] for a in data["assistant"]]
-    assert names == ["Spectre", "Gétro", "Kaïto", "Kyra", "Syfer", "Octavya", "Clarke", "Simon"]
+    assert names == ["Spectre", "Gétro", "Kaïto", "Kyra", "Syfer", "Octavya", "Clarke", "Simon", "Shelby", "Ysyss", "Lexy"]
     kyra, syfer = data["assistant"][3], data["assistant"][4]
     assert kyra["engine"] == "Codex (gpt-5.5)" and kyra["default"] is True
     assert syfer["engine"] == "Vibe" and syfer["available"] is False
@@ -188,7 +188,7 @@ def test_agents(service: AssistantService, monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_api_agents_remote_missions(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
-    assert len(api.json("GET", "/api/assistant/agents")[1]["assistant"]) == 8
+    assert len(api.json("GET", "/api/assistant/agents")[1]["assistant"]) == 11
     seen: list[int] = []
 
     class Fake:

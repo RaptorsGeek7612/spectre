@@ -62,6 +62,9 @@ DEFAULT_VOICES = {
     "cursor": ("jessica", "naturel"),
     "antigravity": ("siwis", "pose"),
     "simon": ("gilles", "pose"),
+    "shelby": ("jessica", "naturel"),
+    "ysyss": ("siwis", "pose"),
+    "lexy": ("jessica", "vif"),
 }
 
 

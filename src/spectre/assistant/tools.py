@@ -127,7 +127,8 @@ def _list_agents(ctx: ActionContext) -> str:
     builtin = (
         "Spectre (opus, toi), Gétro (sonnet), Kaïto (haiku, vérificateur), Kyra (chatgpt, "
         "Codex, multimédia), Syfer (mistral, Vibe, cybersécurité), Octavya (cursor, juridique), "
-        "Clarke (antigravity, finances et assurances), Simon (DeepSeek, expert-comptable) ; "
+        "Clarke (antigravity, finances et assurances), Simon (DeepSeek, expert-comptable), "
+        "Shelby (animalier), Ysyss (sciences et humain), Lexy (jeux, paris, bourse, crypto) ; "
         "rédaction : Scout, Scribe, Warden"
     )
     created = CustomAgents(ctx.db).list()

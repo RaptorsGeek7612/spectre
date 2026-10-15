@@ -43,7 +43,12 @@ COMFY_MODELS: Final[dict[str, dict[str, str]]] = {
 }
 
 # Assistant agents that work on a hosted model rather than in their own CLI: agent -> engine
-AGENT_DEFAULT_ENGINES: Final[dict[str, str]] = {"simon": "deepseek:deepseek-v4-pro"}
+AGENT_DEFAULT_ENGINES: Final[dict[str, str]] = {
+    "simon": "deepseek:deepseek-v4-pro",
+    "shelby": "sonnet",  # advisory experts run on the Claude subscription by default
+    "ysyss": "sonnet",
+    "lexy": "sonnet",
+}
 
 ASSISTANT_MODELS: Final[dict[str, str]] = {
     "opus": "claude-opus-5-5",

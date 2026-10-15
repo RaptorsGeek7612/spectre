@@ -37,6 +37,9 @@ GENDERS = {
     "cursor": "f",
     "antigravity": "f",
     "simon": "m",
+    "shelby": "f",
+    "ysyss": "f",
+    "lexy": "f",
 }
 URGENCY = {"needs_you": 0, "stalled": 1, "working": 2, "waiting": 3, "done": 4, "available": 5}
 
