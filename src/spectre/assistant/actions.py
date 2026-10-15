@@ -282,24 +282,44 @@ def undo_last(ctx: ActionContext, count: int = 1) -> str:
     )
     if not rows:
         return "rien à annuler"
+    return "\n".join(undo_row(ctx, row) for row in rows)
+
+
+def undo_row(ctx: ActionContext, row: dict[str, Any]) -> str:
+    """Revert one journaled file action."""
+    data = json.loads(row["data"])
+    done = ""
+    if row["action"] == "move":
+        shutil.move(data["dst"], data["src"])
+        done = f"remis en place : {data['src']}"
+    elif row["action"] == "delete":
+        shutil.move(data["kept"], data["path"])
+        done = f"restauré : {data['path']}"
+    elif row["action"] == "write":
+        if data.get("backup"):
+            shutil.copy2(data["backup"], data["path"])
+            done = f"ancienne version rétablie : {data['path']}"
+        else:
+            Path(data["path"]).unlink(missing_ok=True)
+            done = f"fichier créé supprimé : {data['path']}"
+    ctx.db.execute("UPDATE undo SET undone = 1 WHERE id = ?", (row["id"],))
+    return done
+
+
+def rollback_mission(ctx: ActionContext, mission_id: int) -> str:
+    """Undo every file change journaled while a mission ran (its restore point)."""
+    from spectre.assistant.learning import mission_changes
+
+    rows = mission_changes(ctx.db, int(mission_id))
+    if not rows:
+        return f"aucun changement de fichier à annuler pour la mission #{mission_id}"
     done = []
     for row in rows:
-        data = json.loads(row["data"])
-        if row["action"] == "move":
-            shutil.move(data["dst"], data["src"])
-            done.append(f"remis en place : {data['src']}")
-        elif row["action"] == "delete":
-            shutil.move(data["kept"], data["path"])
-            done.append(f"restauré : {data['path']}")
-        elif row["action"] == "write":
-            if data.get("backup"):
-                shutil.copy2(data["backup"], data["path"])
-                done.append(f"ancienne version rétablie : {data['path']}")
-            else:
-                Path(data["path"]).unlink(missing_ok=True)
-                done.append(f"fichier créé supprimé : {data['path']}")
-        ctx.db.execute("UPDATE undo SET undone = 1 WHERE id = ?", (row["id"],))
-    return "\n".join(done)
+        try:
+            done.append(undo_row(ctx, row))
+        except OSError as exc:
+            done.append(f"impossible : {exc}")
+    return f"mission #{mission_id} ramenée à son point de départ :\n" + "\n".join(done)
 
 
 # ---- reminders ------------------------------------------------------------------------------

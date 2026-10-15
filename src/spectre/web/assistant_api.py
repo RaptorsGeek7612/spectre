@@ -116,6 +116,18 @@ def handle(
         case "POST", ["saas", "alerts", alert_id, "delete"]:
             service.saas().delete_alert(int(alert_id))
             handler._json(200, {"ok": True})
+        case "GET", ["learning"]:
+            handler._json(200, service.learning_state())
+        case "POST", ["learning", "proposals", proposal_id, decision]:
+            if decision not in ("approve", "reject"):
+                raise KeyError(decision)
+            handler._json(200, service.learning_decide(int(proposal_id), decision == "approve"))
+        case "POST", ["learning", "skills", name, action]:
+            handler._json(200, service.learning_skill(unquote(name), action))
+        case "GET", ["search"]:
+            handler._json(200, service.search(query.get("q", [""])[0]))
+        case "POST", ["missions", mission_id, "rollback"]:
+            handler._json(200, {"result": service.rollback_mission(int(mission_id))})
         case "GET", ["routines"]:
             handler._json(200, service.routines())
         case "POST", ["routines"]:

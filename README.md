@@ -293,6 +293,20 @@ demandant à Spectre :
   parler à Spectre depuis Telegram. Tu y reçois aussi ses notifications et ses demandes de
   validation (`/approve 3`, `/deny 3`). Les autres conversations sont ignorées.
 
+**Apprentissage.** Spectre apprend de son travail :
+
+- **Compétences.** Après chaque mission réussie, il relit son rapport et peut te proposer une
+  compétence : une méthode réutilisable, avec ses vérifications et ses pièges. Tu peux aussi
+  lui en apprendre une (« retiens comment on prépare un devis »).
+  - Tu valides ou tu écartes chaque proposition dans la vue Apprentissage.
+  - Les compétences apprises guident ensuite le cerveau et les agents.
+  - Inutilisées depuis 60 jours, elles deviennent obsolètes ; au bout de 120 jours, elles sont
+    archivées, jamais supprimées.
+- **Recherche.** La vue Apprentissage retrouve tes anciennes conversations. Tu peux aussi
+  demander à Spectre « de quoi on avait parlé pour les prix ? ».
+- **Annulation d'une mission.** Le bouton « Annuler ses changements de fichiers », dans la vue
+  Missions, ramène les fichiers d'une mission à leur état de départ.
+
 **Suivi du SaaS : tableau de bord, alertes, rapport.** Dans la vue Entreprise, « Sources,
 alertes et rapport » branche, en lecture seule :
 

@@ -30,6 +30,7 @@ from spectre.assistant.custom_agents import PREFIX, CustomAgents, worker_brief
 from spectre.assistant.db import Database, now_iso
 from spectre.assistant.engines import EXTERNAL as EXTERNAL  # re-exported for tests
 from spectre.assistant.engines import Engines
+from spectre.assistant.learning import Learning, mark_mission
 from spectre.assistant.memory import Memory
 from spectre.assistant.providers import split_ref
 
@@ -132,6 +133,8 @@ class MissionEngine:
         self.fallbacks = list(fallbacks or [])
         self.engines = Engines(cli, agents=agents)  # other agents, created on first use
         self.parallel = parallel  # missions that may run at the same time
+        self.learn = False  # review successful missions for skills (the service turns it on)
+        self.learning_model = ""  # empty = the verifier
         self._active: set[int] = set()
         self._claim = threading.Lock()
         self._stop = threading.Event()
@@ -273,6 +276,7 @@ class MissionEngine:
         )
 
     def _run_mission(self, row: dict[str, Any]) -> None:
+        mark_mission(self.db, row["id"], "from")  # restore point: file changes start here
         plan = json.loads(row["plan"] or "{}")
         steps_plan: list[str] = (plan.get("steps") if isinstance(plan, dict) else None) or []
         if not steps_plan:
@@ -313,7 +317,26 @@ class MissionEngine:
         body = "Toutes les étapes sont vérifiées." if not missed else f"{missed} étape(s) à revoir."
         if self._cancelled(row["id"]):
             return
+        mark_mission(self.db, row["id"], "to")
         self._finish(row, report, "Mission terminée", body, ok=not missed)
+        if not missed and self.learn:
+            self._learn(row, report)
+
+    def _learn(self, row: dict[str, Any], report: str) -> None:
+        """Ask the review engine whether this mission taught a reusable method."""
+        learning = Learning(self.db, self.cli.root)
+        ref = self.learning_model or self.verifier_model
+        try:
+            proposal = learning.review(row, report, lambda p, s: self._call(ref, p, s))
+        except Exception:  # noqa: BLE001 - learning must never break a finished mission
+            return
+        if proposal:
+            self.notify(
+                "apprentissage",
+                f"Compétence proposée : {proposal['name']}",
+                f"{proposal['description']} (tirée de la mission #{row['id']} ; à valider "
+                "dans la vue Apprentissage)",
+            )
 
     def _worker(self, agent: str) -> tuple[Any, str]:
         """Who executes a step: the mission's own choice, else the `mission_model` setting."""
@@ -342,6 +365,12 @@ class MissionEngine:
         worker, model = self._worker(created["engine"] if created else agent)
         name = created["name"] if created else agent_name(model)
         system = WORKER.format(name=name, workspace=self.cli.workspace)
+        learned = Learning(self.db, self.cli.root).catalogue() if hasattr(self.cli, "root") else ""
+        if learned:
+            system += (
+                "\n\nCompétences apprises (lis celle qui s'applique avec l'outil skill(name) "
+                f"avant d'agir) :\n{learned}"
+            )
         if created:
             system += f"\n\n{worker_brief(created)}"
         elif model in SPECIALTIES:
