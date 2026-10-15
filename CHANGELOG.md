@@ -7,6 +7,42 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-14
+
+### Added
+
+- Autonomie méritée (`assistant/trust.py`, outil `agent_record`, vue Agents › Dossiers et
+  coûts).
+  - Chaque agent a un dossier : étapes vérifiées ou ratées, tâches validées ou renvoyées par
+    l'utilisateur, actions accordées ou refusées, missions annulées (pondérées).
+  - Ce dossier donne un niveau, recalculé à chaque fois, avec une annonce à chaque promotion ou
+    rétrogradation :
+    - apprenti par défaut ;
+    - confirmé : sous pilote automatique, ses tâches partent seules ;
+    - expert : remplacer ou supprimer un fichier dans les dossiers autorisés ne demande plus de
+      validation (toujours journalisé et annulable).
+  - Envoyer, payer, installer ou toute action critique demande toujours une validation.
+  - Une annulation récente retire le niveau expert.
+- Coût de l'IA face au revenu (`assistant/spend.py`, outil `cost_report`, vue Agents et tableau
+  de bord de l'entreprise).
+  - Chaque appel au modèle est inscrit dans un registre : plan, exécution, vérification,
+    rapport, conseil, apprentissage et conversation, avec moteur, agent, mission, entreprise,
+    durée, jetons et coût équivalent API.
+  - Totaux sur 30 jours par rôle, agent, moteur et département, missions les plus coûteuses, et
+    part du MRR.
+- Réglage `earned_autonomy` (activé par défaut).
+
+### Changed
+
+- Contexte d'exécution par fil (`assistant/runctx.py`) : l'agent et la mission en cours
+  arrivent jusqu'au portail.
+  - Les agents CLI reçoivent `SPECTRE_AGENT` et `SPECTRE_MISSION` dans leur serveur d'outils,
+    avec un fichier de configuration MCP par fil.
+  - L'agent HTTP les reçoit dans le même processus.
+- `Reply.tokens` : la CLI Claude et les moteurs HTTP remontent leurs jetons.
+- `Gate.decide` prend en compte le niveau de confiance de l'agent.
+- Une mission de tâche porte la clé de son entreprise.
+
 ## [0.12.0] - 2026-10-14
 
 ### Added

@@ -153,6 +153,17 @@ def handle(
             handler._json(200, service.search(query.get("q", [""])[0]))
         case "POST", ["missions", mission_id, "rollback"]:
             handler._json(200, {"result": service.rollback_mission(int(mission_id))})
+        case "GET", ["trust"]:
+            handler._json(200, service.trust_board())
+        case "GET", ["costs"]:
+            company = query.get("company", [""])[0]
+            days = query.get("days", ["30"])[0]
+            handler._json(
+                200,
+                service.costs(
+                    int(company) if company.isdigit() else None, int(days) if days.isdigit() else 30
+                ),
+            )
         case "GET", ["routines"]:
             handler._json(200, service.routines())
         case "POST", ["routines"]:

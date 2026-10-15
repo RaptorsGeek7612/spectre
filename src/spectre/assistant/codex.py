@@ -34,6 +34,14 @@ def find_codex(name: str) -> str:
     return found
 
 
+def mcp_env(root: Path) -> str:
+    """The tool server's environment as an inline TOML table body (with the agent at work)."""
+    from spectre.assistant import runctx
+
+    values = {"SPECTRE_ASSISTANT_DIR": str(root), **runctx.env()}
+    return ", ".join(f"{key} = {toml(value)}" for key, value in values.items())
+
+
 def toml(value: str) -> str:
     """A TOML basic string (JSON string escapes are valid TOML)."""
     return json.dumps(value, ensure_ascii=False)
@@ -86,7 +94,7 @@ class CodexCLI:
                 "-c",
                 f'{server}.args=["-m", "spectre.assistant.mcp_server"]',
                 "-c",
-                f"{server}.env={{SPECTRE_ASSISTANT_DIR = {toml(str(self.root))}}}",
+                f"{server}.env={{{mcp_env(self.root)}}}",
                 "-c",
                 f'{server}.default_tools_approval_mode="approve"',
             ]

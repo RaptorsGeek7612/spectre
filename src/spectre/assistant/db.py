@@ -148,6 +148,18 @@ CREATE TABLE IF NOT EXISTS experiments (
   start_at TEXT NOT NULL, end_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'running', result REAL,
   change REAL, verdict TEXT NOT NULL DEFAULT '', decision_id INTEGER, created_at TEXT NOT NULL, done_at TEXT
 );
+CREATE TABLE IF NOT EXISTS trust_events (
+  id INTEGER PRIMARY KEY, agent TEXT NOT NULL, kind TEXT NOT NULL, mission_id INTEGER, ts TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS trust_agent ON trust_events(agent);
+CREATE TABLE IF NOT EXISTS approval_agents (approval_id INTEGER PRIMARY KEY, agent TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS usage_ledger (
+  id INTEGER PRIMARY KEY, ts TEXT NOT NULL, mission_id INTEGER, company_id INTEGER,
+  agent TEXT NOT NULL DEFAULT '', engine TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT '',
+  seconds REAL NOT NULL DEFAULT 0, cost_usd REAL NOT NULL DEFAULT 0, tokens INTEGER NOT NULL DEFAULT 0,
+  failed INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS usage_ts ON usage_ledger(ts);
 CREATE TABLE IF NOT EXISTS faces (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, feature TEXT NOT NULL, created_at TEXT NOT NULL
 );

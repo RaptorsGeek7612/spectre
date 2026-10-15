@@ -245,6 +245,9 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .ag-tags .off { border-style: dashed; color: var(--danger); }
 .ag-card[data-agent="opus"] { --c: var(--l405); }
 .ag-card[data-agent="provider"] { --c: var(--hair-2); }
+.ag-card[data-level="confirmé"] { --c: var(--l486); }
+.ag-card[data-level="expert"] { --c: var(--l546); }
+.ag-card[data-level="apprenti"] { --c: var(--hair-2); }
 .co-head { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin: 0 0 14px; }
 .co-head label { display: grid; gap: 6px; min-width: min(100%, 280px); }
 .co-head select { min-height: 40px; padding: 0 10px; width: 100%; }

@@ -23,6 +23,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
+from spectre.assistant import runctx, spend
 from spectre.assistant.brain import ClaudeCLI, Reply, extract_json, failed, one_shot
 from spectre.assistant.company import Companies, planner_prompt, take_notes
 from spectre.assistant.config import AGENT_CHOICES, agent_name
@@ -33,6 +34,7 @@ from spectre.assistant.engines import Engines
 from spectre.assistant.learning import Learning, mark_mission
 from spectre.assistant.memory import Memory
 from spectre.assistant.providers import split_ref
+from spectre.assistant.trust import Trust
 
 MAX_STEPS = 6
 AGENTS = AGENT_CHOICES
@@ -134,6 +136,7 @@ class MissionEngine:
         self.engines = Engines(cli, agents=agents)  # other agents, created on first use
         self.parallel = parallel  # missions that may run at the same time
         self.learn = False  # review successful missions for skills (the service turns it on)
+        self.earned_autonomy = False  # autopilot only for trusted agents (the service turns it on)
         self.learning_model = ""  # empty = the verifier
         self._active: set[int] = set()
         self._claim = threading.Lock()
@@ -145,10 +148,15 @@ class MissionEngine:
         return self.engines.agents
 
     def _call(self, ref: str, prompt: str, system: str) -> Reply:
-        """A tool-less call on `ref`, falling back on the chain when it fails."""
+        """A tool-less call on `ref`, falling back on the chain when it fails (in the ledger)."""
+        start = time.perf_counter()
         if not self.fallbacks:
-            return self._one(ref, prompt, system)
-        return self.engines.ask_chain([ref, *self.fallbacks], prompt, system)[0]
+            reply, used = self._one(ref, prompt, system), ref
+        else:
+            reply, used = self.engines.ask_chain([ref, *self.fallbacks], prompt, system)
+        role = {PLANNER: "plan", REPORTER: "rapport", VERIFIER: "vérification"}.get(system, "")
+        spend.record(self.db, reply, time.perf_counter() - start, engine=used or ref, role=role)
+        return reply
 
     def _one(self, ref: str, prompt: str, system: str) -> Reply:
         if ref in ("opus", "sonnet", "haiku"):  # the CLI's one-shot path (kept for its tests)
@@ -176,7 +184,8 @@ class MissionEngine:
         queued = self.db.one("SELECT COUNT(*) AS n FROM missions WHERE status = 'queued'")
         free = self.parallel - len(self._active) - (queued["n"] if queued else 0)
         if free > 0:
-            Companies(self.db).autopilot_tick(free)
+            allowed = self._trusted if self.earned_autonomy else None
+            Companies(self.db).autopilot_tick(free, allowed)
         started = []
         while len(self._active) < self.parallel:
             row = self._claim_next()
@@ -209,7 +218,17 @@ class MissionEngine:
             self._active.add(row["id"])
             return row
 
+    def _trusted(self, agent: str) -> bool:
+        """Has this agent (empty = the mission setting) earned unattended work?"""
+        return Trust(self.db).level(agent or self.model) in ("confirmé", "expert")
+
     def _run(self, row: dict[str, Any]) -> None:
+        plan = json.loads(row["plan"] or "{}")
+        company = spend.mission_company(self.db, plan) if isinstance(plan, dict) else None
+        with runctx.scope(mission=row["id"], company=company):
+            self._run_scoped(row)
+
+    def _run_scoped(self, row: dict[str, Any]) -> None:
         try:
             plan = json.loads(row["plan"] or "{}")
             if isinstance(plan, dict) and plan.get("kind") == "redaction":
@@ -279,15 +298,17 @@ class MissionEngine:
             return self._call(engine, prompt, system + role)
 
         try:
-            if plan["kind"] == "board":
-                report = board.deliberate(decision["id"], seat, lead, now)
-                title, body = "Le conseil a décidé", board.get(decision["id"])["decision"][:300]
-            else:
-                body = board.review(decision["id"], lead, now)
-                report, title = (
-                    f"# Réévaluation de la décision #{decision['id']}\n\n{body}\n",
-                    "Décision réévaluée",
-                )
+            with runctx.scope(role="conseil"):
+                if plan["kind"] == "board":
+                    report = board.deliberate(decision["id"], seat, lead, now)
+                    title = "Le conseil a décidé"
+                    body = board.get(decision["id"])["decision"][:300]
+                else:
+                    body = board.review(decision["id"], lead, now)
+                    report, title = (
+                        f"# Réévaluation de la décision #{decision['id']}\n\n{body}\n",
+                        "Décision réévaluée",
+                    )
         except Exception as exc:
             board.failed(decision["id"], str(exc))
             raise
@@ -373,7 +394,8 @@ class MissionEngine:
         learning = Learning(self.db, self.cli.root)
         ref = self.learning_model or self.verifier_model
         try:
-            proposal = learning.review(row, report, lambda p, s: self._call(ref, p, s))
+            with runctx.scope(role="apprentissage"):
+                proposal = learning.review(row, report, lambda p, s: self._call(ref, p, s))
         except Exception:  # noqa: BLE001 - learning must never break a finished mission
             return
         if proposal:
@@ -424,13 +446,19 @@ class MissionEngine:
         if brief:
             system += f"\n\n{brief}"
         note, ok, result = "", False, ""
+        key = f"{PREFIX}{created['id']}" if created else model  # whose record this step feeds
         for attempt in range(2):
             extra = f"\n\nTentative précédente insuffisante : {note}" if attempt else ""
-            answer = worker.ask(prompt + extra, system=system, model=model, with_tools=True)
-            if failed(answer) and self.fallbacks:
-                answer, model = self.engines.ask_chain(
-                    self.fallbacks, prompt + extra, system, tools=True
-                )
+            start = time.perf_counter()
+            with runctx.scope(agent=key, role="exécution"):
+                answer = worker.ask(prompt + extra, system=system, model=model, with_tools=True)
+                spend.record(self.db, answer, time.perf_counter() - start, engine=model)
+                if failed(answer) and self.fallbacks:
+                    start = time.perf_counter()
+                    answer, model = self.engines.ask_chain(
+                        self.fallbacks, prompt + extra, system, tools=True
+                    )
+                    spend.record(self.db, answer, time.perf_counter() - start, engine=model)
             result = answer.text
             check = self._call(
                 self.verifier_model, f"Étape : {step}\n\nCompte rendu :\n{result}", VERIFIER
@@ -442,6 +470,7 @@ class MissionEngine:
                 ok, note = False, "vérification illisible"
             if ok:
                 break
+        Trust(self.db).record(key, "step_ok" if ok else "step_fail")
         return {
             "step": step,
             "result": result,
@@ -449,6 +478,7 @@ class MissionEngine:
             "note": note,
             "agent": model,
             "name": name,
+            "key": key,
         }
 
     # ---- persistence -----------------------------------------------------------------------
