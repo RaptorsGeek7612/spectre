@@ -18,7 +18,7 @@ AGENT_NAMES = {
     "chatgpt": "Kyra",  # images, video and multimedia
     "mistral": "Syfer",  # cybersecurity and penetration tests
     "cursor": "Octavya",  # legal department
-    "antigravity": "Clarke",  # finance and insurance
+    "antigravity": "Clarke",  # finance and insurance (a woman)
     "kimi": "Simon",  # chartered accountant
     "opus": "Spectre",  # Spectre itself, when it runs the steps too
 }
@@ -169,6 +169,8 @@ class AssistantConfig:
     # (for example {"kimi": "deepseek:deepseek-chat"}: Simon then works on DeepSeek)
     agent_engines: dict[str, str] = field(default_factory=dict)
     agent_voices: dict[str, str] = field(default_factory=dict)  # agent key -> voice id
+    agent_looks: dict[str, dict[str, Any]] = field(default_factory=dict)  # portraits
+    laya_url: str = ""  # a laya-serve address; empty = the local `laya` package
     brain_timeout_s: float = 300.0
     city: str = "Paris"
     briefing_hour: int = 8

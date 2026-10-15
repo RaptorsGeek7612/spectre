@@ -1,6 +1,8 @@
 // Spectre assistant UI. Plain ES module: live events over SSE, everything else over JSON.
 
 import { Orb } from "./orb.js";
+import { closeCall, openCall } from "./call.js";
+import { loadTeam } from "./team.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -716,7 +718,7 @@ async function loadTrust() {
 const TRUST_KIND = { step_ok: "étapes ✓", step_fail: "étapes ✗", task_validated: "tâches validées", task_redo: "à refaire", approval_granted: "accords", approval_denied: "refus", rollback: "annulations" };
 
 /* ---- engines: which LLM serves each role, and the fallback chain ---- */
-const CLI_LABELS = { opus: "Opus 5.5 · Claude", sonnet: "Sonnet 5.5 · Claude", haiku: "Haiku 4.5 · Claude", chatgpt: "ChatGPT · Codex (ton compte)", mistral: "Mistral · Vibe (ton compte Le Chat)" };
+const CLI_LABELS = { opus: "Opus 5.5 · Claude", sonnet: "Sonnet 5.5 · Claude", haiku: "Haiku 4.5 · Claude", chatgpt: "Kyra · Codex (ton compte ChatGPT)", mistral: "Syfer · Vibe (ton compte Le Chat)", cursor: "Octavya · Cursor (ton compte)", antigravity: "Clarke · Antigravity (ton compte Google)", kimi: "Simon · Kimi Code (ton compte)" };
 let engineGroups = [];
 function engineSelect(name, value, { empty = "" } = {}) {
   const known = engineGroups.some((g) => g.items.some((i) => i.value === value));
@@ -738,7 +740,7 @@ async function loadEngines() {
   const chat = (m) => !/embed/i.test(m);  // embedding models cannot chat
   engineGroups = [
     { label: "Claude, sur ton abonnement", items: ["opus", "sonnet", "haiku"].map((v) => ({ value: v, text: CLI_LABELS[v] })) },
-    { label: "Tes autres comptes", items: ["chatgpt", "mistral"].map((v) => ({ value: v, text: CLI_LABELS[v] })) },
+    { label: "Tes autres comptes", items: ["chatgpt", "mistral", "cursor", "antigravity", "kimi"].map((v) => ({ value: v, text: CLI_LABELS[v] })) },
     ...ready.map((p, i) => ({ label: p.label, items: lists[i].models.filter(chat).map((m) => ({ value: `${p.id}:${m}`, text: m })) }))
       .filter((g) => g.items.length),
   ];
@@ -881,12 +883,12 @@ async function loadAudit() {
 }
 
 /* ---- settings ---- */
-const AGENT_NAMES = { sonnet: "Gétro", haiku: "Kaïto", chatgpt: "Kyra", mistral: "Syfer", opus: "Spectre" };
+const AGENT_NAMES = { sonnet: "Gétro", haiku: "Kaïto", chatgpt: "Kyra", mistral: "Syfer", cursor: "Octavya", antigravity: "Clarke", kimi: "Simon", opus: "Spectre" };
 const FIELDS = [
   ["user_name", "Ton prénom", "text", "Spectre l'utilise pour s'adresser à toi."],
   ["city", "Ta ville", "text", "Pour la météo du briefing."],
-  ["chatgpt_model", "Modèle ChatGPT", "text", "Vide = le modèle par défaut de Codex pour ton compte ChatGPT (par exemple gpt-5.5)."],
-  ["mistral_model", "Modèle Mistral", "text", "Vide = le modèle par défaut de Vibe (mistral-medium-3.5). Vibe utilise ton compte Le Chat, ou une clé MISTRAL_API_KEY dans ~/.spectre/assistant/vibe/.env."],
+  ["chatgpt_model", "Modèle de Kyra (Codex)", "text", "Vide = le modèle par défaut de Codex pour ton compte ChatGPT. Se choisit aussi dans la liste de la page Équipe."],
+  ["mistral_model", "Modèle de Syfer (Vibe)", "text", "Vide = le modèle par défaut de Vibe (mistral-medium-3.5). Vibe utilise ton compte Le Chat, ou une clé MISTRAL_API_KEY dans ~/.spectre/assistant/vibe/.env."],
   ["briefing_hour", "Heure du briefing", "number", "Le briefing du matin apparaît à partir de cette heure."],
   ["auto_max_level", "Autonomie (0 à 2)", "number", "Au-dessus de ce niveau de risque, Spectre demande ta validation. Supprimer, envoyer ou toucher au système demande toujours ton accord."],
   ["stt_model", "Compréhension de ta voix", ["small", "medium", "large-v3-turbo"], "small : rapide (environ 2 s par phrase sur ce PC) ; medium et large-v3-turbo : un peu plus précis mais 3 à 4 fois plus lents, et 1,5 Go à télécharger au premier lancement. Au prochain lancement."],
@@ -973,11 +975,12 @@ function refreshCompany() {  // the board moves when missions finish: refresh it
   const view = document.querySelector('.as-view[data-view="company"]');
   if (view && !view.hidden) loadCompany().catch(() => {});
 }
-const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, meetings: loadMeetings, automation: loadAutomation, learning: loadLearning, agents: loadAgents, memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
+const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, meetings: loadMeetings, automation: loadAutomation, learning: loadLearning, agents: loadAgents, team: loadTeam, call: async () => openCall(), memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
 function show(view) {
   $$(".as-nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === view)));
   $$(".as-view").forEach((v) => { v.hidden = v.dataset.view !== view; });
   document.body.dataset.view = view;
+  if (view !== "call") closeCall();
   closeDrawers();
   LOADERS[view]?.().catch((e) => toast(e.message, "error"));
   history.replaceState(null, "", `#${view}`);

@@ -66,6 +66,7 @@ def handle(
         case "POST", ["team", key, "portrait"]:
             handler._json(200, service.team_portrait(unquote(key), handler._raw_body()))
         case "POST", ["team", key, "portrait", "delete"]:
+            body()
             handler._json(200, service.team_portrait(unquote(key), None))
         case "GET", ["team", key, "models"]:
             handler._json(200, service.team_models(unquote(key)))
@@ -77,6 +78,7 @@ def handle(
             since = int(query.get("since", ["0"])[0] or 0)
             handler._json(200, service.call_state(since, int(query.get("ev", ["0"])[0] or 0)))
         case "POST", ["call", "standup"]:
+            body()  # read it: a body left unread would spill into the next request
             handler._json(200, service.call_standup())
         case "GET", ["call", "recap"]:
             mission = query.get("mission", [""])[0]

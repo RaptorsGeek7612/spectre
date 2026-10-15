@@ -57,8 +57,8 @@ SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
     "Content-Security-Policy": (
-        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
-        "script-src 'self'; connect-src 'self'; font-src 'self'; media-src 'self'; "
+        "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; connect-src 'self'; font-src 'self'; media-src 'self' blob:; "
         "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     ),
 }
@@ -131,6 +131,7 @@ class Handler(BaseHTTPRequestHandler):
         if length > MAX_BODY:
             raise BodyTooLarge("requête trop volumineuse (2 Mo maximum)")
         raw = self.rfile.read(length) if length else b"{}"
+        self._read = True
         data = json.loads(raw.decode("utf-8") or "{}")
         if not isinstance(data, dict):
             raise ValueError("le corps de la requête doit être un objet JSON")
@@ -141,6 +142,7 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         if length > limit:
             raise BodyTooLarge(f"requête trop volumineuse ({limit // (1024 * 1024)} Mo maximum)")
+        self._read = True
         return self.rfile.read(length) if length else b""
 
     def _cookie(self) -> str | None:
@@ -181,7 +183,27 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:  # noqa: N802
         self._dispatch("DELETE")
 
+    _read = False  # has the route read the request body?
+
     def _dispatch(self, method: str) -> None:
+        self._read = False
+        try:
+            self._route(method)
+        finally:
+            self._drain()
+
+    def _drain(self) -> None:
+        """Read a request body the route did not need: left in the socket, it would be taken
+        for the start of the next request on this connection (« {}GET »)."""
+        length = int(self.headers.get("Content-Length") or 0)
+        if length and not self._read and not self.close_connection:
+            if length > MAX_BODY:
+                self.close_connection = True
+            else:
+                self.rfile.read(length)
+        self._read = True
+
+    def _route(self, method: str) -> None:
         if not self._host_ok():
             self._error(HTTPStatus.MISDIRECTED_REQUEST, "hôte non autorisé")
             return

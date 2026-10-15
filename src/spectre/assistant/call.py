@@ -35,7 +35,7 @@ GENDERS = {
     "chatgpt": "f",
     "mistral": "m",
     "cursor": "f",
-    "antigravity": "m",
+    "antigravity": "f",
     "kimi": "m",
 }
 URGENCY = {"needs_you": 0, "stalled": 1, "working": 2, "waiting": 3, "done": 4, "available": 5}
@@ -382,15 +382,20 @@ def standup(db: Database, now: datetime | None = None) -> list[dict[str, Any]]:
                     + (f", dont « {_short(ok[-1]['title'], 70)} »" if ok else "")
                     + "."
                 )
-            elif mine:
+            elif any(r["kind"] == "tool" for r in mine):
                 tools = sum(1 for r in mine if r["kind"] == "tool")
                 parts.append(f"Depuis hier, j'ai utilisé {tools} outil{'s' if tools > 1 else ''}.")
             if state.get("status") in ("working", "stalled"):
-                parts.append(f"En ce moment : {state.get('activity')}.")
+                now_doing = str(state.get("activity", "")).removeprefix("étape : ")
+                parts.append(f"En ce moment : {now_doing}.")
             else:
                 parts.append("Rien en cours.")
             parts.append(
-                f"Je bloque : {state.get('activity')}."
+                "Je bloque : "
+                + str(state.get("activity", "")).replace(
+                    "attend ton accord : ", "j'attends ton accord pour "
+                )
+                + "."
                 if state.get("status") == "needs_you"
                 else "Pas de blocage."
             )
@@ -400,7 +405,11 @@ def standup(db: Database, now: datetime | None = None) -> list[dict[str, Any]]:
     active = sum(1 for m in missions if m["status"] in ("running", "queued"))
     waiting = sum(1 for s in states.values() if s["status"] == "needs_you")
     plural = "s" if finished > 1 else ""
-    close = f"Merci à tous. {finished} mission{plural} terminée{plural}"
+    close = (
+        f"Merci à tous. {finished} mission{plural} terminée{plural}"
+        if finished
+        else "Merci à tous. Aucune mission terminée depuis hier"
+    )
     close += f", {active} en cours." if active else "."
     if waiting:
         close += f" {waiting} d'entre nous attend{'ent' if waiting > 1 else ''} ton accord."

@@ -55,10 +55,10 @@ DEFAULT_VOICES = {
     "opus": ("pierre", "naturel"),
     "sonnet": ("tom", "naturel"),
     "haiku": ("gilles", "vif"),
-    "chatgpt": ("siwis", "naturel"),
+    "chatgpt": ("siwis", "vif"),
     "mistral": ("tom", "vif"),
     "cursor": ("jessica", "naturel"),
-    "antigravity": ("pierre", "pose"),
+    "antigravity": ("siwis", "pose"),
     "kimi": ("gilles", "pose"),
 }
 

@@ -1027,6 +1027,8 @@ class AssistantService:
         gender = next((m["gender"] for m in call.members(self.db) if m["key"] == key), "m")
         voice, pace = team.voice_of(self.config, key, gender)
         model, speaker, _label, _gender = team.VOICES[voice]
+        if not (self.root / "models" / "piper" / f"{model}.onnx").is_file():
+            return ""  # never a download during a call: the browser speaks instead
         cache = self.__dict__.setdefault("_call_voices", {})
         try:
             if (voice, pace) not in cache:
