@@ -136,7 +136,7 @@ def test_antigravity_and_kimi_commands(tmp_path: Path) -> None:
     assert (tmp_path / "agents" / "antigravity" / ".agents" / "mcp_config.json").is_file()
     kimi = cli_agents.KimiCLI(config, tmp_path, runner)
     kimi.ask("TVA", system="Tu es Simon.")
-    assert runner.calls[1]["cmd"][1:3] == ["-m", "kimi-code/k3"]
+    assert runner.calls[1]["cmd"][-4:-2] == ["-m", "kimi-code/k3"]
     assert runner.calls[1]["env"]["KIMI_CODE_TRUST_WORKSPACE"] == "1"
     rules = (tmp_path / "agents" / "kimi" / ".kimi-code" / "local.toml").read_text(encoding="utf-8")
     assert 'pattern = "Bash"' in rules and 'decision = "deny"' in rules
@@ -156,6 +156,22 @@ def test_find_cursor_prefers_its_bundled_node(
         str(version / "node.exe"),
         str(version / "index.js"),
     ]
+
+
+def test_find_kimi_runs_its_script_with_node(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    launcher = tmp_path / "kimi.cmd"
+    launcher.write_text("@echo off", encoding="utf-8")
+    script = tmp_path / "node_modules" / "@moonshot-ai" / "kimi-code" / "dist" / "main.mjs"
+    script.parent.mkdir(parents=True)
+    script.write_text("", encoding="utf-8")
+    monkeypatch.setattr(
+        cli_agents.shutil, "which", lambda name: "C:/node.exe" if name == "node" else str(launcher)
+    )
+    assert cli_agents.find_kimi("kimi") == ["C:/node.exe", str(script)]
+    monkeypatch.setattr(cli_agents.shutil, "which", lambda name: None)
+    assert cli_agents.find_kimi("kimi") == ["kimi"]
 
 
 def test_model_lists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

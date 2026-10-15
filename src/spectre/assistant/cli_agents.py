@@ -213,6 +213,19 @@ class AntigravityCLI(_CLIAgent):
 # ---- Kimi Code (Simon) -------------------------------------------------------------------------
 
 
+def find_kimi(name: str) -> list[str]:
+    """How to start Kimi Code. npm's Windows launcher (`kimi.cmd`) goes through cmd.exe, which
+    mangles quotes in the prompt; run its script with Node instead."""
+    found = shutil.which(name) or name
+    script = (
+        Path(found).parent / "node_modules" / "@moonshot-ai" / "kimi-code" / "dist" / "main.mjs"
+    )
+    node = shutil.which("node")
+    if Path(found).suffix.lower() in (".cmd", ".ps1", "") and script.is_file() and node:
+        return [node, str(script)]
+    return [found]
+
+
 class KimiCLI(_CLIAgent):
     """Runs `kimi -p` in its folder: Spectre's tools over MCP, its shell and writes denied."""
 
@@ -233,7 +246,7 @@ class KimiCLI(_CLIAgent):
         (folder / "local.toml").write_text(rules, encoding="utf-8")
 
     def command(self, prompt: str, *, with_tools: bool) -> tuple[list[str], str | None]:
-        cmd = [shutil.which(self.config.kimi_bin) or self.config.kimi_bin]
+        cmd = find_kimi(self.config.kimi_bin)
         if self.config.kimi_model:
             cmd += ["-m", self.config.kimi_model]
         return [*cmd, "-p", prompt[-MAX_ARG:]], None

@@ -85,6 +85,10 @@ def available(config: AssistantConfig, key: str) -> bool:
         from spectre.assistant.cli_agents import find_agy
 
         return shutil.which(find_agy(config.antigravity_bin)) is not None
+    if key == "kimi":
+        from spectre.assistant.cli_agents import find_kimi
+
+        return shutil.which(find_kimi(config.kimi_bin)[0]) is not None
     binary = getattr(config, BINARY[key], "") if key in BINARY else config.claude_bin
     return shutil.which(binary) is not None
 
