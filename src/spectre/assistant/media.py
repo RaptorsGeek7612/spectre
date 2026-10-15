@@ -37,7 +37,9 @@ class MediaError(ValueError):
     """A refused request or ComfyUI unavailable (the message is for Kyra and the user)."""
 
 
-def image_workflow(prompt: str, width: int, height: int, seed: int) -> dict[str, Any]:
+def image_workflow(
+    prompt: str, width: int, height: int, seed: int, negative: str = "blurry ugly bad"
+) -> dict[str, Any]:
     m = COMFY_MODELS["image"]
     return {
         "1": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": m["unet"]}},
@@ -50,7 +52,7 @@ def image_workflow(prompt: str, width: int, height: int, seed: int) -> dict[str,
         "5": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": prompt}},
         "6": {
             "class_type": "CLIPTextEncode",
-            "inputs": {"clip": ["2", 0], "text": "blurry ugly bad"},
+            "inputs": {"clip": ["2", 0], "text": negative},
         },
         "7": {
             "class_type": "EmptySD3LatentImage",
@@ -228,6 +230,10 @@ class Studio:
             width, height = _round(width, 16, 256, MAX_SIDE), _round(height, 16, 256, MAX_SIDE)
             workflow = image_workflow(prompt, width, height, seed)
             minutes = estimate("image", width, height)
+        elif kind.startswith("portrait:"):
+            width, height = PORTRAIT_SIZE
+            workflow = image_workflow(prompt, width, height, seed, PORTRAIT_NEGATIVE)
+            minutes = estimate("image", width, height)
         elif kind == "video":
             width, height = _round(width, 32, 160, 1280), _round(height, 32, 96, 720)
             frames = max(5, min(MAX_SECONDS * FPS, int(seconds * FPS)) // 4 * 4 + 1)
@@ -275,12 +281,17 @@ class Studio:
                 continue
             files = self._collect(job, history.get("outputs") or {})
             self._close(job["id"], "done", files, "")
-            what = "Image prête" if job["kind"] == "image" else "Vidéo prête"
-            notify("media", f"{what} (#{job['id']})", f"Kyra a terminé : {', '.join(files)}")
+            if job["kind"].startswith("portrait:"):
+                who = job["kind"].split(":", 1)[1]
+                notify("media", "Portrait réaliste prêt", f"Nouveau portrait de l'agent {who}.")
+            else:
+                what = "Image prête" if job["kind"] == "image" else "Vidéo prête"
+                notify("media", f"{what} (#{job['id']})", f"Kyra a terminé : {', '.join(files)}")
             finished.append(job["id"])
         return finished
 
     def _collect(self, job: dict[str, Any], outputs: dict[str, Any]) -> list[str]:
+        portrait_for = job["kind"].split(":", 1)[1] if job["kind"].startswith("portrait:") else ""
         target = self.root / "workspace" / "medias"
         target.mkdir(parents=True, exist_ok=True)
         saved = []
@@ -297,6 +308,12 @@ class Studio:
                         }
                     )
                     data = self._call(f"/view?{query}")
+                    if portrait_for:
+                        from spectre.assistant import team
+
+                        team.save_portrait(self.root, portrait_for, data)
+                        saved.append(f"portrait:{portrait_for}")
+                        continue
                     name = f"{job['kind']}-{job['id']:04d}-{Path(item['filename']).name}"
                     (target / name).write_bytes(data)
                     saved.append(str(target / name))
@@ -307,6 +324,38 @@ class Studio:
             "UPDATE media_jobs SET status = ?, files = ?, error = ?, done_at = ? WHERE id = ?",
             (status, json.dumps(files, ensure_ascii=False), error, now_iso(), job_id),
         )
+
+
+PORTRAIT_SIZE = (512, 640)
+PORTRAIT_NEGATIVE = (
+    "cartoon, anime, drawing, illustration, 3d render, painting, deformed, extra fingers, "
+    "blurry, lowres, watermark, text"
+)
+PORTRAIT_BASE = (
+    "professional studio headshot portrait, photorealistic, {who}, soft cinematic lighting, "
+    "shallow depth of field, looking at camera, upper body, plain dark neutral background, "
+    "highly detailed skin, sharp focus, 85mm lens, natural colors"
+)
+# One realistic look per agent, faithful to its drawn avatar (gender, hair, role attire).
+PORTRAIT_WHO = {
+    "opus": "confident man in his 30s, short dark brown hair, calm blue-grey eyes, clean-shaven, sleek dark high-collar modern suit, composed authoritative expression",  # noqa: E501
+    "sonnet": "friendly man in his late 20s, warm medium-brown skin, short black cropped hair, brown eyes, clean-shaven, dark green casual shirt, approachable smile",  # noqa: E501
+    "haiku": "meticulous man in his 50s, fair skin, neat short silver-grey hair, round thin glasses, blue-grey eyes, clean-shaven, grey buttoned shirt",  # noqa: E501
+    "chatgpt": "creative woman in her late 20s, tanned skin, long auburn hair, green eyes, small gold earrings, artistic violet top, bright imaginative look",  # noqa: E501
+    "mistral": "focused man in his early 30s, brown skin, black undercut hair, short dark beard, dark eyes, charcoal hoodie, low-key lighting",  # noqa: E501
+    "cursor": "elegant woman in her 30s, deep brown skin, black hair in a neat bun, dark eyes, small earrings, navy tailored blazer and white blouse",  # noqa: E501
+    "antigravity": "poised woman in her 30s, fair skin, auburn shoulder-length bob, blue-grey eyes, tailored dark blazer, confident executive look",  # noqa: E501
+    "simon": "careful man in his 50s, warm skin, short receding brown hair, square glasses, hazel eyes, clean-shaven, beige cardigan over a shirt",  # noqa: E501
+    "shelby": "warm woman in her late 20s, fair skin, long wavy auburn hair, green eyes, small gold earrings, soft green top, gentle caring expression",  # noqa: E501
+    "ysyss": "intelligent woman in her 30s, light-olive skin, dark hair in a bun, round glasses, blue-grey eyes, dark blue top, thoughtful look",  # noqa: E501
+    "lexy": "sharp woman in her late 20s, fair skin, blonde bob hair, blue-grey eyes, small earrings, dark modern blazer, confident analytical look",  # noqa: E501
+}
+
+
+def portrait_prompt(key: str, look: dict[str, Any] | None = None) -> str:
+    """The realistic-portrait prompt for an agent (default look, or a custom one on request)."""
+    who = PORTRAIT_WHO.get(key, "a person, neutral professional look")
+    return PORTRAIT_BASE.format(who=who)
 
 
 def installed(config: AssistantConfig) -> bool:

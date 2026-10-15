@@ -68,6 +68,9 @@ def handle(
         case "POST", ["team", key, "portrait", "delete"]:
             body()
             handler._json(200, service.team_portrait(unquote(key), None))
+        case "POST", ["team", key, "portrait", "generate"]:
+            body()
+            handler._json(200, service.generate_portrait(unquote(key)))
         case "GET", ["team", key, "models"]:
             handler._json(200, service.team_models(unquote(key)))
         case "GET", ["team", key]:
