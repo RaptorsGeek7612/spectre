@@ -2,7 +2,8 @@
 // changed), its voice on the call, its record, costs and recent work.
 
 import { $, api, clock, h, money, toast, tokens } from "./kit.js";
-import { createAvatar, createPhoto } from "./avatars.js";
+import { artStyle, createAvatar, createPhoto, setArtStyle } from "./avatars.js";
+import { openLookEditor } from "./looks.js";
 import * as voice from "./voice.js";
 
 const LEVEL = { apprenti: "○ apprenti", "confirmé": "◐ confirmé", expert: "● expert" };
@@ -47,7 +48,7 @@ async function change(agent, data, label) {
 function portrait(agent, size = "") {
   const face = agent.portrait
     ? createPhoto(`/api/assistant/team/${encodeURIComponent(agent.key)}/portrait?t=${Date.now()}`, agent.name)
-    : createAvatar(agent.key, agent.gender, { title: agent.name });
+    : createAvatar(agent.key, agent.gender, { title: agent.name, look: agent.look });
   face.el.classList.add("tm-face");
   if (size) face.el.classList.add(size);
   return face;
@@ -104,6 +105,8 @@ function card(agent, engines, voices) {
   } });
   const actions = h("div", { class: "tm-actions" },
     h("button", { class: "btn", type: "button", onclick: () => details(agent) }, h("span", {}, "Détails")),
+    h("button", { class: "btn btn-ghost", type: "button", onclick: () => openLookEditor($("#team-detail"), { key: agent.key, gender: agent.gender, name: agent.name, look: agent.look,
+      onSave: (look) => change(agent, { look }, "apparence enregistrée") }) }, h("span", {}, "Apparence")),
     h("button", { class: "btn btn-ghost", type: "button", onclick: () => upload.click() }, h("span", {}, agent.portrait ? "Changer la photo" : "Mettre une photo")),
     agent.portrait ? h("button", { class: "btn btn-ghost", type: "button", onclick: async () => { await api("POST", `team/${encodeURIComponent(agent.key)}/portrait/delete`, {}); loadTeam(); } }, h("span", {}, "Portrait dessiné")) : null,
     upload);
@@ -157,6 +160,12 @@ export async function loadTeam() {
   box.replaceChildren(...agents.map((a) => card(a, engines, voices)));
   const count = $("#count-team");
   if (count) count.textContent = agents.length;
+  const style = $("#team-art");
+  if (style && !style.dataset.ready) {
+    style.dataset.ready = "1";
+    style.value = artStyle();
+    style.addEventListener("change", () => { setArtStyle(style.value); loadTeam(); });
+  }
   const mode = $("#team-voice-mode");
   if (mode && !mode.dataset.ready) {
     mode.dataset.ready = "1";

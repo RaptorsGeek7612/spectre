@@ -41,6 +41,7 @@ class Tool:
     category: str
     run: Callable[..., str]
     classify: Callable[[ActionContext, dict[str, Any]], tuple[Level, str]] | None = None
+    lead_only: bool = False  # a skill of Spectre alone, not of the agents it leads
 
     def risk(self, ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
         return self.classify(ctx, args) if self.classify else (self.level, self.category)
@@ -491,6 +492,16 @@ def _propose_skill(ctx: ActionContext, name: str, description: str, content: str
         f"compétence « {row['name']} » proposée{update} : elle attend la validation de "
         "l'utilisateur dans la vue Apprentissage"
     )
+
+
+def _laya_decide(ctx: ActionContext, state: str, questions: str) -> str:
+    from spectre.assistant.config import AssistantConfig
+    from spectre.assistant.laya import LayaError, decide, describe
+
+    try:
+        return describe(decide(AssistantConfig.load(ctx.root), state, questions))
+    except LayaError as exc:
+        raise ActionError(str(exc)) from exc
 
 
 def _search_history(ctx: ActionContext, query: str, limit: int = 10) -> str:
@@ -1111,6 +1122,21 @@ TOOLS: dict[str, Tool] = {
             _propose_skill,
         ),
         Tool(
+            "laya_decide",
+            "Ton intuition (Laya, modèle de décision local, sans jetons ni texte généré) : juge "
+            "vite un état (message, mission, ticket, JSON) en répondant à des questions typées. "
+            'questions = JSON {"nom": {"type": "choice", "instructions": "...", "criteria": '
+            '{"option": "description", ...}}, "nom2": {"type": "score", "instructions": "...", '
+            '"criteria": ["bas", "moyen", "haut"]}, "nom3": {"type": "noul", "instructions": '
+            '"affirmation à vérifier"}}. '
+            "Pour choisir l'agent d'une mission, trier un message, "
+            "noter une urgence ou repérer un risque avant d'y réfléchir en détail. Réservé à toi.",
+            Level.READ,
+            "read",
+            _laya_decide,
+            lead_only=True,
+        ),
+        Tool(
             "search_history",
             "Chercher dans les conversations passées (et les missions) par mots-clés ; rend "
             "des extraits datés.",
@@ -1313,6 +1339,8 @@ def execute(gate: Gate, ctx: ActionContext, name: str, args: dict[str, Any]) -> 
     tool = TOOLS.get(name)
     if tool is None:
         return f"outil inconnu : {name}"
+    if tool.lead_only and (ctx.agent or str(runctx.current().get("agent", ""))) not in ("", "opus"):
+        return f"REFUSÉ : {name} est une compétence de Spectre seul"
     level, category = tool.risk(ctx, args)
     from spectre.assistant.trust import Trust
 

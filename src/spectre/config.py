@@ -28,6 +28,13 @@ FALLBACK_BETA: Final = "server-side-fallback-2026-07-01"
 FALLBACK_MODELS: Final = frozenset({"claude-sonnet-5-5", "claude-opus-5-5"})
 # The voice assistant runs on Claude Code (`claude -p`): its short names map to exact models,
 # so "opus" always means Opus 5.5 whatever the CLI's own alias points to.
+# Model aliases of Kimi Code (Simon's tool), provisioned by its /login; it has no listing command
+KIMI_MODELS: Final[tuple[tuple[str, str], ...]] = (
+    ("kimi-code/k3", "Kimi K3"),
+    ("kimi-code/kimi-for-coding", "Kimi for Coding"),
+    ("kimi-code/kimi-for-coding-highspeed", "Kimi for Coding (rapide)"),
+)
+
 ASSISTANT_MODELS: Final[dict[str, str]] = {
     "opus": "claude-opus-5-5",
     "sonnet": "claude-sonnet-5-5",

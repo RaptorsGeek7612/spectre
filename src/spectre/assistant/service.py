@@ -994,7 +994,14 @@ class AssistantService:
         return team.details(self.db, self.config, key)
 
     def call_state(self, since: int, since_event: int) -> Event:
-        return call.snapshot(self.db, since, since_event)
+        state = call.snapshot(self.db, since, since_event)
+        mine = team.portraits(self.root)
+        for agent in state["agents"]:  # the portrait the user chose: drawn look or picture
+            look = self.config.agent_looks.get(agent["key"], {})
+            agent["look"] = look
+            agent["gender"] = look.get("g", agent["gender"])
+            agent["portrait"] = agent["key"].replace(":", "-") in mine
+        return state
 
     def call_standup(self) -> Event:
         return {"lines": call.standup(self.db)}
@@ -1025,6 +1032,7 @@ class AssistantService:
         if not text:
             return ""
         gender = next((m["gender"] for m in call.members(self.db) if m["key"] == key), "m")
+        gender = str(self.config.agent_looks.get(key, {}).get("g", gender))
         voice, pace = team.voice_of(self.config, key, gender)
         model, speaker, _label, _gender = team.VOICES[voice]
         if not (self.root / "models" / "piper" / f"{model}.onnx").is_file():

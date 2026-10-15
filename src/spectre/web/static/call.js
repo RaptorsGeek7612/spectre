@@ -85,7 +85,7 @@ function faceFor(agent) {
   if (!face) {
     face = agent.portrait
       ? createPhoto(`/api/assistant/team/${encodeURIComponent(agent.key)}/portrait`, agent.name)
-      : createAvatar(agent.look || agent.key, agent.gender, { title: agent.name });
+      : createAvatar(agent.lookKey || agent.key, agent.gender, { title: agent.name, look: agent.look });
     state.faces.set(agent.key, face);
   }
   return face;
@@ -281,7 +281,7 @@ function sessionAgents(s) {
   return s.agents.map((a, i) => ({
     key: `${s.tool}:${a.id}`, name: a.name, department: a.lead ? `${s.label} · chef` : `${s.label} · sous-agent`,
     status: SESSION_STATE[a.status] || "idle", activity: a.activity, since: a.last, last: a.last,
-    tokens: a.tokens, fails: a.fails, gender: i % 3 === 1 ? "f" : "m", look: `${s.tool}-${a.lead ? "lead" : a.id}`,
+    tokens: a.tokens, fails: a.fails, gender: i % 3 === 1 ? "f" : "m", lookKey: `${s.tool}-${a.lead ? "lead" : a.id}`,
   }));
 }
 

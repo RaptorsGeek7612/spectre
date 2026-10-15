@@ -346,6 +346,11 @@
     <section class="as-view" data-view="team" hidden>
       <h2 class="as-h">L'équipe</h2>
       <p class="meta">Chaque agent, son département, l'outil et le modèle sur lesquels il travaille (les deux se changent ici), sa voix dans la visio, son dossier et ce qu'il coûte. Un agent passé sur un autre moteur garde son nom et sa spécialité.</p>
+      <label class="tm-mode"><span class="label">Style des portraits</span>
+        <select id="team-art">
+          <option value="manga">Manga</option>
+          <option value="realiste">Réaliste</option>
+        </select></label>
       <label class="tm-mode"><span class="label">Voix de la visio</span>
         <select id="team-voice-mode">
           <option value="auto">Automatique : voix naturelles du navigateur s'il en a, sinon celles de Spectre</option>
@@ -380,9 +385,16 @@
         <label><span class="label">Moteur</span><select name="engine" id="agent-engine"></select></label>
         <label class="ag-wide"><span class="label">Rôle</span><input type="text" name="role" maxlength="300" required placeholder="ex. Recettes, menus de la semaine et liste de courses"></label>
         <label class="ag-wide"><span class="label">Consignes (facultatif)</span><textarea name="instructions" maxlength="4000" rows="3" placeholder="ex. Cuisine de saison, budget serré, pas de porc."></textarea></label>
+        <div class="ag-wide ag-look"><span class="label">Apparence</span>
+          <div class="ag-look-row"><div id="agent-look-preview" class="tm-face"></div>
+            <button class="btn" type="button" id="agent-look-edit"><span>Choisir son apparence</span></button>
+            <button class="btn btn-ghost" type="button" id="agent-photo-pick"><span>Mettre une photo</span></button>
+            <input type="file" id="agent-photo" accept="image/png,image/jpeg,image/webp" hidden>
+            <span class="help" id="agent-photo-name"></span></div></div>
         <div><button class="btn btn-primary" type="submit">Créer l'agent</button></div>
       </form>
       <div id="agents-created" class="ag-grid"></div>
+      <dialog id="agent-look" class="tm-dialog"></dialog>
       <h3 class="as-h as-h-sub">Rédaction</h3>
       <p class="meta">La chaîne qui écrit les textes soignés : recherche, rédaction, contrôle.</p>
       <div id="agents-redaction" class="ag-grid"></div>

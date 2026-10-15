@@ -3,6 +3,8 @@
 import { Orb } from "./orb.js";
 import { closeCall, openCall } from "./call.js";
 import { loadTeam } from "./team.js";
+import { createAvatar } from "./avatars.js";
+import { openLookEditor } from "./looks.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -794,10 +796,37 @@ async function deleteAgent(a) {
   catch (err) { toast(err.message, "error"); }
   agentsCache = null; loadAgents();
 }
+/* the new agent's appearance: a drawn portrait made in the editor, or a picture */
+const newAgent = { look: null, photo: null };
+function newAgentPreview() {
+  const name = $("#agent-form").elements.name.value.trim() || "nouvel-agent";
+  const box = $("#agent-look-preview");
+  if (newAgent.photo) box.replaceChildren(h("img", { class: "avatar avatar-photo", src: URL.createObjectURL(newAgent.photo), alt: "" }));
+  else box.replaceChildren(createAvatar(`agent:${name}`, newAgent.look?.g || "m", { look: newAgent.look }).el);
+}
+$("#agent-look-edit").addEventListener("click", () => openLookEditor($("#agent-look"), {
+  key: "agent:new", gender: newAgent.look?.g || "m", name: $("#agent-form").elements.name.value.trim(), look: newAgent.look,
+  onSave: (look) => { newAgent.look = Object.keys(look).length ? look : null; newAgentPreview(); },
+}));
+$("#agent-photo-pick").addEventListener("click", () => $("#agent-photo").click());
+$("#agent-photo").addEventListener("change", (e) => { newAgent.photo = e.target.files[0] || null; $("#agent-photo-name").textContent = newAgent.photo ? newAgent.photo.name : ""; newAgentPreview(); });
+$("#agent-form").elements.name.addEventListener("input", () => { if (!newAgent.look && !newAgent.photo) newAgentPreview(); });
+newAgentPreview();
 $("#agent-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(e.target));
-  try { await api("POST", "agents", data); toast(`Agent ${data.name.trim()} créé : Spectre peut lui confier des missions.`, "ok", 6000); e.target.reset(); }
+  try {
+    await api("POST", "agents", data);
+    const { agents } = await api("GET", "team");
+    const made = agents.find((a) => a.created && a.name.toLowerCase() === data.name.trim().toLowerCase());
+    if (made && newAgent.look) await api("POST", `team/${encodeURIComponent(made.key)}`, { look: newAgent.look });
+    if (made && newAgent.photo) {
+      await fetch(`/api/assistant/team/${encodeURIComponent(made.key)}/portrait`, { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": newAgent.photo.type }, body: newAgent.photo });
+    }
+    toast(`Agent ${data.name.trim()} créé : Spectre peut lui confier des missions.`, "ok", 6000);
+    e.target.reset();
+    newAgent.look = null; newAgent.photo = null; $("#agent-photo-name").textContent = ""; newAgentPreview();
+  }
   catch (err) { toast(err.message, "error", 7000); }
   agentsCache = null; loadAgents();
 });

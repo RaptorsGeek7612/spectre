@@ -47,6 +47,20 @@
 .tm-act[data-status="ok"] .tm-act-meta { color: var(--l546); }
 .tm-act pre { margin: 0; padding: 8px 10px; max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border-top: 1px dashed var(--hair); font-size: 0.78rem; color: var(--ash); }
 
+/* ---- appearance editor ---- */
+.lk-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; }
+.lk-side { display: grid; gap: 10px; align-content: start; }
+.lk-preview { width: 220px; height: 220px; border: 1px solid var(--hair-2); overflow: hidden; }
+.lk-controls { display: grid; gap: 10px; }
+.lk-row { display: grid; gap: 6px; }
+.lk-chips, .lk-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.lk-swatch { width: 30px; height: 30px; border: 2px solid var(--hair); background: var(--c); cursor: pointer; padding: 0; }
+.lk-swatch[aria-checked="true"] { border-color: var(--l589); box-shadow: 0 0 0 2px var(--ground), 0 0 0 4px var(--l589); }
+.chip[aria-pressed="true"] { border-color: var(--l589); color: var(--bone); }
+.ag-look-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ag-look-row .tm-face { width: 84px; height: 84px; }
+@media (max-width: 600px) { .lk-body { grid-template-columns: 1fr; } .lk-preview { width: 180px; height: 180px; justify-self: center; } }
+
 /* ---- video call ---- */
 .call-view { --st: var(--hair-2); }
 .cl-top { display: grid; gap: 10px; margin-bottom: 12px; }

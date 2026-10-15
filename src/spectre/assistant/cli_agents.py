@@ -326,14 +326,9 @@ def models(key: str, config: AssistantConfig) -> list[dict[str, str]]:
     elif key == "chatgpt":
         found = codex_models()
     elif key == "kimi":  # Kimi Code has no listing command: the aliases its /login provides
-        found = [
-            {"id": alias, "label": label}
-            for alias, label in (
-                ("kimi-code/k3", "Kimi K3"),
-                ("kimi-code/kimi-for-coding", "Kimi for Coding"),
-                ("kimi-code/kimi-for-coding-highspeed", "Kimi for Coding (rapide)"),
-            )
-        ]
+        from spectre.config import KIMI_MODELS
+
+        found = [{"id": alias, "label": label} for alias, label in KIMI_MODELS]
     elif key == "mistral":
         from spectre.assistant.mistral import vibe_command
 

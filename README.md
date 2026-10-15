@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/RaptorsGeek7612/spectre/actions/workflows/ci.yml/badge.svg)](https://github.com/RaptorsGeek7612/spectre/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/RaptorsGeek7612/spectre)](https://github.com/RaptorsGeek7612/spectre/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Coverage (Foundry)](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/RaptorsGeek7612/spectre/badges/coverage.json)](https://github.com/RaptorsGeek7612/spectre/actions/workflows/ci.yml)
 [![Coverage (Python)](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/RaptorsGeek7612/spectre/badges/coverage-python.json)](https://github.com/RaptorsGeek7612/spectre/actions/workflows/ci.yml)
 
@@ -292,6 +292,25 @@ demandant à Spectre :
   « Jumeler une conversation » et envoie au bot le code affiché (`/start 123456`). Tu peux alors
   parler à Spectre depuis Telegram. Tu y reçois aussi ses notifications et ses demandes de
   validation (`/approve 3`, `/deny 3`). Les autres conversations sont ignorées.
+
+**L'équipe et sa visio.**
+
+- **Les agents.** Spectre dirige Gétro (exécution) et Kaïto (vérification), Kyra
+  (multimédia, Codex), Syfer (cybersécurité, Vibe), Octavya (juridique, Cursor), Clarke
+  (finances et assurances, Antigravity) et Simon (expert-comptable, Kimi Code).
+- **La page Équipe.** Pour chaque agent, tu changes ici le moteur (LLM), le modèle, la voix et
+  l'apparence (portrait manga ou réaliste, ou ta photo). Tu y vois aussi son dossier, ce qu'il
+  coûte et ses dernières actions.
+- **La visio.** Toute l'équipe en appel vidéo :
+  - qui travaille, qui attend ton accord, qui est bloqué ;
+  - celui qui parle en vedette, avec ses sous-titres et sa voix ;
+  - l'écran partagé et le tour de table ;
+  - le compte rendu à copier et la relecture des missions ;
+  - l'enregistrement vidéo.
+
+  Tes sessions Claude Code, Codex et Mistral Vibe s'y suivent aussi, avec leurs sous-agents.
+- **Laya.** L'intuition de Spectre, et de lui seul : un modèle de décision local qui choisit,
+  note ou tranche sans jeton. À installer avec `uv pip install laya`.
 
 **Notifications, briefing, crypto.**
 
@@ -632,4 +651,7 @@ Voir [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) et
 
 ## Licence
 
-MIT — voir [LICENSE](LICENSE).
+GPL 3.0 ou ultérieure (GPL-3.0-or-later) — voir [LICENSE](LICENSE). Spectre est un
+logiciel libre : tu peux le redistribuer et le modifier selon les termes de la GNU General
+Public License publiée par la Free Software Foundation, version 3 ou toute version
+ultérieure. Les sous-modules Foundry de `lib/` gardent leur propre licence.

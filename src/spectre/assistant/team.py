@@ -9,6 +9,7 @@ roles, whose engine is the role's setting.
 
 from __future__ import annotations
 
+import re
 import shutil
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -113,6 +114,8 @@ def members(db: Database, config: AssistantConfig) -> list[dict[str, Any]]:
             engine = created[key]["engine"] if key in created else ""
         dossier = trust.dossier(key)
         cost = spent.get(key) or {}
+        look = config.agent_looks.get(key, {})
+        member = {**member, "gender": look.get("g", member["gender"]), "look": look}
         voice, pace = voice_of(config, key, member["gender"])
         steps = (
             db.one(
@@ -199,6 +202,14 @@ def change(
         if len(model) > 120 or any(c.isspace() for c in model):
             raise TeamError(f"nom de modèle invalide : « {model} »")
         changes[MODEL_SETTING[key]] = model
+    if "look" in data:
+        looks = dict(config.agent_looks)
+        look = clean_look(data["look"] or {})
+        if look:
+            looks[key] = look
+        else:
+            looks.pop(key, None)  # back to its usual portrait
+        changes["agent_looks"] = looks
     if "voice" in data:
         voice = str(data["voice"]).strip()
         if voice and voice not in VOICES:
@@ -286,3 +297,42 @@ def delete_portrait(root: Path, key: str) -> None:
 def portraits(root: Path) -> set[str]:
     folder = root / "portraits"
     return {p.stem for p in folder.iterdir()} if folder.is_dir() else set()
+
+
+# ---- appearance (the « create a Sim » editor) ---------------------------------------------------
+
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+LOOK_CHOICES = {
+    "g": ("m", "f"),
+    "style": ("short", "side", "crew", "neat", "long", "bob", "bun", "undercut", "receding"),
+    "beard": ("", "stubble", "short", "trim"),
+    "glasses": ("", "round", "square"),
+    "outfit_kind": ("shirt", "tie", "blazer", "hoodie", "cardigan"),
+}
+LOOK_COLORS = ("skin", "shade", "hair", "eyes", "lips", "outfit", "shirt", "accent", "bg")
+LOOK_FLAGS = ("jewel", "age")
+
+
+def clean_look(look: Any) -> dict[str, Any]:
+    """A portrait's settings from the editor, checked; raises TeamError on anything odd."""
+    if not isinstance(look, dict):
+        raise TeamError("apparence invalide")
+    out: dict[str, Any] = {}
+    for key, value in look.items():
+        if key in LOOK_CHOICES:
+            if value not in LOOK_CHOICES[key]:
+                raise TeamError(f"apparence : valeur inconnue pour {key}")
+            out[key] = value
+        elif key in LOOK_COLORS:
+            if not isinstance(value, str) or not HEX.match(value):
+                raise TeamError(f"apparence : couleur invalide pour {key}")
+            out[key] = value.lower()
+        elif key in LOOK_FLAGS:
+            out[key] = bool(value)
+        else:
+            raise TeamError(f"apparence : réglage inconnu {key}")
+    kind = out.pop("outfit_kind", None)
+    if kind is not None:  # the clothes the drawing understands
+        for flag in ("tie", "blazer", "hoodie", "cardigan"):
+            out[flag] = kind == flag
+    return out
