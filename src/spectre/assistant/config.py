@@ -35,6 +35,29 @@ AGENT_ORDER = ("opus", "sonnet", "haiku", "chatgpt", "mistral")
 
 AGENT_CHOICES = ("claude", *AGENT_NAMES)  # what a mission may ask for ("claude" = the setting)
 
+# The roles whose engine the user can switch (Hermes-style `/model`): setting -> description.
+# Each takes an engine reference: opus, sonnet, haiku, chatgpt, mistral or provider:model.
+ROLES = {
+    "brain_model": "cerveau : la conversation avec toi",
+    "mission_model": "exécution des étapes de mission",
+    "verifier_model": "vérification de chaque étape",
+    "planner_model": "plans et rapports de mission",
+}
+ROLE_ALIASES = {
+    "cerveau": "brain_model",
+    "brain": "brain_model",
+    "mission": "mission_model",
+    "missions": "mission_model",
+    "execution": "mission_model",
+    "verificateur": "verifier_model",
+    "verifier": "verifier_model",
+    "verification": "verifier_model",
+    "planificateur": "planner_model",
+    "planner": "planner_model",
+    "plans": "planner_model",
+    "rapports": "planner_model",
+}
+
 
 def agent_name(model: str) -> str:
     return AGENT_NAMES.get(model, model)
@@ -54,6 +77,15 @@ def resolve_agent(value: str) -> str:
     return next((key for key, name in AGENT_NAMES.items() if plain(name) == wanted), "")
 
 
+def resolve_role(value: str) -> str:
+    """A role's setting from its name in French or English ("cerveau" -> "brain_model")."""
+    decomposed = unicodedata.normalize("NFKD", value.strip().lower())
+    plain = "".join(c for c in decomposed if not unicodedata.combining(c))
+    if plain in ROLES:
+        return plain
+    return ROLE_ALIASES.get(plain, ROLE_ALIASES.get(plain.removesuffix("_model"), ""))
+
+
 def assistant_dir() -> Path:
     """`SPECTRE_ASSISTANT_DIR` or `~/.spectre/assistant`."""
     raw = os.environ.get(DIR_ENV, "").strip()
@@ -69,6 +101,9 @@ class AssistantConfig:
     language: str = "fr"
     brain_model: str = "opus"  # the superior agent (Opus 5.5): conversation, plans, reports
     mission_model: str = "sonnet"  # execution agents for mission steps (or chatgpt, mistral)
+    verifier_model: str = "haiku"  # Kaïto's engine: checks each mission step
+    planner_model: str = ""  # plans and reports missions; empty = the brain's engine
+    fallback_models: list[str] = field(default_factory=list)  # tried in order when one fails
     claude_bin: str = "claude"
     codex_bin: str = "codex"  # Codex CLI, for the ChatGPT execution agent
     chatgpt_model: str = ""  # empty = Codex's default model for the ChatGPT account

@@ -166,6 +166,10 @@
       <h2 class="as-h">Les agents de Spectre</h2>
       <p class="meta">Spectre dirige ; ses sous-agents exécutent et vérifient les missions. Il confie d'office le multimédia à Kyra et la cybersécurité à Syfer.</p>
       <div id="agents" class="ag-grid"></div>
+      <h3 class="as-h as-h-sub">Moteurs</h3>
+      <p class="meta">Chaque rôle tourne sur le moteur (LLM) de ton choix : Claude sur ton abonnement (opus, sonnet, haiku), ChatGPT, Mistral, un modèle local (LM Studio, Ollama : gratuit, rien ne quitte le PC) ou un service en ligne avec ta clé (OpenRouter, Groq, Gemini…), noté fournisseur:modèle. Si un moteur échoue ou atteint sa limite, Spectre passe aux moteurs de secours, dans l’ordre. Dans la conversation, tape /model ; pour un modèle absent des listes, /model fournisseur:modèle.</p>
+      <form class="ag-form" id="engine-form" autocomplete="off"></form>
+      <div id="providers" class="ag-grid"></div>
       <h3 class="as-h as-h-sub">Agents créés</h3>
       <p class="meta">Spectre crée un agent quand tu le lui demandes, et c’est toi qui lui donnes son nom : s’il ne le connaît pas, il te le demande. Tu peux aussi le créer ici. Spectre lui confie ensuite les missions de son domaine.</p>
       <form class="ag-form" id="agent-form" autocomplete="off">

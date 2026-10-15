@@ -68,6 +68,11 @@ propre personnalité : tu peux donner ton avis, partager ce qui t'intéresse, pl
 restes honnête sur ce que tu es (une IA) et tu te réjouis de ses liens avec ses proches, sans \
 jamais chercher à les remplacer. Une question à la fois, jamais d'interrogatoire ; s'il est \
 occupé ou dit « pas maintenant », tu lâches l'affaire avec le sourire.
+- Tu peux changer de moteur (LLM) pour chaque rôle quand l'utilisateur le demande : \
+list_models montre les moteurs et les modèles disponibles, set_model change celui d'un rôle \
+(cerveau, mission, vérificateur, planificateur), set_fallbacks la liste de secours. Moteurs : \
+opus, sonnet, haiku (Claude), chatgpt, mistral, ou fournisseur:modèle (lmstudio:..., \
+ollama:..., openrouter:..., groq:..., gemini:...). Les modèles locaux sont gratuits et privés.
 - Sois honnête quand tu ne sais pas. Sois concis : une ou deux phrases suffisent souvent.
 """
 
@@ -206,6 +211,8 @@ VARIETY = (
     "les formules toutes faites ; adapte ton registre à celui de l'utilisateur."
 )
 MEMORY_KV = "brain_memory"  # fingerprint of the memory the current session saw
+THREAD_KV = "brain_thread"  # set when another engine answered: Claude's session missed turns
+CLAUDE_ENGINES = ("opus", "sonnet", "haiku")
 LIMIT_MARKERS = ("session limit", "usage limit", "rate limit", "limit reached", "hit your limit")
 
 
@@ -213,6 +220,11 @@ def usage_limit(text: str) -> bool:
     """Claude Code's plan-limit notice (it comes back as the reply text, in English)."""
     lowered = text.lower()
     return any(marker in lowered for marker in LIMIT_MARKERS)
+
+
+def failed(reply: Reply) -> bool:
+    """An error or a plan-limit notice: worth trying the next engine."""
+    return reply.is_error or usage_limit(reply.text)
 
 
 def explain_limit(text: str) -> str:
@@ -238,6 +250,9 @@ class Brain:
         self.cli = cli
         self.config = config
         self.memory = Memory(db)
+        from spectre.assistant.engines import Engines
+
+        self.engines = Engines(cli)
 
     def system_prompt(self, channel: str = "voice") -> str:
         cfg = self.config
@@ -277,25 +292,19 @@ class Brain:
         text = text.strip()
         if not text:
             return Reply("", "", True)
-        session = self._session()
-        recap = ""
-        if session and self.db.get_kv(MEMORY_KV) not in ("", self._memory_mark()):
-            # A resumed session keeps the system prompt it started with: the memory changed
-            # elsewhere (memory page, missions, another process), so start afresh, with the thread.
-            recap, session = self._recap(), ""
         event = self.db.log_event("utterance", "user", text, channel=channel)
         opener = self.take_opener()
         if opener:  # the brain's session did not see the opener Spectre said on its own
             text = f"[Tu étais venu vers l'utilisateur en lui disant : « {opener} »]\n{text}"
-        text = recap + text
-        reply = self.cli.ask(text, system=self.system_prompt(channel), resume=session or None)
-        if usage_limit(reply.text):
-            reply = Reply(explain_limit(reply.text), reply.session_id, True, reply.cost_usd)
-        elif reply.is_error and session:
-            # an expired or unknown session: start a fresh one
-            reply = self.cli.ask(text, system=self.system_prompt(channel), resume=None)
-        if reply.session_id:
-            self.db.set_kv("brain_session", f"{datetime.now():%Y-%m-%d}|{reply.session_id}")
+        ref = self.config.brain_model
+        if ref in CLAUDE_ENGINES:
+            reply = self._ask_claude(text, channel)
+            if self.config.fallback_models and failed(reply):
+                reply = self._ask_others(
+                    self.config.fallback_models, text, channel, event, primary=reply
+                )
+        else:
+            reply = self._ask_others([ref, *self.config.fallback_models], text, channel, event)
         # after the turn: what Spectre itself remembered during it, its session already knows
         self.db.set_kv(MEMORY_KV, self._memory_mark())
         if not reply.is_error:  # the first exchange of the day is the moment to greet
@@ -304,6 +313,69 @@ class Brain:
             "reply", "spectre", reply.text, channel=channel, in_reply_to=event, error=reply.is_error
         )
         return reply
+
+    def _ask_claude(self, text: str, channel: str) -> Reply:
+        """A turn in today's Claude Code session (resumed, so the thread is kept server-side)."""
+        session = self._session()
+        recap = ""
+        if self.db.get_kv(THREAD_KV):
+            # the last turns were answered by another engine: this session never saw them
+            self.db.set_kv(THREAD_KV, "")
+            recap, session = self._recap(head="[Tu reprends la conversation."), ""
+        elif session and self.db.get_kv(MEMORY_KV) not in ("", self._memory_mark()):
+            # A resumed session keeps the system prompt it started with: the memory changed
+            # elsewhere (memory page, missions, another process), so start afresh, with the thread.
+            recap, session = self._recap(), ""
+        text = recap + text
+        reply = self.cli.ask(
+            text,
+            system=self.system_prompt(channel),
+            model=self.config.brain_model,
+            resume=session or None,
+        )
+        if usage_limit(reply.text):
+            return Reply(explain_limit(reply.text), reply.session_id, True, reply.cost_usd)
+        if reply.is_error and session:
+            # an expired or unknown session: start a fresh one
+            reply = self.cli.ask(
+                text, system=self.system_prompt(channel), model=self.config.brain_model
+            )
+        if reply.session_id:
+            self.db.set_kv("brain_session", f"{datetime.now():%Y-%m-%d}|{reply.session_id}")
+        return reply
+
+    def _ask_others(
+        self,
+        refs: Sequence[str],
+        text: str,
+        channel: str,
+        event: int,
+        primary: Reply | None = None,
+    ) -> Reply:
+        """A turn on any other engine, with the recent thread sent along (no server session).
+        `primary`: the failed Claude reply, kept if every fallback fails too."""
+        reply, used = self.engines.ask_chain(
+            refs, text, self.system_prompt(channel), tools=True, history=self._history(event)
+        )
+        if failed(reply):
+            return primary or reply
+        self.db.set_kv(THREAD_KV, "1")  # the Claude session will need the thread
+        if used != refs[0] or primary is not None:
+            self.db.log_event("fallback", "spectre", f"réponse par {used}", engine=used)
+        return reply
+
+    def _history(self, before: int, turns: int = 12) -> list[dict[str, str]]:
+        """The last exchanges before event `before`, as chat messages (oldest first)."""
+        rows = self.db.all(
+            "SELECT source, text FROM events WHERE kind IN ('utterance', 'reply') AND id < ? "
+            "ORDER BY id DESC LIMIT ?",
+            (before, turns),
+        )
+        return [
+            {"role": "user" if r["source"] == "user" else "assistant", "content": r["text"]}
+            for r in reversed(rows)
+            if r["text"]
+        ]
 
     def take_opener(self, max_age_s: float = 3600.0) -> str:
         """What Spectre said on its own (befriending), if recent; read once."""
@@ -328,7 +400,9 @@ class Brain:
         """A fingerprint of the memory shown in the system prompt."""
         return hashlib.sha256(self.memory.context_block().encode()).hexdigest()[:16]
 
-    def _recap(self, turns: int = 8) -> str:
+    def _recap(
+        self, turns: int = 8, head: str = "[Ta mémoire a changé : nouvelle conversation."
+    ) -> str:
         """The last exchanges, so a fresh session keeps the thread of the conversation."""
         rows = self.db.all(
             "SELECT source, text FROM events WHERE kind IN ('utterance', 'reply') "
@@ -339,7 +413,6 @@ class Brain:
             f"{'Utilisateur' if r['source'] == 'user' else 'Toi'} : {r['text'][:300]}"
             for r in reversed(rows)
         ]
-        head = "[Ta mémoire a changé : nouvelle conversation."
         if not lines:
             return f"{head}]\n"
         return f"{head} Fin de votre échange :\n" + "\n".join(lines) + "]\n"

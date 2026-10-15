@@ -161,7 +161,74 @@ async function loadAgents() {
   const engine = $("#agent-engine");
   if (!engine.options.length) engine.append(...data.assistant.map((a) => h("option", { value: a.key, selected: a.key === "sonnet" }, `${a.name} · ${a.engine}`)));
   $("#agents-redaction").replaceChildren(...data.redaction.map(agentCard));
+  loadEngines().catch((err) => toast(err.message, "error"));
 }
+/* ---- engines: which LLM serves each role, and the fallback chain ---- */
+const CLI_LABELS = { opus: "Opus 5.5 · Claude", sonnet: "Sonnet 5.5 · Claude", haiku: "Haiku 4.5 · Claude", chatgpt: "ChatGPT · Codex (ton compte)", mistral: "Mistral · Vibe (ton compte Le Chat)" };
+let engineGroups = [];
+function engineSelect(name, value, { empty = "" } = {}) {
+  const known = engineGroups.some((g) => g.items.some((i) => i.value === value));
+  return h("select", { name },
+    empty ? h("option", { value: "", selected: value === "" }, empty) : null,
+    value && !known ? h("option", { value, selected: true }, `${value} (actuel, indisponible)`) : null,
+    ...engineGroups.map((g) => h("optgroup", { label: g.label },
+      ...g.items.map((i) => h("option", { value: i.value, selected: i.value === value }, i.text)))));
+}
+function fallbackRow(value) {
+  const row = h("div", { class: "fb-row" }, engineSelect("fallback", value),
+    h("button", { class: "btn btn-ghost", type: "button", onclick: () => row.remove() }, h("span", {}, "Retirer")));
+  return row;
+}
+async function loadEngines() {
+  const data = await api("GET", "models");
+  const ready = data.providers.filter((p) => p.ready);
+  const lists = await Promise.all(ready.map((p) => api("GET", `models/${encodeURIComponent(p.id)}`).catch(() => ({ models: [] }))));
+  const chat = (m) => !/embed/i.test(m);  // embedding models cannot chat
+  engineGroups = [
+    { label: "Claude, sur ton abonnement", items: ["opus", "sonnet", "haiku"].map((v) => ({ value: v, text: CLI_LABELS[v] })) },
+    { label: "Tes autres comptes", items: ["chatgpt", "mistral"].map((v) => ({ value: v, text: CLI_LABELS[v] })) },
+    ...ready.map((p, i) => ({ label: p.label, items: lists[i].models.filter(chat).map((m) => ({ value: `${p.id}:${m}`, text: m })) }))
+      .filter((g) => g.items.length),
+  ];
+  const label = (text) => h("span", { class: "label" }, text.charAt(0).toUpperCase() + text.slice(1));
+  const fallbacks = h("div", { class: "fb-list", id: "fallback-list" }, ...data.fallbacks.map(fallbackRow));
+  $("#engine-form").replaceChildren(
+    ...data.roles.map((r) => h("label", {}, label(r.label),
+      engineSelect(r.role, r.engine, r.role === "planner_model" ? { empty: "Le moteur du cerveau" } : {}))),
+    h("div", { class: "ag-wide fb" }, label("Moteurs de secours, dans l'ordre"), fallbacks,
+      h("div", {}, h("button", { class: "btn", type: "button", onclick: () => fallbacks.append(fallbackRow("haiku")) }, h("span", {}, "Ajouter un moteur de secours"))),
+      h("span", { class: "help" }, "Essayés l'un après l'autre quand un moteur échoue ou atteint sa limite. Aucun = pas de secours.")),
+    h("div", { class: "ag-wide" }, h("button", { class: "btn btn-primary", type: "submit" }, "Enregistrer les moteurs")));
+  $("#providers").replaceChildren(...data.providers.map((p) => {
+    const index = ready.indexOf(p);
+    const count = index >= 0 ? lists[index].models.filter(chat).length : 0;
+    const state = p.ready ? (p.local && !count ? "serveur éteint" : `${count} modèle${count > 1 ? "s" : ""}`) : `clé ${p.key_env} à ajouter`;
+    return h("article", { class: "ag-card", "data-agent": "provider" },
+      h("h3", { class: "ag-name" }, p.label),
+      h("p", { class: "ag-engine" }, p.id),
+      h("div", { class: "ag-tags" }, h("span", { class: p.local && !count ? "off" : "" }, state), p.local ? h("span", {}, "local") : null));
+  }));
+  const engine = $("#agent-engine");  // creating an agent: the same choices
+  const current = engine.value || "sonnet";
+  engine.replaceChildren(...engineSelect("engine", current).children);
+}
+$("#engine-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  try {
+    const data = await api("GET", "models");
+    for (const r of data.roles) {
+      const value = form.elements[r.role].value;
+      if (value !== r.engine) await api("POST", "models", { role: r.role, engine: value });
+    }
+    const chain = [...form.querySelectorAll('select[name="fallback"]')].map((s) => s.value);
+    if (chain.join(",") !== data.fallbacks.join(",")) await api("POST", "models", { fallbacks: chain });
+    toast("Moteurs enregistrés : ils servent dès le prochain message.", "ok");
+    loadStatus();
+  } catch (err) { toast(err.message, "error", 7000); }
+  loadEngines();
+});
+
 async function fillAgentSelect() {
   const select = $("#mission-agent");
   const data = await fetchAgents();
@@ -266,8 +333,6 @@ const AGENT_NAMES = { sonnet: "Gétro", haiku: "Kaïto", chatgpt: "Kyra", mistra
 const FIELDS = [
   ["user_name", "Ton prénom", "text", "Spectre l'utilise pour s'adresser à toi."],
   ["city", "Ta ville", "text", "Pour la météo du briefing."],
-  ["brain_model", "Spectre, l'agent supérieur", ["opus", "sonnet", "haiku"], "opus = Opus 5.5 : le plus capable ; il planifie aussi les missions et rédige leurs rapports."],
-  ["mission_model", "Agents d'exécution des missions", ["sonnet", "opus", "haiku", "chatgpt", "mistral"], "Gétro = Sonnet 5.5 ; Kaïto = Haiku 4.5, plus rapide (il vérifie aussi chaque étape) ; Kyra = ChatGPT via Codex (compte ChatGPT) ; Syfer = Mistral via Vibe (compte Le Chat). Quoi qu'il en soit, Spectre confie d'office le multimédia à Kyra et la cybersécurité à Syfer."],
   ["chatgpt_model", "Modèle ChatGPT", "text", "Vide = le modèle par défaut de Codex pour ton compte ChatGPT (par exemple gpt-5.5)."],
   ["mistral_model", "Modèle Mistral", "text", "Vide = le modèle par défaut de Vibe (mistral-medium-3.5). Vibe utilise ton compte Le Chat, ou une clé MISTRAL_API_KEY dans ~/.spectre/assistant/vibe/.env."],
   ["briefing_hour", "Heure du briefing", "number", "Le briefing du matin apparaît à partir de cette heure."],

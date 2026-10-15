@@ -7,13 +7,38 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-14
+
 ### Added
 
+- Moteurs : chaque rôle de l'assistant (cerveau, exécution des étapes, vérificateur,
+  planificateur) tourne sur le LLM de ton choix. Une référence de moteur est `opus`, `sonnet`,
+  `haiku`, `chatgpt`, `mistral` ou `fournisseur:modèle`, pour tout point d'accès compatible
+  OpenAI : LM Studio et Ollama en local, OpenRouter, Groq, Gemini, Mistral (API), DeepSeek,
+  OpenAI, xAI, Anthropic (API), et d'autres via `providers.json`. Les clés sont lues dans
+  l'environnement ou dans `~/.spectre/assistant/.env`, jamais écrites dans la configuration.
+  Inspiré de Hermes Agent (`docs/analyse-hermes.md`).
+- Moteurs de secours (`fallback_models`) : quand un moteur échoue ou atteint la limite de
+  l'abonnement, les suivants prennent le relais dans l'ordre, pour la conversation, les plans,
+  les étapes, la vérification, les rapports et les visites amicales.
+- `/model` dans la conversation (`/model`, `/model <moteur>`, `/model <rôle> <moteur>`,
+  `/model secours …`), section « Moteurs » dans la vue Agents (rôles, secours, fournisseurs
+  et leurs modèles), API `GET/POST /api/assistant/models`.
+- Outils du cerveau `list_models`, `set_model` et `set_fallbacks` (catégorie `model`, réversible).
+  Le service recharge `config.json` quand le cerveau le modifie.
+- Un agent créé peut tourner sur `fournisseur:modèle`.
 - Outil `powershell` : Spectre peut utiliser PowerShell 7 sur le PC. L'analyseur de PowerShell
   examine chaque commande sans l'exécuter. La lecture seule (cmdlets `Get-`, `Test-`,
   `Measure-`… sans effet de bord) s'exécute tout de suite dans un `pwsh` neuf et invisible. Le
   reste est de niveau critique et attend ta validation, puis s'exécute dans la console visible du
   module open source PowerShell.MCP (yotsuda, MIT), ou sans console s'il manque.
+
+### Changed
+
+- Un moteur autre que Claude reçoit le fil récent de la conversation ; au retour sur Claude,
+  la session repart avec ce fil. Les appels d'outils de ces moteurs passent par le même portail
+  de gouvernance et le même audit.
+- Le choix du cerveau et des agents d'exécution passe des Réglages à la vue Agents › Moteurs.
 
 ## [0.6.8] - 2026-10-10
 
