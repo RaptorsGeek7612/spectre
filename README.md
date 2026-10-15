@@ -309,6 +309,9 @@ demandant à Spectre :
   - l'enregistrement vidéo.
 
   Tes sessions Claude Code, Codex et Mistral Vibe s'y suivent aussi, avec leurs sous-agents.
+- **Onze agents.** Aux sept précédents s'ajoutent Shelby (animalier), Ysyss (sciences et être
+  humain) et Lexy (jeux, paris, bourse et crypto, sans promesse de gain), toutes sur Claude
+  Sonnet par défaut. Chaque agent respecte la logique métier du projet en construction.
 - **Des logiciels libres par métier.** Chaque agent reçoit les outils de son domaine, tous
   open source et installés sur ce PC : Syfer scanne le code et les failles (Gitleaks, Trivy,
   Semgrep, Nuclei), Octavya et les rédacteurs vérifient le style (Vale, LanguageTool), Clarke
