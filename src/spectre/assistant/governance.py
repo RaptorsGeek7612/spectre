@@ -56,6 +56,7 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "payment": "NEVER",
 }
 ALWAYS_ASK_LEVELS: Final = {Level.EXTERNAL, Level.CRITICAL}
+RELAXED: Final = ("delete_file", "overwrite_file")  # what an expert agent may do alone
 
 
 @dataclass(frozen=True)
@@ -83,12 +84,15 @@ class Gate:
         self.per_day = per_day
         self._recent: deque[float] = deque()
 
-    def decide(self, level: Level, category: str) -> Decision:
+    def decide(self, level: Level, category: str, trust: str = "") -> Decision:
         policy = self.policies.get(category, "ASK")
         if policy == "NEVER":
             return Decision("refused", f"catégorie « {category} » interdite par conception")
         if not self._budget_ok():
             return Decision("refused", "budget d'actions dépassé (trop d'actions d'affilée)")
+        if trust == "expert" and category in RELAXED and level <= Level.DESTRUCTIVE:
+            # earned autonomy: still journaled, undoable and audited
+            return Decision("auto", "autonomie méritée (agent expert)")
         if level in ALWAYS_ASK_LEVELS:
             return Decision("approval", "action vers l'extérieur ou critique : validation requise")
         if level > self.auto_max_level:

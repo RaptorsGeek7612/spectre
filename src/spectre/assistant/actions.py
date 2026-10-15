@@ -41,6 +41,8 @@ class ActionContext:
     launcher: Any = None  # injectable for tests: callable(target) -> None
     runner: Any = None  # injectable for tests: subprocess.run-like, for lab containers
     pwsh_runner: Any = None  # injectable for tests: subprocess.run-like, for PowerShell
+    agent: str = ""  # the agent at work (its trust level shapes the gate), empty = Spectre
+    mission: int | None = None
 
     @property
     def trash(self) -> Path:
@@ -364,6 +366,10 @@ def rollback_mission(ctx: ActionContext, mission_id: int) -> str:
             done.append(undo_row(ctx, row))
         except OSError as exc:
             done.append(f"impossible : {exc}")
+    from spectre.assistant.trust import Trust
+
+    trust = Trust(ctx.db)
+    trust.record(trust.mission_agent(int(mission_id)), "rollback", int(mission_id))
     return f"mission #{mission_id} ramenée à son point de départ :\n" + "\n".join(done)
 
 

@@ -169,6 +169,7 @@ class Proactive:
         self.routines(now)
         self.saas(now)
         self.decisions(now)
+        self.trust()
 
     def routines(self, now: datetime, *, background: bool = True) -> list[int]:
         """Run the routines that are due."""
@@ -217,6 +218,12 @@ class Proactive:
         board = Board(self.db, root)
         for decision in board.due_reviews(now):
             board.queue_review(decision["id"])
+
+    def trust(self) -> None:
+        """Announce the agents promoted or demoted since the last check."""
+        from spectre.assistant.trust import Trust
+
+        Trust(self.db).changes(self.add_initiative)
 
     def ask(self, prompt: str, system: str) -> Any:
         """The brain's engines (with the fallback chain), with tools: for routines."""

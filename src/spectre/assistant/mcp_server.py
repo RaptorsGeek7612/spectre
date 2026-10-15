@@ -8,6 +8,7 @@ audit log, and approvals land where the UI can see them.
 from __future__ import annotations
 
 import inspect
+import os
 from collections.abc import Callable
 from typing import Any
 
@@ -55,6 +56,9 @@ def main() -> None:  # pragma: no cover - launched by Claude Code over stdio
     db = Database(root / "spectre.db")
     gate = Gate(db, auto_max_level=config.auto_max_level)
     ctx = make_context(db, root, config.allowed_roots)
+    ctx.agent = os.environ.get("SPECTRE_AGENT", "")
+    mission = os.environ.get("SPECTRE_MISSION", "")
+    ctx.mission = int(mission) if mission.isdigit() else None
     build_server(lambda name, args: execute(gate, ctx, name, args)).run()
 
 

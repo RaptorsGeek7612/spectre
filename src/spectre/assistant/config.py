@@ -110,6 +110,7 @@ class AssistantConfig:
     mission_parallel: int = 2  # missions running at the same time (1 to 4)
     learning_model: str = ""  # reviews finished missions for skills; empty = the verifier
     learn_from_missions: bool = True  # propose skills after successful missions
+    earned_autonomy: bool = True  # autopilot and relaxed approvals for trusted agents only
     telegram_notify: bool = True  # notifications and approvals also go to paired chats
     claude_bin: str = "claude"
     codex_bin: str = "codex"  # Codex CLI, for the ChatGPT execution agent

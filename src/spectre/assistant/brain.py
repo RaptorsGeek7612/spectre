@@ -13,6 +13,8 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -24,6 +26,7 @@ from spectre.assistant.config import AssistantConfig
 from spectre.assistant.db import Database
 from spectre.assistant.mcp_server import SERVER_NAME
 from spectre.assistant.memory import Memory
+from spectre.assistant.spend import tokens_of
 from spectre.config import ASSISTANT_MODELS
 
 STRIPPED_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_WORKSPACE_ID")
@@ -128,6 +131,7 @@ class Reply:
     session_id: str
     is_error: bool
     cost_usd: float | None = None
+    tokens: int = 0  # input + output, when the engine reports them
 
 
 Runner = Callable[..., Any]  # subprocess.run-compatible
@@ -147,17 +151,21 @@ class ClaudeCLI:
         self.mcp_config = root / "mcp.json"
 
     def write_mcp_config(self) -> Path:
+        from spectre.assistant import runctx
+
+        context = runctx.env()  # an agent at work: its own file, so threads never mix
+        path = self.root / f"mcp-{threading.get_ident()}.json" if context else self.mcp_config
         config = {
             "mcpServers": {
                 SERVER_NAME: {
                     "command": sys.executable,
                     "args": ["-m", "spectre.assistant.mcp_server"],
-                    "env": {"SPECTRE_ASSISTANT_DIR": str(self.root)},
+                    "env": {"SPECTRE_ASSISTANT_DIR": str(self.root), **context},
                 }
             }
         }
-        self.mcp_config.write_text(json.dumps(config, indent=2), encoding="utf-8")
-        return self.mcp_config
+        path.write_text(json.dumps(config, indent=2), encoding="utf-8")
+        return path
 
     def env(self) -> dict[str, str]:
         return {k: v for k, v in os.environ.items() if k not in STRIPPED_ENV}
@@ -243,6 +251,7 @@ def parse_reply(stdout: str, stderr: str = "") -> Reply:
                 session_id=str(data.get("session_id") or ""),
                 is_error=bool(data.get("is_error")),
                 cost_usd=data.get("total_cost_usd"),
+                tokens=tokens_of(data),
             )
     detail = (stderr or stdout or "réponse vide").strip().splitlines()
     return Reply(
@@ -359,6 +368,7 @@ class Brain:
         if opener:  # the brain's session did not see the opener Spectre said on its own
             text = f"[Tu étais venu vers l'utilisateur en lui disant : « {opener} »]\n{text}"
         ref = self.config.brain_model
+        start = time.perf_counter()
         if ref in CLAUDE_ENGINES:
             reply = self._ask_claude(text, channel)
             if self.config.fallback_models and failed(reply):
@@ -367,6 +377,9 @@ class Brain:
                 )
         else:
             reply = self._ask_others([ref, *self.config.fallback_models], text, channel, event)
+        from spectre.assistant import spend
+
+        spend.record(self.db, reply, time.perf_counter() - start, engine=ref, role="conversation")
         # after the turn: what Spectre itself remembered during it, its session already knows
         self.db.set_kv(MEMORY_KV, self._memory_mark())
         if not reply.is_error:  # the first exchange of the day is the moment to greet

@@ -81,6 +81,7 @@ class AssistantService:
         self.providers = Providers(root)
         self.missions.learn = self.config.learn_from_missions
         self.missions.learning_model = self.config.learning_model
+        self.missions.earned_autonomy = self.config.earned_autonomy
         self.telegram = Telegram(root, self.db, self._telegram_reply)
         self.webhooks = Webhooks(self.db)
         self._config_mtime = self._config_stamp()
@@ -202,6 +203,7 @@ class AssistantService:
         self.missions.parallel = cfg.mission_parallel
         self.missions.learn = cfg.learn_from_missions
         self.missions.learning_model = cfg.learning_model
+        self.missions.earned_autonomy = cfg.earned_autonomy
 
     def poll_changes(self) -> None:
         """Publish approvals/initiatives created elsewhere (e.g. by the MCP tool process)."""
@@ -465,6 +467,18 @@ class AssistantService:
             self.db.log_event("webhook_refused", "web", f"{name}: {exc.reason}")
             return exc.status, exc.reason
         return 200, done
+
+    # ---- earned autonomy and costs -----------------------------------------------------------
+
+    def trust_board(self) -> list[Event]:
+        from spectre.assistant.trust import Trust
+
+        return Trust(self.db).agents()
+
+    def costs(self, company_id: int | None = None, days: int = 30) -> Event:
+        from spectre.assistant import spend
+
+        return spend.summary(self.db, datetime.now().astimezone(), company_id, days)
 
     # ---- board and experiments ----------------------------------------------------------------
 

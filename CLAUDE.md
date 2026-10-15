@@ -87,7 +87,10 @@ forge fmt --check ; forge build ; forge test
   curateur, `search_history` sur l'index FTS5 `events_fts`, points de restauration des
   missions via le journal d'annulation). Conseil d'administration : `board.py` (missions
   `board`/`board_review`, avis des postes, arbitrage, réévaluation) et `experiments.py`
-  (verdict avant/après sans modèle, réévaluées depuis `Proactive.tick`).
+  (verdict avant/après sans modèle, réévaluées depuis `Proactive.tick`). Autonomie méritée :
+  `trust.py` (dossier → apprenti/confirmé/expert, lu par `Gate.decide` et le pilote auto) ;
+  l'agent en cours voyage via `runctx.py` (thread-local → env `SPECTRE_AGENT` du serveur MCP) ;
+  coûts : `spend.py` (registre `usage_ledger`, par rôle/agent/département, face au MRR).
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.

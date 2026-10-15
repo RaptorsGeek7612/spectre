@@ -246,6 +246,12 @@ async function loadCompany() {
   $("#company-board").replaceChildren(...columns);
   loadSaas().catch((err) => toast(err.message, "error"));
   loadDecisions().catch((err) => toast(err.message, "error"));
+  api("GET", `costs?company=${companyId}`).then((c) => {
+    const parts = c.calls ? [`Coût de l'IA sur 30 jours : ${c.cost_usd.toFixed(2).replace(".", ",")} $ (équivalent API), ${c.calls} appels`] : [];
+    if (c.calls && c.mrr) parts.push(`soit ${String(c.cost_per_mrr).replace(".", ",")} % du MRR`);
+    if (c.by_department && c.by_department.length) parts.push(`dont ${c.by_department.slice(0, 3).map((d) => `${d.key} ${d.cost.toFixed(2).replace(".", ",")} $`).join(", ")}`);
+    $("#company-costs").textContent = parts.join(" · ");
+  }).catch(() => {});
 }
 /* ---- SaaS dashboard: stat tiles (value, signed change over 7 days, 12-point trend) ---- */
 const compact = (v) => Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(1).replace(".", ",")} M` : Math.abs(v) >= 1e4 ? `${(v / 1e3).toFixed(1).replace(".", ",")} k` : Number.isInteger(v) ? String(v) : v.toFixed(2).replace(".", ",");
@@ -548,7 +554,26 @@ async function loadAgents() {
   if (!engine.options.length) engine.append(...data.assistant.map((a) => h("option", { value: a.key, selected: a.key === "sonnet" }, `${a.name} · ${a.engine}`)));
   $("#agents-redaction").replaceChildren(...data.redaction.map(agentCard));
   loadEngines().catch((err) => toast(err.message, "error"));
+  loadTrust().catch((err) => toast(err.message, "error"));
 }
+/* ---- earned autonomy and what the AI costs ---- */
+const LEVEL_MARK = { apprenti: "○ apprenti", "confirmé": "◐ confirmé", expert: "● expert" };
+async function loadTrust() {
+  const [rows, costs] = await Promise.all([api("GET", "trust"), api("GET", "costs")]);
+  const spent = Object.fromEntries(costs.by_agent.map((r) => [r.key, r]));
+  $("#trust").replaceChildren(...(rows.length ? rows.map((d) => {
+    const c = spent[d.agent];
+    const counts = Object.entries(d.counts).map(([k, n]) => `${TRUST_KIND[k] || k} ${n}`).join(" · ");
+    return h("article", { class: "ag-card", "data-agent": d.agent.startsWith("agent:") ? "created" : d.agent, "data-level": d.level },
+      h("h3", { class: "ag-name" }, d.name),
+      h("p", { class: "ag-engine" }, `${LEVEL_MARK[d.level] || d.level} · fiabilité ${String(d.reliability).replace(".", ",")} %`),
+      h("p", { class: "ag-role" }, counts || "rien encore"),
+      c ? h("p", { class: "meta" }, `30 j : ${c.calls} appels · ${(c.cost || 0).toFixed(2).replace(".", ",")} $ · ${Math.round(c.seconds || 0)} s`) : null);
+  }) : [h("p", { class: "empty-cards" }, "Aucun dossier encore : les agents en gagnent un en menant des missions.")]));
+  $("#costs-global").textContent = costs.calls ? `Sur 30 jours : ${costs.calls} appels au modèle, ${costs.cost_usd.toFixed(2).replace(".", ",")} $ en équivalent API (l'abonnement Claude est ce que tu paies vraiment), ${Math.round(costs.seconds / 60)} min de calcul.` : "";
+}
+const TRUST_KIND = { step_ok: "étapes ✓", step_fail: "étapes ✗", task_validated: "tâches validées", task_redo: "à refaire", approval_granted: "accords", approval_denied: "refus", rollback: "annulations" };
+
 /* ---- engines: which LLM serves each role, and the fallback chain ---- */
 const CLI_LABELS = { opus: "Opus 5.5 · Claude", sonnet: "Sonnet 5.5 · Claude", haiku: "Haiku 4.5 · Claude", chatgpt: "ChatGPT · Codex (ton compte)", mistral: "Mistral · Vibe (ton compte Le Chat)" };
 let engineGroups = [];

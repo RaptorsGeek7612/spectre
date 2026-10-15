@@ -302,6 +302,14 @@ class Companies:
         if task["status"] == "doing" and wanted != "cancelled":
             raise CompanyError(f"la tâche #{task['id']} est en cours : arrête d'abord sa mission")
         self._update(task["id"], status=wanted, note=note.strip()[:1000] or task["note"])
+        if task["status"] == "review" and task["mission_id"] and wanted in ("done", "todo"):
+            from spectre.assistant.trust import Trust
+
+            trust = Trust(self.db)
+            agent = trust.mission_agent(task["mission_id"])
+            trust.record(
+                agent, "task_validated" if wanted == "done" else "task_redo", task["mission_id"]
+            )
         if wanted == "cancelled" and task["mission_id"]:
             stop_mission(self.db, task["mission_id"])
         return self.task(task["id"])
@@ -331,6 +339,7 @@ class Companies:
         plan: dict[str, Any] = {
             "kind": "mission",
             "task": task["id"],
+            "company": company["id"],
             "brief": self.brief(company, task["department"]),
         }
         if agent:
@@ -365,15 +374,20 @@ class Companies:
             return
         self._update(row["id"], status="blocked", note=reason[:1000])
 
-    def autopilot_tick(self, capacity: int) -> list[int]:
-        """Start ready tasks of companies on autopilot, within `capacity` free mission slots."""
+    def autopilot_tick(self, capacity: int, allowed: Any = None) -> list[int]:
+        """Start ready tasks of companies on autopilot, within `capacity` free mission slots.
+        `allowed(agent_key)` says whether a task's agent has earned it (None = every agent)."""
         started: list[int] = []
         for company in self.all():
             if not company["autopilot"]:
                 continue
+            posts = self.posts(company["id"])
             for task in self.ready(company["id"]):
                 if len(started) >= capacity:
                     return started
+                agent = task["agent"] or posts.get(task["department"], "")
+                if allowed is not None and not allowed(agent):
+                    continue
                 started.append(self.start(task["id"]))
         return started
 
