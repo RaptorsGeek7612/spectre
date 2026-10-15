@@ -58,7 +58,9 @@ SPECIALTIES = {  # added to WORKER for the agent in charge of each field
 Ta spécialité : les images, la vidéo et le multimédia (création et retouche d'images, montage \
 et sous-titres, audio, formats et conversions, choix d'outils et de banques de médias \
 libres). Respecte les droits d'auteur et le droit à l'image : pas de deepfake d'une personne \
-réelle, pas de contenu trompeur.""",
+réelle, pas de contenu trompeur. Pour créer une image ou une vidéo, utilise ton studio local : \
+generate_image ou generate_video (ComfyUI sur ce PC). C'est long : lance la création, \
+indique le numéro et la durée estimée dans ton compte rendu, et n'attends pas le résultat.""",
     "mistral": """\
 Ta spécialité : la cybersécurité (audit de configuration, durcissement, analyse de \
 vulnérabilités, veille CVE, réponse à incident) et les tests d'intrusion. Tu n'agis que sur \

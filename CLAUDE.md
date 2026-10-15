@@ -75,6 +75,8 @@ forge fmt --check ; forge build ; forge test
   (moteur, modèle, voix, apparence, photo) ; visio : `call.py` (statuts et répliques depuis la
   table `activity`, sans modèle) et `sessions.py` (sessions Claude Code/Codex/Vibe en lecture
   seule) ; Laya : `laya.py`, outil `laya_decide` réservé à Spectre (`Tool.lead_only`).
+  Studio de Kyra : `media.py` (ComfyUI local, `generate_image`/`generate_video` réservés à
+  Kyra via `Tool.agents`, tâches `media_jobs` relevées par `Proactive.media`).
   Licence GPL-3.0-or-later.
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).

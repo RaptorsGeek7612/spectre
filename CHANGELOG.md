@@ -41,6 +41,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   - Relecture d'une mission en 1×, 2×, 4× ou 8×, avec des repères : première erreur, étape la
     plus longue, attente de ton accord.
   - Enregistrement vidéo de l'onglet, ou clip de 25 s.
+- Le studio de Kyra (`assistant/media.py`) : outils `generate_image` et `generate_video`,
+  réservés à Kyra.
+  - Les images et les vidéos sont créées sur ce PC par ComfyUI (Z-Image Turbo, Wan 2.2).
+    Spectre démarre ComfyUI s'il ne tourne pas.
+  - Chaque demande devient une tâche suivie par la boucle proactive : le fichier arrive dans
+    `workspace/medias` et tu es prévenu, avec la durée estimée annoncée à l'avance.
+  - L'outil `media_jobs` liste les créations.
+  - Les fichiers de modèles sont listés dans `COMFY_MODELS`.
 - Journal d'activité des agents (table `activity`). Il note chaque mission, chaque étape et
   chaque outil passé par le portail, avec l'agent, la durée et le résultat.
 - Portraits manga (par défaut) ou réalistes, qui clignent des yeux et bougent les lèvres avec la

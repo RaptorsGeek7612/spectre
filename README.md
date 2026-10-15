@@ -309,6 +309,9 @@ demandant à Spectre :
   - l'enregistrement vidéo.
 
   Tes sessions Claude Code, Codex et Mistral Vibe s'y suivent aussi, avec leurs sous-agents.
+- **Le studio de Kyra.** Kyra crée des images et de courtes vidéos sur ton PC avec ComfyUI
+  (logiciel libre), et te prévient quand elles sont prêtes dans `workspace\medias`. Sans carte
+  graphique dédiée, compte environ 30 min par image.
 - **Laya.** L'intuition de Spectre, et de lui seul : un modèle de décision local qui choisit,
   note ou tranche sans jeton. À installer avec `uv pip install laya`.
 
