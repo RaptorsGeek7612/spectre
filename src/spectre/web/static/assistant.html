@@ -229,6 +229,20 @@
           <button class="btn" type="submit">Lancer l'expérience</button>
         </form>
         <div id="experiments" class="cards"></div>
+        <h3 class="as-h as-h-sub">Développement</h3>
+        <p class="meta">Le département technique (l’agent du poste Produit et technique) code dans une branche isolée de ton dépôt, lance les tests, et ne pousse rien : c’est toi qui ouvres la PR.</p>
+        <form class="ag-form" id="dev-config" autocomplete="off">
+          <label class="ag-wide"><span class="label">Dépôt git sur ce PC</span><input type="text" name="path" required placeholder="ex. C:\Users\moi\mon-saas"></label>
+          <label><span class="label">Commande des tests</span><input type="text" name="test_command" required placeholder="ex. uv run pytest -q, npm test"></label>
+          <label><span class="label">Branche de base (facultatif)</span><input type="text" name="base_branch" placeholder="la branche actuelle"></label>
+          <div><button class="btn" type="submit">Enregistrer le dépôt</button></div>
+        </form>
+        <p class="meta" id="dev-config-state"></p>
+        <form class="inline-form" id="dev-form" autocomplete="off">
+          <input type="text" name="request" required placeholder="Un changement, ex. « Ajouter l’export CSV des paiements »" aria-label="Changement à faire">
+          <button class="btn btn-primary" type="submit">Confier au département technique</button>
+        </form>
+        <div id="dev-jobs" class="cards"></div>
         <h3 class="as-h as-h-sub">Organigramme</h3>
         <div id="company-posts" class="co-posts"></div>
         <h3 class="as-h as-h-sub">Faire avancer l'entreprise</h3>

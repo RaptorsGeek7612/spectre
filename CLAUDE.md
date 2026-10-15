@@ -93,6 +93,9 @@ forge fmt --check ; forge build ; forge test
   coûts : `spend.py` (registre `usage_ledger`, par rôle/agent/département, face au MRR).
   Réunions : `meeting.py` (micro → STT local par morceaux de 30 s, son jamais gardé ;
   mission `meeting` → tâches au tableau, décisions au journal ; outil via kv `meeting_request`).
+  Département technique : `devteam.py` (mission `code` : worktree + branche `spectre/…`, Claude
+  Code aux outils restreints ou Codex workspace-write, tests + 1 réparation, commit sans push ;
+  `open_pr` = action EXTERNAL validée).
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.

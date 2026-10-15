@@ -7,6 +7,30 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-14
+
+### Added
+
+- Département technique (`assistant/devteam.py`, vue Entreprise › Développement, outils
+  `set_dev_repo`, `dev_task`, `list_dev_jobs`, `open_pr`, `discard_dev_job`).
+  - Pour une entreprise dont le dépôt git est configuré (chemin, commande des tests, branche de
+    base ; ce réglage demande ta validation), chaque demande crée une branche
+    `spectre/<n>-<sujet>` dans un worktree isolé, hors du dépôt.
+  - L'agent du poste Produit et technique y code.
+    - Claude Code n'a que Read, Edit, Write, Glob et Grep, plus Bash limité à `git
+      status|diff|log` et à la commande des tests.
+    - Codex, lui, travaille dans son bac à sable `workspace-write`.
+  - Les tests sont lancés. En cas d'échec, l'agent a droit à une tentative de réparation avec la
+    sortie des tests.
+  - Le travail est commité sur la branche, sans rien pousser.
+  - Ouvrir la PR (push et `gh pr create`) est une action externe, qui demande toujours ta
+    validation. « Abandonner » supprime la branche et la copie.
+
+### Fixed
+
+- Sous Windows, une commande dont le chemin est entre guillemets se découpe sans garder les
+  guillemets.
+
 ## [0.14.0] - 2026-10-14
 
 ### Added
