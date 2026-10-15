@@ -23,7 +23,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
-from spectre.assistant import runctx, spend
+from spectre.assistant import activity, runctx, spend
 from spectre.assistant.brain import ClaudeCLI, Reply, extract_json, failed, one_shot
 from spectre.assistant.company import Companies, planner_prompt, take_notes
 from spectre.assistant.config import AGENT_CHOICES, agent_name
@@ -66,6 +66,29 @@ les systèmes de l'utilisateur ou ceux pour lesquels la mission mentionne une au
 écrite ; sinon, arrête-toi et dis-le dans ton compte rendu. Pas d'action destructive, pas de \
 déni de service, pas d'exfiltration de données réelles. Chaque constat donne sa gravité, sa \
 preuve et sa correction.""",
+    "cursor": """\
+Tu es Octavya, la juriste de l'équipe. Ta spécialité : le droit des affaires en France et en \
+Europe (statuts et forme de société, pactes d'associés, contrats commerciaux et de \
+prestation, CGV, CGU, mentions légales, RGPD et registre des traitements, propriété \
+intellectuelle et marques, droit du travail courant, conformité). Cite l'article ou le texte \
+quand tu t'appuies dessus, distingue la règle de ton analyse, signale ce qui demande un \
+avocat ou un notaire, et vérifie sur Légifrance ou les sites officiels ce qui a pu changer \
+récemment. Tu ne signes ni n'envoies rien : tu rédiges et tu recommandes.""",
+    "antigravity": """\
+Tu es Clarke, le responsable des finances et des assurances. Ta spécialité : trésorerie, \
+budget et prévisionnel, plan de financement, seuil de rentabilité, BFR, levée de fonds et \
+prêts (BPI, banques, subventions), tarification, et les assurances de l'entreprise (RC Pro, \
+multirisque, cyber, prévoyance, homme clé). Chaque chiffre donne sa source ou son hypothèse, \
+chaque scénario son pire cas. Tu ne promets aucun rendement et tu n'engages aucune dépense : \
+tu proposes et l'utilisateur décide.""",
+    "kimi": """\
+Tu es Simon, l'expert-comptable de l'équipe. Ta spécialité : la comptabilité française (plan \
+comptable général, écritures, rapprochements, clôture, bilan et compte de résultat), la TVA \
+et ses déclarations, l'impôt sur les sociétés ou sur le revenu, les charges sociales, le \
+choix du régime (micro, réel, IS/IR) et le calendrier fiscal. Montre tes calculs, indique les \
+taux et seuils avec l'année à laquelle ils s'appliquent, vérifie sur impots.gouv.fr ou \
+l'URSSAF ce qui a pu changer, et signale ce qui doit être validé par un expert-comptable \
+inscrit à l'Ordre.""",
 }
 
 VERIFIER = """\
@@ -401,6 +424,7 @@ class MissionEngine:
 
     def _run_mission(self, row: dict[str, Any]) -> None:
         mark_mission(self.db, row["id"], "from")  # restore point: file changes start here
+        activity.record(self.db, "mission_start", agent="opus", title=row["goal"])
         plan = json.loads(row["plan"] or "{}")
         steps_plan: list[str] = (plan.get("steps") if isinstance(plan, dict) else None) or []
         if not steps_plan:
@@ -442,6 +466,14 @@ class MissionEngine:
         if self._cancelled(row["id"]):
             return
         mark_mission(self.db, row["id"], "to")
+        activity.record(
+            self.db,
+            "mission_done",
+            agent="opus",
+            title=row["goal"],
+            detail=body,
+            status="fail" if missed else "ok",
+        )
         self._finish(row, report, "Mission terminée", body, ok=not missed)
         if not missed and self.learn:
             self._learn(row, report)
@@ -463,13 +495,16 @@ class MissionEngine:
                 "dans la vue Apprentissage)",
             )
 
-    def _worker(self, agent: str) -> tuple[Any, str]:
+    def _chosen(self, agent: str) -> str:
         """Who executes a step: the mission's own choice, else the `mission_model` setting."""
         remote = split_ref(agent)[0] and not agent.startswith(PREFIX)  # provider:model
         name = agent if agent in AGENTS or remote else self.model
         if name == "claude":  # Claude asked for one mission while the setting names another
             name = self.model if self.model in ("opus", "sonnet", "haiku") else "sonnet"
-        return self.engines.worker(name)
+        return name
+
+    def _worker(self, agent: str) -> tuple[Any, str]:
+        return self.engines.worker(self._chosen(agent))
 
     def _run_step(
         self,
@@ -487,7 +522,11 @@ class MissionEngine:
             prompt += "\n\nConsignes de l'utilisateur, données en cours de route (prioritaires) :\n"
             prompt += "\n".join(f"- {n}" for n in notes)
         created = CustomAgents(self.db).get(agent) if agent.startswith(PREFIX) else None
-        worker, model = self._worker(created["engine"] if created else agent)
+        # `model` is the agent (Simon...), `engine` what really runs it (kimi, or DeepSeek if
+        # the user moved him there), `wanted` what that engine's `ask` takes
+        model = self._chosen(created["engine"] if created else agent)
+        worker, wanted = self.engines.worker(model)
+        engine = wanted if split_ref(wanted)[0] else model
         name = created["name"] if created else agent_name(model)
         system = WORKER.format(name=name, workspace=self.cli.workspace)
         learned = Learning(self.db, self.cli.root).catalogue() if hasattr(self.cli, "root") else ""
@@ -504,12 +543,14 @@ class MissionEngine:
             system += f"\n\n{brief}"
         note, ok, result = "", False, ""
         key = f"{PREFIX}{created['id']}" if created else model  # whose record this step feeds
+        activity.record(self.db, "step_start", agent=key, title=step, detail=name)
+        step_started = time.perf_counter()
         for attempt in range(2):
             extra = f"\n\nTentative précédente insuffisante : {note}" if attempt else ""
             start = time.perf_counter()
             with runctx.scope(agent=key, role="exécution"):
-                answer = worker.ask(prompt + extra, system=system, model=model, with_tools=True)
-                spend.record(self.db, answer, time.perf_counter() - start, engine=model)
+                answer = worker.ask(prompt + extra, system=system, model=wanted, with_tools=True)
+                spend.record(self.db, answer, time.perf_counter() - start, engine=engine)
                 if failed(answer) and self.fallbacks:
                     start = time.perf_counter()
                     answer, model = self.engines.ask_chain(
@@ -528,6 +569,15 @@ class MissionEngine:
             if ok:
                 break
         Trust(self.db).record(key, "step_ok" if ok else "step_fail")
+        activity.record(
+            self.db,
+            "step_done",
+            agent=key,
+            title=step,
+            status="ok" if ok else "fail",
+            detail=json.dumps({"result": result[:1500], "note": note}, ensure_ascii=False),
+            seconds=time.perf_counter() - step_started,
+        )
         return {
             "step": step,
             "result": result,

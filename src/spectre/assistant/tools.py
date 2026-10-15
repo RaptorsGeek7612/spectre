@@ -7,12 +7,13 @@ Both the MCP server (called by the brain) and the web UI (approvals) use `execut
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import actions, powershell
+from spectre.assistant import actions, activity, powershell, runctx
 from spectre.assistant.actions import ActionContext, ActionError
 from spectre.assistant.company import (
     DEPARTMENTS,
@@ -111,7 +112,9 @@ def _create_agent(
 def _list_agents(ctx: ActionContext) -> str:
     builtin = (
         "Spectre (opus, toi), Gétro (sonnet), Kaïto (haiku, vérificateur), Kyra (chatgpt, "
-        "multimédia), Syfer (mistral, cybersécurité) ; rédaction : Scout, Scribe, Warden"
+        "Codex, multimédia), Syfer (mistral, Vibe, cybersécurité), Octavya (cursor, juridique), "
+        "Clarke (antigravity, finances et assurances), Simon (kimi, expert-comptable) ; "
+        "rédaction : Scout, Scribe, Warden"
     )
     created = CustomAgents(ctx.db).list()
     lines = [f"- {a['name']} ({a['engine']}) : {a['role']}" for a in created]
@@ -896,7 +899,9 @@ TOOLS: dict[str, Tool] = {
             "rapport). kind=redaction pour un texte soigné rédigé par Scout, Scribe et Warden. "
             "agent : qui exécute les étapes, par son nom ou son modèle. Kyra (chatgpt) pour les "
             "images, vidéos et le multimédia ; Syfer (mistral) pour la cybersécurité et les tests "
-            "d'intrusion autorisés ; Gétro (sonnet) ou Kaïto (haiku, rapide) pour le reste ; "
+            "d'intrusion autorisés ; Octavya (cursor) pour le juridique ; Clarke (antigravity) "
+            "pour les finances et les assurances ; Simon (kimi) pour la comptabilité, la TVA et "
+            "la fiscalité ; Gétro (sonnet) ou Kaïto (haiku, rapide) pour le reste ; "
             "ou un agent que tu as créé (create_agent), par son nom ; vide = le réglage.",
             Level.WRITE,
             "mission",
@@ -1335,6 +1340,19 @@ def execute(gate: Gate, ctx: ActionContext, name: str, args: dict[str, Any]) -> 
                 (approval_id, ctx.agent),
             )
         gate.record(name, args, level, category, "approval", f"demande #{approval_id}")
+        context = runctx.current()
+        activity.record(  # the agent now waits for the user, on the video call too
+            ctx.db,
+            "approval",
+            agent=ctx.agent or str(context.get("agent", "")),
+            mission=ctx.mission if ctx.mission is not None else context.get("mission"),
+            title=name,
+            detail=json.dumps(
+                {"id": approval_id, "reason": decision.reason, "target": activity.target(args)},
+                ensure_ascii=False,
+            ),
+            status="pending",
+        )
         return (
             f"EN ATTENTE DE VALIDATION (#{approval_id}) : {decision.reason}. "
             "Dis à l'utilisateur ce que tu veux faire et qu'il peut valider ou refuser."
@@ -1351,6 +1369,11 @@ def _run(
     category: str,
     decision: str,
 ) -> str:
+    context = runctx.current()
+    agent = ctx.agent or str(context.get("agent", ""))
+    mission = ctx.mission if ctx.mission is not None else context.get("mission")
+    started = time.perf_counter()
+    row = activity.tool_started(ctx.db, agent, mission, tool.name, args)
     try:
         result = tool.run(ctx, **args)
     except ActionError as exc:
@@ -1359,6 +1382,10 @@ def _run(
         result = f"ÉCHEC : paramètres invalides ({exc})"
     except OSError as exc:
         result = f"ÉCHEC : {exc}"
+    except Exception as exc:
+        activity.tool_finished(ctx.db, row, tool.name, args, f"ÉCHEC : {exc}", started)
+        raise
+    activity.tool_finished(ctx.db, row, tool.name, args, result, started)
     gate.record(tool.name, args, level, category, decision, result)
     ctx.db.log_event("action", "spectre", f"{tool.name}: {result[:300]}", tool=tool.name, args=args)
     return result

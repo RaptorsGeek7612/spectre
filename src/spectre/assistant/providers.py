@@ -3,6 +3,7 @@
 An engine is named by a reference:
 - `opus`, `sonnet`, `haiku`: Claude through the Claude Code CLI (the subscription);
 - `chatgpt`, `mistral`: the Codex and Vibe CLIs (the user's ChatGPT and Le Chat accounts);
+- `cursor`, `antigravity`, `kimi`: the Cursor, Antigravity and Kimi Code CLIs (same idea);
 - `<provider>:<model>`: any OpenAI-compatible endpoint, e.g. `lmstudio:google/gemma-4-e4b`,
   `ollama:qwen3:8b`, `openrouter:deepseek/deepseek-chat`, `groq:llama-3.3-70b-versatile`.
 
@@ -22,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-CLI_ENGINES = ("opus", "sonnet", "haiku", "chatgpt", "mistral")
+CLI_ENGINES = ("opus", "sonnet", "haiku", "chatgpt", "mistral", "cursor", "antigravity", "kimi")
 MAX_MODEL = 120
 
 
@@ -150,8 +151,11 @@ class Providers:
         """The normalised reference, or ProviderError if it cannot name an engine."""
         provider, model = split_ref(ref)
         if not provider:
-            if model.lower() in CLI_ENGINES:
-                return model.lower()
+            from spectre.assistant.config import ENGINE_ALIASES
+
+            name = ENGINE_ALIASES.get(model.lower(), model.lower())
+            if name in CLI_ENGINES:
+                return name
             raise ProviderError(
                 f"moteur inconnu « {ref} » ; au choix : {', '.join(CLI_ENGINES)} ou "
                 "fournisseur:modèle (par exemple lmstudio:google/gemma-4-e4b)"

@@ -7,6 +7,7 @@ import queue
 from typing import Any
 from urllib.parse import unquote
 
+from spectre.assistant import team
 from spectre.assistant.meeting import Meetings
 from spectre.assistant.remote import Remote
 from spectre.assistant.service import AssistantService
@@ -55,6 +56,44 @@ def handle(
             handler._json(200, {"result": service.create_agent(body())})
         case "POST", ["agents", agent_id, "delete"]:
             handler._json(200, service.delete_agent(int(agent_id)))
+        case "GET", ["team"]:
+            handler._json(200, service.team())
+        case "GET", ["team", key, "portrait"]:
+            found = team.portrait(service.root, unquote(key))
+            if found is None:
+                raise KeyError(key)
+            handler._send(200, found[0], found[1])
+        case "POST", ["team", key, "portrait"]:
+            handler._json(200, service.team_portrait(unquote(key), handler._raw_body()))
+        case "POST", ["team", key, "portrait", "delete"]:
+            handler._json(200, service.team_portrait(unquote(key), None))
+        case "GET", ["team", key, "models"]:
+            handler._json(200, service.team_models(unquote(key)))
+        case "GET", ["team", key]:
+            handler._json(200, service.team_details(unquote(key)))
+        case "POST", ["team", key]:
+            handler._json(200, service.team_change(unquote(key), body()))
+        case "GET", ["call"]:
+            since = int(query.get("since", ["0"])[0] or 0)
+            handler._json(200, service.call_state(since, int(query.get("ev", ["0"])[0] or 0)))
+        case "POST", ["call", "standup"]:
+            handler._json(200, service.call_standup())
+        case "GET", ["call", "recap"]:
+            mission = query.get("mission", [""])[0]
+            hours = float(query.get("hours", ["24"])[0] or 24)
+            handler._json(200, service.call_recap(int(mission) if mission else None, hours))
+        case "GET", ["call", "tree"]:
+            handler._json(200, service.call_tree())
+        case "GET", ["call", "board"]:
+            handler._json(200, service.call_board())
+        case "GET", ["call", "replay", mission_id]:
+            handler._json(200, service.call_replay(int(mission_id)))
+        case "GET", ["call", "session", tool, sid]:
+            handler._json(200, service.call_session(tool, unquote(sid)))
+        case "POST", ["call", "say"]:
+            data = body()
+            audio = service.speak_as(str(data.get("agent", "")), str(data.get("text", "")))
+            handler._json(200, {"audio": audio})
         case "GET", ["company"]:
             handler._json(200, service.companies())
         case "POST", ["company"]:
