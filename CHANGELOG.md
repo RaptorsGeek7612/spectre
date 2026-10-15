@@ -41,6 +41,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   - Relecture d'une mission en 1×, 2×, 4× ou 8×, avec des repères : première erreur, étape la
     plus longue, attente de ton accord.
   - Enregistrement vidéo de l'onglet, ou clip de 25 s.
+- Trois agents conseil, toutes femmes, hébergés sur Claude Sonnet par défaut (changeable) :
+  - Shelby (animalier : comportement, santé, toilettage) ;
+  - Ysyss (sciences et être humain : physique, chimie, maths, biologie, astronomie, santé,
+    psychologie, langues, sports, arts) ;
+  - Lexy (jeux d'argent, paris sportifs, bourse, blockchain et crypto, sans promesse de gain).
+  - Outils bornés : `science` (SymPy) pour Ysyss, `paris` (probabilités, Kelly) pour Lexy ;
+    bibliothèques Astropy, Skyfield, ccxt, yfinance installées.
+  - Nouvelles compétences `spectre-animaux` et `spectre-jeux-argent`.
+  - Tous les agents respectent la logique métier du projet en construction (prompt WORKER).
 - Des logiciels libres par métier, donnés aux agents à travers le portail (`assistant/toolkit.py`,
   outils `toolkit` et `finance`). Chaque agent ne voit que ceux de son domaine.
   - Syfer : Gitleaks (secrets), Trivy (vulnérabilités), Semgrep (analyse de code), Nuclei (scan

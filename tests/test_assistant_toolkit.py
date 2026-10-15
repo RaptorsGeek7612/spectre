@@ -57,6 +57,50 @@ def test_finance_operations() -> None:
         toolkit.finance("mensualite", [1])
 
 
+def test_science_operations() -> None:
+    assert "[-2, 2]" in toolkit.science("resoudre", "x**2 - 4")
+    assert "cos(x)" in toolkit.science("deriver", "sin(x)")
+    assert toolkit.science("integrer", "2*x").startswith("∫")
+    assert "3.14159" in toolkit.science("calculer", "pi")
+    assert toolkit.science("simplifier", "x + x").endswith("2*x")
+    with pytest.raises(ActionError, match="opération inconnue"):
+        toolkit.science("magie", "x")
+    with pytest.raises(ActionError, match="invalide"):
+        toolkit.science("calculer", "2 +")
+
+
+def test_betting_operations() -> None:
+    assert "40.0 %" in toolkit.betting("probabilite", [2.5])
+    kelly = toolkit.betting("kelly", [2.5, 0.5])
+    assert "16.7 %" in kelly and "risque de perte" in kelly
+    assert "0.0 %" in toolkit.betting("kelly", [2.0, 0.4])  # no edge -> never bet
+    assert "arbitrage possible" in toolkit.betting("arbitrage", [2.1, 2.1])
+    assert "pas d'arbitrage" in toolkit.betting("arbitrage", [1.8, 1.8])
+    with pytest.raises(ActionError, match="opération inconnue"):
+        toolkit.betting("pronostic", [1])
+    with pytest.raises(ActionError, match="calcul impossible"):
+        toolkit.betting("kelly", [2.0])
+
+
+def test_science_and_betting_are_restricted(ctx: Any) -> None:
+    gate = Gate(ctx.db)
+    ctx.agent = "ysyss"
+    assert "[-2, 2]" in tools_mod.execute(
+        gate, ctx, "science", {"operation": "resoudre", "expression": "x**2 - 4"}
+    )
+    ctx.agent = "lexy"
+    assert tools_mod.execute(
+        gate, ctx, "science", {"operation": "calculer", "expression": "1"}
+    ).startswith("REFUSÉ")
+    assert "40.0 %" in tools_mod.execute(
+        gate, ctx, "paris", {"operation": "probabilite", "values": [2.5]}
+    )
+    ctx.agent = "shelby"
+    assert tools_mod.execute(
+        gate, ctx, "paris", {"operation": "probabilite", "values": [2.0]}
+    ).startswith("REFUSÉ")
+
+
 def test_gitleaks_scans_a_local_path_as_read(ctx: Any) -> None:
     ctx.agent = "mistral"
     ctx.runner.result = subprocess.CompletedProcess([], 0, "[]", "no leaks")

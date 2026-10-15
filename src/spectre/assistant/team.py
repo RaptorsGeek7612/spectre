@@ -275,16 +275,22 @@ def agent_tools(config: AssistantConfig, key: str) -> list[dict[str, Any]]:
     from spectre.assistant import toolkit
 
     found = [k for k in toolkit.describe(config) if not k["agents"] or key in k["agents"]]
-    if key in toolkit.FINANCE_AGENTS:
-        found.append(
-            {
-                "name": "finance",
-                "label": "Calculs financiers",
-                "installed": True,
-                "agents": [key],
-                "category": "read",
-            }
-        )
+    extras = {
+        toolkit.FINANCE_AGENTS: ("finance", "Calculs financiers"),
+        toolkit.SCIENCE_AGENTS: ("science", "Calcul scientifique (SymPy)"),
+        toolkit.BETTING_AGENTS: ("paris", "Maths des paris et probabilités"),
+    }
+    for agents, (name, label) in extras.items():
+        if key in agents:
+            found.append(
+                {
+                    "name": name,
+                    "label": label,
+                    "installed": True,
+                    "agents": [key],
+                    "category": "read",
+                }
+            )
     return found
 
 

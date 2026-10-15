@@ -217,6 +217,82 @@ def finance(operation: str, values: list[float]) -> str:
     raise ActionError(f"opération inconnue : {operation} (au choix : {', '.join(FINANCE_OPS)})")
 
 
+# Symbolic and numeric maths (SymPy), for Ysyss: no subprocess, no files.
+SCIENCE_AGENTS = ("ysyss",)
+SCIENCE_OPS = {
+    "calculer": "évaluer une expression (ex. sqrt(2)*pi)",
+    "simplifier": "simplifier une expression",
+    "resoudre": "résoudre une équation en x (ex. x**2 - 4)",
+    "deriver": "dériver une expression par rapport à x",
+    "integrer": "intégrer une expression par rapport à x",
+}
+
+
+def science(operation: str, expression: str) -> str:
+    """One bounded symbolic/numeric computation (SymPy); raises ActionError on bad input."""
+    import sympy as sp
+
+    op = operation.strip().lower()
+    x = sp.Symbol("x")
+    try:
+        expr = sp.sympify(expression, locals={"x": x}, evaluate=True)
+        if op == "calculer":
+            return f"{expression} = {sp.N(expr, 12)}"
+        if op == "simplifier":
+            return f"{expression} = {sp.simplify(expr)}"
+        if op == "resoudre":
+            return f"x : {sp.solve(expr, x)}"
+        if op == "deriver":
+            return f"d/dx = {sp.diff(expr, x)}"
+        if op == "integrer":
+            return f"∫ dx = {sp.integrate(expr, x)} + C"
+    except (sp.SympifyError, ValueError, TypeError, NotImplementedError) as exc:
+        raise ActionError(f"expression invalide : {exc}") from exc
+    raise ActionError(f"opération inconnue : {operation} (au choix : {', '.join(SCIENCE_OPS)})")
+
+
+# Betting and probability maths, for Lexy: no network, no promise of gain.
+BETTING_AGENTS = ("lexy",)
+BETTING_OPS = {
+    "probabilite": "probabilité implicite d'une cote décimale (ex. 2.5)",
+    "kelly": "mise optimale de Kelly — cote décimale, puis ta probabilité estimée (0 à 1)",
+    "arbitrage": "garantie de gain ? les cotes décimales des issues (ex. 2.1 2.0)",
+}
+
+
+def betting(operation: str, values: list[float]) -> str:
+    """One bounded betting computation; never a tip or a promise of gain."""
+    op = operation.strip().lower()
+    nums = [float(v) for v in values]
+    try:
+        if op == "probabilite":
+            cote = nums[0]
+            return (
+                f"Cote {cote} → probabilité implicite {100 / cote:.1f} % "
+                "(marge du bookmaker incluse)"
+            )
+        if op == "kelly":
+            cote, prob = nums
+            edge = prob * cote - 1
+            fraction = max(0.0, edge / (cote - 1))
+            return (
+                f"Kelly : {fraction * 100:.1f} % du capital (0 % = pas de valeur). "
+                "Beaucoup misent une demie ou un quart de Kelly. Le jeu comporte "
+                "un risque de perte."
+            )
+        if op == "arbitrage":
+            total = sum(1 / c for c in nums if c > 0)
+            marge = (total - 1) * 100
+            verdict = "arbitrage possible" if total < 1 else "pas d'arbitrage (perte attendue)"
+            return (
+                f"Somme des probabilités implicites : {total * 100:.1f} % → "
+                f"{verdict} (marge {marge:.1f} %)"
+            )
+    except (ValueError, ZeroDivisionError, IndexError) as exc:
+        raise ActionError(f"calcul impossible : {exc}") from exc
+    raise ActionError(f"opération inconnue : {operation} (au choix : {', '.join(BETTING_OPS)})")
+
+
 def describe(config: Any) -> list[dict[str, Any]]:
     """Each tool, whether it is installed, and which agents may use it (for the Agents view)."""
     found = []

@@ -525,6 +525,18 @@ def _finance(ctx: ActionContext, operation: str, values: list[float]) -> str:
     return toolkit.finance(operation, list(values))
 
 
+def _science(ctx: ActionContext, operation: str, expression: str) -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.science(operation, expression)
+
+
+def _betting(ctx: ActionContext, operation: str, values: list[float]) -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.betting(operation, list(values))
+
+
 def _studio(ctx: ActionContext) -> Any:
     from spectre.assistant.config import AssistantConfig
     from spectre.assistant.media import Studio
@@ -1231,6 +1243,27 @@ TOOLS: dict[str, Tool] = {
             "read",
             _finance,
             agents=("antigravity", "simon"),
+        ),
+        Tool(
+            "science",
+            "Calcul scientifique symbolique (Ysyss). operation : calculer (évaluer), simplifier, "
+            "resoudre (équation en x), deriver, integrer. expression : la formule, x comme "
+            "variable (ex. x**2 - 4, sin(x), sqrt(2)*pi).",
+            Level.READ,
+            "read",
+            _science,
+            agents=("ysyss",),
+        ),
+        Tool(
+            "paris",
+            "Maths des paris et probabilités (Lexy). operation : probabilite (cote décimale → "
+            "probabilité implicite), kelly (cote puis ta probabilité estimée → mise optimale), "
+            "arbitrage (les cotes des issues → garantie de gain ?). values : les nombres. "
+            "Jamais un pronostic ni une promesse de gain.",
+            Level.READ,
+            "read",
+            _betting,
+            agents=("lexy",),
         ),
         Tool(
             "generate_image",
