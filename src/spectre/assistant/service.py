@@ -33,6 +33,7 @@ from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
 from spectre.assistant.providers import ProviderError, Providers, split_ref
 from spectre.assistant.routines import Routines
+from spectre.assistant.saas import Saas
 from spectre.assistant.telegram import Telegram, save_token
 from spectre.assistant.vision.faces import SPOOF, UNKNOWN, FaceBook, Presence
 from spectre.assistant.voice.listen import SAMPLE_RATE, to_wav
@@ -393,6 +394,65 @@ class AssistantService:
             self.db.log_event("webhook_refused", "web", f"{name}: {exc.reason}")
             return exc.status, exc.reason
         return 200, done
+
+    # ---- SaaS monitoring -------------------------------------------------------------------------
+
+    def saas(self) -> Saas:
+        return Saas(self.db, self.root)
+
+    def saas_dashboard(self, company_id: int) -> Event:
+        Companies(self.db).get(company_id)
+        return self.saas().dashboard(company_id, datetime.now().astimezone())
+
+    def saas_add_source(self, company_id: int, data: dict[str, Any]) -> Event:
+        """Add a source; its key goes to the assistant's .env and is never sent back."""
+        Companies(self.db).get(company_id)
+        keys = ("url", "table", "date_column", "repo", "fields")
+        config: dict[str, Any] = {k: data[k] for k in keys if k in data}
+        source = self.saas().add_source(
+            company_id,
+            str(data.get("kind", "")),
+            str(data.get("name", "")),
+            config,
+            str(data.get("key", "")),
+        )
+        self.gate.record(
+            "saas_source",
+            {"kind": source["kind"], "name": source["name"]},
+            Level.WRITE,
+            "company",
+            "user",
+            "",
+        )
+        threading.Thread(target=self.saas_check, args=(source["id"],), daemon=True).start()
+        return {k: v for k, v in source.items() if k != "key_env"}
+
+    def saas_check(self, source_id: int) -> Event:
+        """Collect one source now (and check its company's alerts)."""
+        saas = self.saas()
+        source = saas.source(source_id)
+        now = datetime.now().astimezone()
+        found = saas.check(source, now)
+        saas.alerts_check(source["company_id"], now, self.proactive.add_initiative)
+        self.publish({"type": "company"})
+        return {"metrics": found, "error": saas.source(source_id)["last_error"]}
+
+    def saas_report_routine(self, company_id: int) -> str:
+        """The weekly report, as a Monday 9 o'clock routine."""
+        found = Companies(self.db).get(company_id)
+        return self.act(
+            "create_routine",
+            {
+                "name": f"Rapport hebdo {found['name']}"[:60],
+                "schedule": "chaque lundi à 9h",
+                "kind": "question",
+                "prompt": (
+                    f"Fais le rapport hebdomadaire de l'entreprise « {found['name']} » : lis "
+                    "saas_report et company_board, commente les tendances en chef d'entreprise "
+                    "(chiffres à l'appui), signale les risques et propose trois actions concrètes."
+                ),
+            },
+        )
 
     # ---- companies: org chart and task board --------------------------------------------------
 

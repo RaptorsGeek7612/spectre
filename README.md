@@ -293,6 +293,22 @@ demandant à Spectre :
   parler à Spectre depuis Telegram. Tu y reçois aussi ses notifications et ses demandes de
   validation (`/approve 3`, `/deny 3`). Les autres conversations sont ignorées.
 
+**Suivi du SaaS : tableau de bord, alertes, rapport.** Dans la vue Entreprise, « Sources,
+alertes et rapport » branche, en lecture seule :
+
+- le site (disponibilité et temps de réponse, toutes les 5 minutes) ;
+- Stripe : MRR, abonnés, churn, paiements échoués, encaissé. Une clé restreinte en lecture
+  (`rk_…`) suffit ;
+- Supabase : utilisateurs et inscriptions sur 7 jours ;
+- la CI GitHub ;
+- n'importe quelle API JSON (`errors=data.count`).
+
+Les clés restent dans `~/.spectre/assistant/.env`. Le tableau de bord calcule l'ARR, l'ARPA, la
+LTV, le CAC (avec les dépenses marketing que tu saisis) et la disponibilité. Chaque tuile
+montre son évolution sur 7 jours. Les alertes préviennent quand le site tombe, quand la CI
+échoue, quand un paiement échoue, ou selon tes propres seuils, sur l'interface et sur
+Telegram. « Programmer le rapport du lundi 9h » crée la routine du rapport hebdomadaire.
+
 **Entreprises : organigramme et tableau de tâches.** Dans la vue Entreprise, ou en le
 demandant à Spectre, crée une entreprise et place un agent sur chacun de ses huit postes
 (direction, finance, marketing, ventes, support, produit et technique, juridique,

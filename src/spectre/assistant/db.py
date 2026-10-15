@@ -105,6 +105,21 @@ CREATE TABLE IF NOT EXISTS webhooks (
   last_at TEXT, created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS webhook_seen (delivery TEXT PRIMARY KEY, ts TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS saas_sources (
+  id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL, kind TEXT NOT NULL, name TEXT NOT NULL,
+  config TEXT NOT NULL DEFAULT '{}', key_env TEXT NOT NULL DEFAULT '', enabled INTEGER NOT NULL DEFAULT 1,
+  last_check TEXT, last_error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS saas_metrics (
+  id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL, source_id INTEGER, metric TEXT NOT NULL,
+  value REAL NOT NULL, ts TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS saas_metrics_key ON saas_metrics(company_id, metric, ts);
+CREATE TABLE IF NOT EXISTS saas_alerts (
+  id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL, metric TEXT NOT NULL, op TEXT NOT NULL,
+  threshold REAL NOT NULL, consecutive INTEGER NOT NULL DEFAULT 1, label TEXT NOT NULL DEFAULT '',
+  cooldown_h REAL NOT NULL DEFAULT 6, last_fired TEXT, active INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS faces (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, feature TEXT NOT NULL, created_at TEXT NOT NULL
 );

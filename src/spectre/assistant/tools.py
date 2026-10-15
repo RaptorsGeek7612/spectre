@@ -421,6 +421,52 @@ def _ask_agent(ctx: ActionContext, agent: str, message: str) -> str:
     return f"{name} répond : {reply.text}"
 
 
+def _saas(ctx: ActionContext, company: str, run: Callable[[Any, dict[str, Any], Any], str]) -> str:
+    """Run `run(saas, company, now)` with errors turned into tool failures."""
+    from datetime import datetime
+
+    from spectre.assistant.saas import Saas, SaasError
+
+    try:
+        found = Companies(ctx.db).get(company)
+        return run(Saas(ctx.db, ctx.root), found, datetime.now().astimezone())
+    except (CompanyError, SaasError) as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _saas_report(ctx: ActionContext, company: str = "") -> str:
+    return _saas(ctx, company, lambda saas, found, now: saas.report(found["id"], now))
+
+
+def _set_metric(ctx: ActionContext, company: str, metric: str, value: float) -> str:
+    def run(saas: Any, found: dict[str, Any], now: Any) -> str:
+        saas.record(found["id"], metric.strip(), float(value), now)
+        return f"{metric.strip()} = {value} enregistré pour {found['name']}"
+
+    return _saas(ctx, company, run)
+
+
+def _add_monitor(ctx: ActionContext, company: str, url: str, name: str = "") -> str:
+    def run(saas: Any, found: dict[str, Any], now: Any) -> str:
+        source = saas.add_source(found["id"], "uptime", name or url, {"url": url})
+        return (
+            f"surveillance #{source['id']} de {source['config']['url']} ajoutée pour "
+            f"{found['name']} (toutes les 5 minutes ; alerte après deux échecs d'affilée)"
+        )
+
+    return _saas(ctx, company, run)
+
+
+def _add_alert(
+    ctx: ActionContext, company: str, metric: str, op: str, threshold: float, label: str = ""
+) -> str:
+    def run(saas: Any, found: dict[str, Any], now: Any) -> str:
+        rule = saas.add_alert(found["id"], metric, op, float(threshold), label=label)
+        return f"alerte #{rule['id']} : {rule['metric']} {rule['op']} {rule['threshold']:g}"
+
+    return _saas(ctx, company, run)
+
+
 def _delete_agent(ctx: ActionContext, name: str) -> str:
     try:
         agent = CustomAgents(ctx.db).delete(name)
@@ -648,6 +694,39 @@ TOOLS: dict[str, Tool] = {
             _set_fallbacks,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
+        Tool(
+            "saas_report",
+            "Le tableau de bord SaaS d'une entreprise : MRR, ARR, abonnés, churn, ARPA, LTV, "
+            "CAC, paiements échoués, encaissé, utilisateurs, inscriptions, disponibilité, CI, "
+            "avec leur évolution sur 7 jours, les sources en erreur et les alertes de la semaine.",
+            Level.READ,
+            "read",
+            _saas_report,
+        ),
+        Tool(
+            "set_metric",
+            "Enregistrer un chiffre donné par l'utilisateur pour une entreprise (ex. "
+            "marketing_spend_30d pour calculer le CAC). metric en minuscules avec _ .",
+            Level.WRITE,
+            "company",
+            _set_metric,
+        ),
+        Tool(
+            "add_monitor",
+            "Surveiller la disponibilité d'un site (url) pour une entreprise : vérifié toutes les "
+            "5 minutes, alerte après deux échecs d'affilée.",
+            Level.WRITE,
+            "company",
+            _add_monitor,
+        ),
+        Tool(
+            "add_alert",
+            "Ajouter une alerte sur un indicateur d'une entreprise : metric (ex. churn_rate, "
+            "mrr, latency_ms), op parmi < <= > >= =, threshold, label facultatif.",
+            Level.WRITE,
+            "company",
+            _add_alert,
+        ),
         Tool(
             "create_routine",
             "Programmer une routine, à la demande de l'utilisateur. schedule en mots : « tous "

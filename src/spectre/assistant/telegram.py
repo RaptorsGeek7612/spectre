@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from spectre.assistant.db import Database
-from spectre.assistant.providers import read_env_file
+from spectre.assistant.providers import read_env_file, write_env_value
 
 TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
 TOKEN = re.compile(r"\d{5,}:[A-Za-z0-9_-]{30,}")
@@ -65,16 +65,7 @@ def save_token(root: Path, token: str) -> None:
     token = token.strip()
     if not TOKEN.fullmatch(token):
         raise ValueError("jeton Telegram invalide (format 123456789:ABC..., donné par @BotFather)")
-    path = root / ".env"
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        lines = []
-    kept = [
-        ln for ln in lines if not ln.strip().removeprefix("export ").startswith(f"{TOKEN_ENV}=")
-    ]
-    root.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join([*kept, f"{TOKEN_ENV}={token}"]) + "\n", encoding="utf-8")
+    write_env_value(root, TOKEN_ENV, token)
 
 
 class Telegram:

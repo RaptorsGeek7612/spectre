@@ -177,6 +177,39 @@
         <div><button class="btn" type="submit">Créer l'entreprise</button></div>
       </form>
       <div id="company-body" hidden>
+        <h3 class="as-h as-h-sub">Tableau de bord</h3>
+        <div id="saas-status" class="sa-status"></div>
+        <div id="saas-tiles" class="sa-tiles"></div>
+        <details class="sa-setup" id="saas-setup">
+          <summary>Sources, alertes et rapport</summary>
+          <p class="meta">Spectre lit tes chiffres, sans jamais rien modifier : Stripe (une clé restreinte en lecture suffit), Supabase (comptage d’une table), la disponibilité de ton site, la CI GitHub ou n’importe quelle API JSON. Les clés restent sur ce PC, dans ~/.spectre/assistant/.env.</p>
+          <form class="ag-form" id="saas-source-form" autocomplete="off">
+            <label><span class="label">Type</span><select name="kind" id="saas-kind">
+              <option value="uptime">Site (disponibilité)</option><option value="stripe">Stripe</option><option value="supabase">Supabase</option><option value="github">GitHub (CI)</option><option value="http_json">API JSON</option></select></label>
+            <label><span class="label">Nom</span><input type="text" name="name" maxlength="60" placeholder="ex. Site public"></label>
+            <label class="ag-wide" data-for="uptime supabase http_json"><span class="label">Adresse</span><input type="url" name="url" placeholder="https://…"></label>
+            <label data-for="supabase"><span class="label">Table</span><input type="text" name="table" placeholder="ex. profiles"></label>
+            <label data-for="supabase"><span class="label">Colonne de date (facultatif)</span><input type="text" name="date_column" placeholder="ex. created_at"></label>
+            <label data-for="github"><span class="label">Dépôt</span><input type="text" name="repo" placeholder="propriétaire/nom"></label>
+            <label class="ag-wide" data-for="http_json"><span class="label">Champs</span><input type="text" name="fields" placeholder="ex. errors=data.count, users=meta.total"></label>
+            <label class="ag-wide" data-for="stripe supabase github http_json"><span class="label">Clé (facultative pour GitHub public et l’API JSON)</span><input type="password" name="key" autocomplete="off" placeholder="rk_… / clé de service / jeton"></label>
+            <div><button class="btn btn-primary" type="submit">Ajouter la source</button></div>
+          </form>
+          <div id="saas-sources" class="cards"></div>
+          <form class="inline-form" id="saas-alert-form" autocomplete="off">
+            <input type="text" name="metric" required placeholder="Indicateur, ex. churn_rate" aria-label="Indicateur">
+            <select name="op" aria-label="Comparaison"><option value=">">&gt;</option><option value=">=">&ge;</option><option value="<">&lt;</option><option value="<=">&le;</option><option value="=">=</option></select>
+            <input type="number" name="threshold" step="any" required placeholder="Seuil" aria-label="Seuil">
+            <button class="btn" type="submit">Ajouter l'alerte</button>
+          </form>
+          <div id="saas-alerts" class="sa-alerts"></div>
+          <form class="inline-form" id="saas-metric-form" autocomplete="off">
+            <input type="text" name="metric" value="marketing_spend_30d" required aria-label="Indicateur saisi à la main">
+            <input type="number" name="value" step="any" required placeholder="Valeur, ex. dépenses marketing des 30 derniers jours" aria-label="Valeur">
+            <button class="btn" type="submit">Enregistrer le chiffre</button>
+          </form>
+          <div class="row"><button class="btn" type="button" id="saas-report">Programmer le rapport du lundi 9h</button></div>
+        </details>
         <h3 class="as-h as-h-sub">Organigramme</h3>
         <div id="company-posts" class="co-posts"></div>
         <h3 class="as-h as-h-sub">Faire avancer l'entreprise</h3>
