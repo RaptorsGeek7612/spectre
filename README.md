@@ -273,6 +273,21 @@ Les **moteurs de secours** (`fallback_models`) prennent le relais dans l'ordre q
 ses appels d'outils passent par le même portail de gouvernance. Comparaison avec Hermes Agent
 et feuille de route : [docs/analyse-hermes.md](docs/analyse-hermes.md).
 
+**Entreprises : organigramme et tableau de tâches.** Dans la vue Entreprise, ou en le
+demandant à Spectre, crée une entreprise et place un agent sur chacun de ses huit postes
+(direction, finance, marketing, ventes, support, produit et technique, juridique,
+opérations). C'est toujours toi qui nommes les agents que Spectre crée.
+
+- « Découper en tâches » confie un objectif à la direction, qui remplit le tableau : tâches par
+  département, priorités, dépendances.
+- Une tâche prête se lance d'un clic. Elle part en mission avec le brief de son poste, et
+  plusieurs missions peuvent tourner en parallèle (`mission_parallel`, de 1 à 4).
+- À la fin de la mission, la tâche passe « faite » si chaque étape a été vérifiée, sinon « à
+  valider ». Elle passe « bloquée » si la mission échoue.
+- Le pilote automatique, désactivé par défaut, lance lui-même les tâches prêtes.
+- Dans la vue Missions, « Orienter » donne une consigne à une mission en cours, lue avant son
+  étape suivante, et « Arrêter » l'arrête.
+
 ### Plusieurs demandes d'un coup : `spectre batch`
 
 ```shell

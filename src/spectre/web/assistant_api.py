@@ -54,6 +54,32 @@ def handle(
             handler._json(200, {"result": service.create_agent(body())})
         case "POST", ["agents", agent_id, "delete"]:
             handler._json(200, service.delete_agent(int(agent_id)))
+        case "GET", ["company"]:
+            handler._json(200, service.companies())
+        case "POST", ["company"]:
+            handler._json(
+                200, {"result": service.act("create_company", pick(body(), "name", "pitch"))}
+            )
+        case "GET", ["company", company_id]:
+            handler._json(200, service.company(int(company_id)))
+        case "POST", ["company", company_id, action]:
+            handler._json(200, {"result": company_action(service, company_id, action, body())})
+        case "POST", ["tasks", task_id]:
+            data = pick(body(), "status", "note")
+            handler._json(
+                200, {"result": service.act("update_task", {"task_id": int(task_id)} | data)}
+            )
+        case "POST", ["tasks", task_id, "start"]:
+            handler._json(
+                200, {"result": service.act("start_tasks", {"task_ids": str(int(task_id))})}
+            )
+        case "POST", ["missions", mission_id, "steer"]:
+            args = {"mission_id": int(mission_id), "message": str(body().get("message", ""))}
+            handler._json(200, {"result": service.act("steer_mission", args)})
+        case "POST", ["missions", mission_id, "stop"]:
+            handler._json(
+                200, {"result": service.act("stop_mission", {"mission_id": int(mission_id)})}
+            )
         case "GET", ["models"]:
             handler._json(200, service.models())
         case "GET", ["models", provider]:
@@ -108,6 +134,33 @@ def handle(
             handler._json(200, service.update_config(body()))
         case _:
             raise KeyError("/".join(parts))
+
+
+def pick(data: dict[str, Any], *keys: str) -> dict[str, str]:
+    """The given keys of a request body, as text (missing ones left out)."""
+    return {k: str(data[k]) for k in keys if k in data and data[k] is not None}
+
+
+def company_action(service: AssistantService, company_id: str, action: str, data: Any) -> str:
+    """`POST /company/<id>/<action>`: the matching tool, through the gate."""
+    company = {"company": str(int(company_id))}
+    match action:
+        case "post":
+            return service.act("set_post", company | pick(data, "department", "agent"))
+        case "autopilot":
+            return service.act("set_autopilot", company | {"on": bool(data.get("on"))})
+        case "tasks":
+            args: dict[str, Any] = company | pick(
+                data, "title", "department", "detail", "depends_on", "agent"
+            )
+            if "priority" in data:
+                args["priority"] = int(data["priority"])
+            return service.act("add_task", args)
+        case "plan":
+            return service.act("plan_company", company | pick(data, "objective"))
+        case "start":
+            return service.act("start_tasks", company | pick(data, "task_ids"))
+    raise KeyError(action)
 
 
 def remote(handler: Any) -> Remote:

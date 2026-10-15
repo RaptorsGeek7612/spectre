@@ -16,6 +16,7 @@ from typing import Any
 
 from spectre.assistant import engines, greetings, tools, winapi
 from spectre.assistant.brain import Brain, ClaudeCLI
+from spectre.assistant.company import DEPARTMENTS, Companies
 from spectre.assistant.config import (
     AGENT_NAMES,
     AGENT_ORDER,
@@ -70,6 +71,7 @@ class AssistantService:
             lead_model=self.config.planner_model or self.config.brain_model,
             verifier_model=self.config.verifier_model,
             fallbacks=self.config.fallback_models,
+            parallel=self.config.mission_parallel,
         )
         self.providers = Providers(root)
         self._config_mtime = self._config_stamp()
@@ -180,6 +182,7 @@ class AssistantService:
         self.missions.lead_model = cfg.planner_model or cfg.brain_model
         self.missions.verifier_model = cfg.verifier_model
         self.missions.fallbacks = list(cfg.fallback_models)
+        self.missions.parallel = cfg.mission_parallel
 
     def poll_changes(self) -> None:
         """Publish approvals/initiatives created elsewhere (e.g. by the MCP tool process)."""
@@ -283,6 +286,53 @@ class AssistantService:
     def start_mission(self, goal: str, kind: str = "mission", agent: str = "") -> str:
         args = {"goal": goal, "kind": kind} | ({"agent": agent} if agent else {})
         return tools.execute(self.gate, self.ctx, "start_mission", args)
+
+    # ---- companies: org chart and task board --------------------------------------------------
+
+    def act(self, tool: str, args: dict[str, Any]) -> str:
+        """A click in the interface, through the gate and the audit like Spectre's own calls."""
+        result = tools.execute(self.gate, self.ctx, tool, args)
+        if result.startswith(("ÉCHEC", "REFUSÉ")):
+            raise ValueError(result.split(" : ", 1)[-1])
+        self.publish({"type": "company"})
+        return result
+
+    def companies(self) -> list[Event]:
+        return Companies(self.db).all()
+
+    def company(self, company_id: int) -> Event:
+        """A company with its posts, its tasks and who can hold a post."""
+        companies = Companies(self.db)
+        found = companies.get(company_id)
+        posts = companies.posts(found["id"])
+        agents = [{"key": key, "name": AGENT_NAMES[key]} for key in AGENT_ORDER]
+        agents += [
+            {"key": f"agent:{a['id']}", "name": a["name"]} for a in CustomAgents(self.db).list()
+        ]
+        missions = {
+            m["id"]: m["status"]
+            for m in self.db.all("SELECT id, status FROM missions ORDER BY id DESC LIMIT 200")
+        }
+        return {
+            "company": found,
+            "departments": [
+                {
+                    "key": key,
+                    "label": label,
+                    "agent": posts[key],
+                    "agent_label": companies.agent_label(posts[key]),
+                }
+                for key, (label, _) in DEPARTMENTS.items()
+            ],
+            "tasks": [
+                t | {"mission_status": missions.get(t["mission_id"] or 0, "")}
+                for t in companies.tasks(found["id"])
+            ],
+            "ready": [t["id"] for t in companies.ready(found["id"])],
+            "agents": agents,
+            "parallel": self.missions.parallel,
+            "active": self.missions.active(),
+        }
 
     def initiatives(self, status: str = "pending") -> list[Event]:
         return self.db.all(
@@ -394,6 +444,9 @@ class AssistantService:
     def update_config(self, changes: dict[str, Any]) -> Event:
         changes = dict(changes)
         probe = AssistantConfig()
+        parallel = changes.get("mission_parallel")
+        if parallel is not None and (not isinstance(parallel, int) or not 1 <= parallel <= 4):
+            raise ValueError("missions en parallèle : de 1 à 4")
         for key, value in changes.items():  # engines are checked like `set_model` would
             if key in ROLES and isinstance(value, str):
                 engines.assign(probe, self.providers, key, value)

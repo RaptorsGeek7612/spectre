@@ -21,9 +21,9 @@ blakecrosley.com/guides/hermes et releasebot.io (notes de version).
 | Choix du LLM | 39 fournisseurs, `/model` à chaud (session, `--global`, `--once`), alias, local llama.cpp/Ollama/LM Studio | Claude via la CLI, ChatGPT (Codex), Mistral (Vibe) seulement | **v0.7.0** : tout point d'accès compatible OpenAI (`fournisseur:modèle`), LM Studio et Ollama en local, `/model`, outils `set_model`/`list_models` |
 | Modèle par tâche | `auxiliary.<tâche>` (vision, compression, review, approval…) | Cerveau et exécution seulement | **v0.7.0** : rôles cerveau, exécution, vérificateur, planificateur |
 | Secours | Chaîne `fallback_providers`, par tour, sensible aux limites | Repli Claude côté serveur (refus) | **v0.7.0** : `fallback_models` par appel (erreur ou limite d'abonnement) |
-| Sous-agents | `delegate_task` en parallèle (10), profondeur, schéma de sortie, pilotage en direct (`steer`/`stop`) | Missions séquentielles, un exécutant par étape, vérification Kaïto | v0.8.0 : délégation parallèle, pilotage et arrêt d'une mission en cours |
-| Agents nommés | Profils et Bots (rôle, modèle, mémoire, compétences, voix), salons de 2 à 6 bots, `message_agent` | Agents créés (nom donné par l'utilisateur, moteur, rôle) | v0.7.0 : moteur au choix pour chaque agent créé ; v0.8.0 : équipes et échanges entre agents |
-| Tableau de tâches | Kanban durable (SQLite), dispatcher, blocage humain, multi-entreprise | Liste des missions | v0.8.0 : tableau de l'entreprise (tâches, dépendances, responsable, blocage) |
+| Sous-agents | `delegate_task` en parallèle (10), profondeur, schéma de sortie, pilotage en direct (`steer`/`stop`) | Missions séquentielles, un exécutant par étape, vérification Kaïto | **v0.8.0** : missions en parallèle (1 à 4), orienter (`steer_mission`) et arrêter (`stop_mission`) une mission en cours |
+| Agents nommés | Profils et Bots (rôle, modèle, mémoire, compétences, voix), salons de 2 à 6 bots, `message_agent` | Agents créés (nom donné par l'utilisateur, moteur, rôle) | v0.7.0 : moteur au choix pour chaque agent créé ; **v0.8.0** : postes dans l'organigramme d'une entreprise ; v0.9.0 : messages entre agents |
+| Tableau de tâches | Kanban durable (SQLite), dispatcher, blocage humain, multi-entreprise | Liste des missions | **v0.8.0** : un tableau par entreprise (dépendances, priorités, « à valider »), découpage d'objectif, pilote automatique |
 | Tâches planifiées | `cronjob_manage`, langage naturel, modèle par tâche, livraison, reprise après panne | Briefing, rappels, consolidation, visites amicales | v0.9.0 : routines planifiées par Spectre |
 | Messagerie | 28 plateformes (Telegram, WhatsApp, Slack, e-mail…) | Web, voix, téléphone (Tailscale) | v0.9.0 : Telegram puis e-mail |
 | Webhooks et A2A | Webhooks signés (GitHub, Stripe…), protocole A2A v1.0 | Aucun | v0.9.0 : webhooks entrants signés ; A2A ensuite |
@@ -42,7 +42,7 @@ Notion, Stripe en MCP) mais pas de direction d'entreprise intégrée. Le plan po
   l'utilisateur. S'y ajoutent un tableau de tâches durable, la délégation en parallèle et le
   pilotage d'une mission en cours.
 - **v0.9.0 Automatisation** : routines planifiées (« chaque lundi à 9 h, point des ventes »),
-  webhooks entrants signés (Stripe, GitHub), passerelle Telegram.
+  webhooks entrants signés (Stripe, GitHub), passerelle Telegram, messages entre agents.
 - **v0.10.0 Suivi SaaS** :
   - connecteurs en lecture seule : Stripe (MRR, churn, paiements échoués), Supabase
     (inscriptions, santé de la base), disponibilité et latence, erreurs, intégration continue ;

@@ -14,6 +14,15 @@ from typing import Any
 
 from spectre.assistant import actions, powershell
 from spectre.assistant.actions import ActionContext, ActionError
+from spectre.assistant.company import (
+    DEPARTMENTS,
+    STATUS_LABELS,
+    Companies,
+    CompanyError,
+    enqueue,
+    steer_mission,
+    stop_mission,
+)
 from spectre.assistant.config import agent_name, resolve_agent
 from spectre.assistant.custom_agents import PREFIX, AgentError, CustomAgents
 from spectre.assistant.db import now_iso
@@ -147,6 +156,139 @@ def _set_fallbacks(ctx: ActionContext, engines: str) -> str:
         return "moteurs de secours : " + (", ".join(config.fallback_models) or "(aucun)")
 
     return _engine_change(ctx, change)
+
+
+def _company_call(action: Callable[[], str]) -> str:
+    try:
+        return action()
+    except CompanyError as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _ids(text: str) -> list[int]:
+    """ "3, #5 7" -> [3, 5, 7]."""
+    cleaned = text.replace("#", " ").replace(",", " ").replace(";", " ").split()
+    return [int(t) for t in cleaned if t.isdigit()]
+
+
+def _create_company(ctx: ActionContext, name: str, pitch: str = "") -> str:
+    def run() -> str:
+        found = Companies(ctx.db).create(name, pitch)
+        return (
+            f"entreprise #{found['id']} créée : {found['name']}. Organigramme vide : place un "
+            f"agent sur chaque poste avec set_post ({', '.join(DEPARTMENTS)})."
+        )
+
+    return _company_call(run)
+
+
+def _list_companies(ctx: ActionContext) -> str:
+    rows = Companies(ctx.db).all()
+    if not rows:
+        return "aucune entreprise (create_company pour en créer une)"
+    return "\n".join(
+        f"#{c['id']} {c['name']}{' (pilote automatique)' if c['autopilot'] else ''}"
+        f"{' : ' + c['pitch'][:120] if c['pitch'] else ''}"
+        for c in rows
+    )
+
+
+def _company_board(ctx: ActionContext, company: str = "") -> str:
+    return _company_call(lambda: Companies(ctx.db).board(company))
+
+
+def _set_post(ctx: ActionContext, company: str, department: str, agent: str = "") -> str:
+    def run() -> str:
+        companies = Companies(ctx.db)
+        key = companies.set_post(company, department, agent)
+        return f"poste {department} : {companies.agent_label(key)}"
+
+    return _company_call(run)
+
+
+def _add_task(
+    ctx: ActionContext,
+    company: str,
+    title: str,
+    department: str = "",
+    detail: str = "",
+    priority: int = 2,
+    depends_on: str = "",
+    agent: str = "",
+) -> str:
+    def run() -> str:
+        task = Companies(ctx.db).add_task(
+            company,
+            title,
+            department=department,
+            detail=detail,
+            priority=int(priority),
+            depends_on=_ids(str(depends_on)),
+            agent=agent,
+        )
+        where = task["department"] or "sans département"
+        return f"tâche #{task['id']} ajoutée ({where}) : {task['title']}"
+
+    return _company_call(run)
+
+
+def _plan_company(ctx: ActionContext, company: str, objective: str) -> str:
+    def run() -> str:
+        found = Companies(ctx.db).get(company)
+        if len(objective.strip()) < 5:
+            raise CompanyError("décris l'objectif à découper")
+        mid = enqueue(
+            ctx.db,
+            objective.strip(),
+            {"kind": "company_plan", "company": found["id"]},
+        )
+        return (
+            f"mission #{mid} : la direction découpe l'objectif en tâches pour {found['name']} "
+            "(je te préviens quand le tableau est prêt)"
+        )
+
+    return _company_call(run)
+
+
+def _update_task(ctx: ActionContext, task_id: int, status: str, note: str = "") -> str:
+    def run() -> str:
+        task = Companies(ctx.db).set_status(task_id, status, note)
+        return f"tâche #{task['id']} : {STATUS_LABELS[task['status']]}"
+
+    return _company_call(run)
+
+
+def _start_tasks(ctx: ActionContext, company: str = "", task_ids: str = "") -> str:
+    def run() -> str:
+        companies = Companies(ctx.db)
+        ids = _ids(str(task_ids))
+        if ids:
+            started = [(t, companies.start(t)) for t in ids]
+        else:
+            ready = companies.ready(company)
+            started = [(t["id"], companies.start(t["id"])) for t in ready]
+        if not started:
+            return "aucune tâche prête (à faire, dépendances terminées)"
+        return "lancées : " + ", ".join(f"tâche #{t} → mission #{m}" for t, m in started)
+
+    return _company_call(run)
+
+
+def _set_autopilot(ctx: ActionContext, company: str, on: bool) -> str:
+    def run() -> str:
+        found = Companies(ctx.db).set_autopilot(company, bool(on))
+        state = "activé" if found["autopilot"] else "désactivé"
+        return f"pilote automatique {state} pour {found['name']}"
+
+    return _company_call(run)
+
+
+def _steer_mission(ctx: ActionContext, mission_id: int, message: str) -> str:
+    return _company_call(lambda: steer_mission(ctx.db, int(mission_id), message))
+
+
+def _stop_mission(ctx: ActionContext, mission_id: int) -> str:
+    return _company_call(lambda: stop_mission(ctx.db, int(mission_id)))
 
 
 def _delete_agent(ctx: ActionContext, name: str) -> str:
@@ -376,6 +518,89 @@ TOOLS: dict[str, Tool] = {
             _set_fallbacks,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
+        Tool(
+            "steer_mission",
+            "Donner une consigne à une mission en cours : elle la lit avant sa prochaine étape "
+            "(ex. « concentre-toi sur la France »).",
+            Level.WRITE,
+            "mission",
+            _steer_mission,
+        ),
+        Tool(
+            "stop_mission",
+            "Arrêter une mission (en attente : tout de suite ; en cours : après son étape).",
+            Level.WRITE,
+            "mission",
+            _stop_mission,
+        ),
+        Tool(
+            "create_company",
+            "Créer une entreprise que Spectre aide à diriger (nom, pitch en une ou deux "
+            "phrases). Elle a un organigramme de départements et un tableau de tâches.",
+            Level.WRITE,
+            "company",
+            _create_company,
+        ),
+        Tool("list_companies", "Les entreprises.", Level.READ, "read", _list_companies),
+        Tool(
+            "company_board",
+            "Organigramme et tableau des tâches d'une entreprise (par nom ou numéro ; vide "
+            "s'il n'y en a qu'une).",
+            Level.READ,
+            "read",
+            _company_board,
+        ),
+        Tool(
+            "set_post",
+            "Placer un agent sur un poste : department parmi direction, finance, marketing, "
+            "ventes, support, produit, juridique, operations ; agent = le nom d'un agent créé "
+            "ou intégré (Gétro, Kyra...), un moteur, ou vide pour le réglage par défaut.",
+            Level.WRITE,
+            "company",
+            _set_post,
+        ),
+        Tool(
+            "add_task",
+            "Ajouter une tâche au tableau d'une entreprise : titre, département, détail, "
+            "priorité (1 urgent, 2 normal, 3 plus tard), depends_on (numéros de tâches à "
+            "finir avant, ex. « 3, 5 »), agent (facultatif, sinon celui du poste).",
+            Level.WRITE,
+            "company",
+            _add_task,
+        ),
+        Tool(
+            "plan_company",
+            "Faire découper un objectif d'entreprise en tâches par la direction (en arrière-"
+            "plan) : elles arrivent au tableau, avec départements et dépendances.",
+            Level.WRITE,
+            "company",
+            _plan_company,
+        ),
+        Tool(
+            "update_task",
+            "Changer le statut d'une tâche : todo (à refaire), blocked (bloquée, avec une "
+            "note), done (validée), cancelled (annulée, arrête sa mission).",
+            Level.WRITE,
+            "company",
+            _update_task,
+        ),
+        Tool(
+            "start_tasks",
+            "Lancer des tâches (une mission chacune, avec le brief de leur poste) : task_ids "
+            "(ex. « 3, 4 ») ou, vide, toutes les tâches prêtes de l'entreprise.",
+            Level.WRITE,
+            "mission",
+            _start_tasks,
+        ),
+        Tool(
+            "set_autopilot",
+            "Activer ou couper le pilote automatique d'une entreprise : activé, Spectre lance "
+            "seul les tâches prêtes, dans la limite des missions en parallèle. Seulement si "
+            "l'utilisateur le demande.",
+            Level.WRITE,
+            "company",
+            _set_autopilot,
+        ),
         Tool(
             "who_is_there",
             "Qui est devant l'écran (caméra, personnes enregistrées seulement).",
