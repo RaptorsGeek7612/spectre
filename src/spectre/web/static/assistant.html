@@ -75,6 +75,7 @@
       <button type="button" data-view="approvals"><span>Validations</span><b class="count" id="count-approvals"></b></button>
       <button type="button" data-view="missions"><span>Missions</span><b class="count" id="count-missions"></b></button>
       <button type="button" data-view="company"><span>Entreprise</span><b class="count" id="count-company"></b></button>
+      <button type="button" data-view="meetings"><span>Réunions</span><b class="count" id="count-meetings"></b></button>
       <button type="button" data-view="automation"><span>Automatisation</span><b class="count" id="count-automation"></b></button>
       <button type="button" data-view="learning"><span>Apprentissage</span><b class="count" id="count-learning"></b></button>
       <button type="button" data-view="agents"><span>Agents</span><b class="count" id="count-agents"></b></button>
@@ -244,6 +245,22 @@
         <div class="co-actions"><button class="btn btn-primary" type="button" id="company-start">Lancer les tâches prêtes</button><span class="meta" id="company-capacity"></span></div>
         <div id="company-board" class="co-board"></div>
       </div>
+    </section>
+
+    <section class="as-view" data-view="meetings" hidden>
+      <h2 class="as-h">Réunions</h2>
+      <p class="meta">Spectre écoute la réunion avec le micro du PC et la transcrit sur place, par morceaux de 30 secondes : le son n’est jamais gardé, seul le texte reste, et rien ne quitte le PC. À la fin, il fait le compte rendu ; avec une entreprise, les tâches vont à son tableau et les décisions à son journal. Préviens les participants que tu enregistres.</p>
+      <form class="inline-form" id="meeting-form" autocomplete="off">
+        <input type="text" name="title" maxlength="200" placeholder="Titre, ex. « Point hebdo produit »" aria-label="Titre de la réunion">
+        <select name="company" id="meeting-company" aria-label="Entreprise"><option value="">Sans entreprise</option></select>
+        <button class="btn btn-primary" type="submit" id="meeting-toggle">Démarrer l'écoute</button>
+      </form>
+      <p class="meta mt-live" id="meeting-live" hidden></p>
+      <form class="inline-form" id="meeting-upload" autocomplete="off">
+        <input type="file" name="file" accept=".wav,audio/wav" aria-label="Enregistrement WAV">
+        <button class="btn" type="submit">Transcrire un enregistrement (WAV)</button>
+      </form>
+      <div id="meetings" class="cards"></div>
     </section>
 
     <section class="as-view" data-view="automation" hidden>

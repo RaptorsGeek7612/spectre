@@ -632,6 +632,43 @@ def _cost_report(ctx: ActionContext, company: str = "", days: int = 30) -> str:
     return spend.text(ctx.db, datetime.now().astimezone(), company_id, max(1, min(int(days), 365)))
 
 
+def _meeting(ctx: ActionContext, action: str, company: str = "", title: str = "") -> str:
+    from spectre.assistant.meeting import REQUEST_KV
+
+    wanted = action.strip().lower()
+    if wanted in ("start", "demarrer", "démarrer", "lancer", "commencer"):
+        company_id = ""
+        if company.strip():
+            try:
+                company_id = str(Companies(ctx.db).get(company)["id"])
+            except CompanyError as exc:
+                raise ActionError(str(exc)) from exc
+        ctx.db.set_kv(
+            REQUEST_KV, json.dumps({"action": "start", "company": company_id, "title": title})
+        )
+        return (
+            "réunion demandée : j'écoute dans quelques secondes (rappelle aux participants que "
+            "tu enregistres ; seul le texte est gardé, rien ne quitte le PC)"
+        )
+    if wanted in ("stop", "arreter", "arrêter", "terminer", "fin"):
+        ctx.db.set_kv(REQUEST_KV, json.dumps({"action": "stop"}))
+        return "fin de réunion demandée : le compte rendu suit"
+    raise ActionError("action : start ou stop")
+
+
+def _list_meetings(ctx: ActionContext) -> str:
+    from spectre.assistant.meeting import Meetings
+
+    rows = Meetings(ctx.db).all(10)
+    if not rows:
+        return "aucune réunion"
+    return "\n".join(
+        f"#{m['id']} {m['title']} [{m['status']}] {round((m['seconds'] or 0) / 60)} min"
+        + (f" — {m['summary'][:200]}" if m["summary"] else "")
+        for m in rows
+    )
+
+
 def _delete_agent(ctx: ActionContext, name: str) -> str:
     try:
         agent = CustomAgents(ctx.db).delete(name)
@@ -859,6 +896,22 @@ TOOLS: dict[str, Tool] = {
             _set_fallbacks,
         ),
         Tool("list_missions", "État des missions.", Level.READ, "read", _missions),
+        Tool(
+            "meeting",
+            "Mode réunion, quand l'utilisateur le demande : action=start (écouter avec le micro "
+            "du PC et transcrire en local ; company et title facultatifs) ou stop (arrêter : le "
+            "compte rendu suit, ses tâches vont au tableau et ses décisions au journal).",
+            Level.WRITE,
+            "meeting",
+            _meeting,
+        ),
+        Tool(
+            "list_meetings",
+            "Les dernières réunions et leurs résumés.",
+            Level.READ,
+            "read",
+            _list_meetings,
+        ),
         Tool(
             "agent_record",
             "Le dossier de fiabilité d'un agent (ou de tous) : niveau (apprenti, confirmé, "

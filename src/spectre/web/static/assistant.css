@@ -286,6 +286,9 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .ex-form input[name="min_change"], .ex-form input[name="days"] { flex: 0 0 6.5em; width: 6.5em; }
 #decisions { margin-bottom: 14px; }
 #board-form, #experiment-form { margin-bottom: 10px; }
+.mt-live { color: var(--danger); font-size: 0.95rem; margin: 0 0 12px; }
+#meeting-form, #meeting-upload { margin-bottom: 10px; }
+.btn-danger { border-color: var(--danger); }
 .wh-created { border-color: var(--l589); }
 .wh-created code, .tg-code code, #webhooks code { overflow-wrap: anywhere; }
 .tg-card { display: grid; gap: 8px; }

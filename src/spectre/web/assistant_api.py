@@ -7,6 +7,7 @@ import queue
 from typing import Any
 from urllib.parse import unquote
 
+from spectre.assistant.meeting import Meetings
 from spectre.assistant.remote import Remote
 from spectre.assistant.service import AssistantService
 
@@ -153,6 +154,33 @@ def handle(
             handler._json(200, service.search(query.get("q", [""])[0]))
         case "POST", ["missions", mission_id, "rollback"]:
             handler._json(200, {"result": service.rollback_mission(int(mission_id))})
+        case "GET", ["meetings"]:
+            handler._json(
+                200, {"meetings": service.meetings(), "recording": service.recorder.recording}
+            )
+        case "GET", ["meetings", meeting_id]:
+            handler._json(200, service.meeting(int(meeting_id)))
+        case "POST", ["meetings", "start"]:
+            data = body()
+            handler._json(
+                200, service.meeting_start(str(data.get("title", "")), str(data.get("company", "")))
+            )
+        case "POST", ["meetings", "stop"]:
+            handler._json(200, service.meeting_stop())
+        case "POST", ["meetings", "upload"]:
+            from spectre.assistant.meeting import MAX_UPLOAD
+
+            handler._json(
+                200,
+                service.meeting_upload(
+                    handler._raw_body(MAX_UPLOAD),
+                    query.get("title", [""])[0],
+                    query.get("company", [""])[0],
+                ),
+            )
+        case "POST", ["meetings", meeting_id, "delete"]:
+            Meetings(service.db).delete(int(meeting_id))
+            handler._json(200, {"ok": True})
         case "GET", ["trust"]:
             handler._json(200, service.trust_board())
         case "GET", ["costs"]:
