@@ -69,7 +69,7 @@ def _local(state: str, questions: dict[str, Any]) -> dict[str, Any]:
     with _lock:
         if _router is None:
             try:
-                from laya import Router  # type: ignore[import-not-found]
+                from laya import Router
             except ImportError as exc:
                 raise LayaError(INSTALL) from exc
             _router = Router()

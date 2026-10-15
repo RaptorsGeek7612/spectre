@@ -1,9 +1,10 @@
 """Which engine serves a reference, and the fallback chain when one fails.
 
 `opus`/`sonnet`/`haiku` -> Claude Code CLI, `chatgpt` -> Codex CLI, `mistral` -> Vibe CLI,
-`cursor` -> Cursor CLI, `antigravity` -> Antigravity CLI, `kimi` -> Kimi Code CLI,
+`cursor` -> Cursor CLI, `antigravity` -> Antigravity CLI, `simon` -> his hosted model
+(DeepSeek by default),
 `provider:model` -> an OpenAI-compatible endpoint (`llm.HttpAgent`). An agent with its own tool
-can be moved to another engine (`agent_engines`: Simon on DeepSeek...). Like Hermes Agent, the
+can be moved to another engine (`agent_engines`: Octavya on Claude...). Like Hermes Agent, the
 fallback is per call: the next call tries the chosen engine first again.
 """
 
@@ -46,15 +47,21 @@ EXTERNAL: dict[str, Any] = {  # non-Claude CLI agents
     "mistral": _vibe,
     "cursor": _cli("CursorCLI"),
     "antigravity": _cli("AntigravityCLI"),
-    "kimi": _cli("KimiCLI"),
 }
 
 
 def resolve(config: AssistantConfig, ref: str) -> str:
     """The engine that really serves a reference: an agent moved to another engine
-    (`agent_engines`) runs there; anything else is itself."""
-    moved = config.agent_engines.get(ref, "") if ref in EXTERNAL else ""
-    return moved if moved and moved not in EXTERNAL else ref
+    (`agent_engines`) runs there, Simon on his hosted model; anything else is itself."""
+    from spectre.assistant.config import HOSTED_AGENTS
+    from spectre.config import AGENT_DEFAULT_ENGINES
+
+    if ref not in EXTERNAL and ref not in HOSTED_AGENTS:
+        return ref
+    moved = config.agent_engines.get(ref, "")
+    if moved and moved not in EXTERNAL and moved not in HOSTED_AGENTS:
+        return moved
+    return AGENT_DEFAULT_ENGINES.get(ref, ref)
 
 
 class Engines:
@@ -193,7 +200,7 @@ def summary(config: AssistantConfig, providers: Providers, with_models: bool = T
     lines += [
         f"Secours, dans l'ordre : {chain}",
         "Moteurs CLI : opus, sonnet, haiku, chatgpt (Codex), mistral (Vibe), cursor, "
-        "antigravity, kimi",
+        "antigravity ; Simon (simon) sur DeepSeek",
     ]
     for item in providers.describe():
         state = "prêt" if item["ready"] else f"clé manquante ({item['key_env']})"

@@ -12,14 +12,17 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ### Added
 
 - Trois agents : Octavya (juridique, sur Cursor), Clarke (finances et assurances, sur
-  Antigravity) et Simon (expert-comptable, sur Kimi Code). Chacun a sa spécialité, et Spectre
-  leur confie d'office les missions de leur domaine (`assistant/cli_agents.py`).
-  - Ils travaillent comme Kyra et Syfer : dans leur propre dossier, avec les seuls outils de
-    Spectre. Le shell et l'écriture directe de leur outil sont coupés quand il le permet.
+  Antigravity) et Simon (expert-comptable, sur DeepSeek `deepseek-v4-pro` par défaut). Chacun
+  a sa spécialité, et Spectre leur confie d'office les missions de leur domaine.
+  - Octavya et Clarke travaillent comme Kyra et Syfer (`assistant/cli_agents.py`) : dans leur
+    propre dossier, avec les seuls outils de Spectre. Le shell et l'écriture directe de leur
+    outil sont coupés quand il le permet.
+  - Simon travaille sur un modèle hébergé, avec ta clé `DEEPSEEK_API_KEY`
+    (`AGENT_DEFAULT_ENGINES`).
   - Le modèle se choisit dans la liste que donne l'outil lui-même (`cursor-agent
-    --list-models`, `agy models`, le cache de Codex, les alias de Vibe et de Kimi Code).
-- Un moteur par agent (`agent_engines`). Un agent peut quitter son outil pour un autre moteur,
-  par exemple Simon sur DeepSeek, et garde son nom et sa spécialité.
+    --list-models`, `agy models`, le cache de Codex, les alias de Vibe) ou le fournisseur.
+- Un moteur par agent (`agent_engines`). Un agent peut quitter son outil ou son modèle pour un
+  autre moteur, par exemple Octavya sur Claude, et garde son nom et sa spécialité.
 - Page Équipe (`assistant/team.py`). Pour chaque agent :
   - son portrait, son département, son outil, son moteur et son modèle, modifiables ;
   - sa voix dans la visio, avec un bouton pour l'écouter ;

@@ -99,8 +99,9 @@ forge fmt --check ; forge build ; forge test
   `open_pr` = action EXTERNAL validée). Notifications : `webpush.py` (RFC 8291 + VAPID avec
   `cryptography`, clé dans le `.env`) ; briefing par entreprise : `brief.py` ; crypto en lecture
   seule : sources `btc_wallet`/`eth_wallet`/`crypto_price` de `saas.py` (adresses publiques).
-  Agents sur outil : `cursor` (Octavya), `antigravity` (Clarke, une femme), `kimi` (Simon) dans
-  `cli_agents.py` ; `agent_engines` déplace un agent sur un autre moteur. Équipe : `team.py`
+  Agents sur outil : `cursor` (Octavya), `antigravity` (Clarke, une femme) dans `cli_agents.py` ;
+  Simon (`simon`) travaille sur un modèle hébergé (`AGENT_DEFAULT_ENGINES` de `spectre/config.py`,
+  DeepSeek) ; `agent_engines` déplace un agent sur un autre moteur. Équipe : `team.py`
   (moteur, modèle, voix, apparence, photo) ; visio : `call.py` (statuts et répliques depuis la
   table `activity`, sans modèle) et `sessions.py` (sessions Claude Code/Codex/Vibe en lecture
   seule) ; Laya : `laya.py`, outil `laya_decide` réservé à Spectre (`Tool.lead_only`).

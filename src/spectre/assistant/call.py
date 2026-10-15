@@ -36,7 +36,7 @@ GENDERS = {
     "mistral": "m",
     "cursor": "f",
     "antigravity": "f",
-    "kimi": "m",
+    "simon": "m",
 }
 URGENCY = {"needs_you": 0, "stalled": 1, "working": 2, "waiting": 3, "done": 4, "available": 5}
 

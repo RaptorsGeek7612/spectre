@@ -3,7 +3,7 @@
 An engine is named by a reference:
 - `opus`, `sonnet`, `haiku`: Claude through the Claude Code CLI (the subscription);
 - `chatgpt`, `mistral`: the Codex and Vibe CLIs (the user's ChatGPT and Le Chat accounts);
-- `cursor`, `antigravity`, `kimi`: the Cursor, Antigravity and Kimi Code CLIs (same idea);
+- `cursor`, `antigravity`: the Cursor and Antigravity CLIs (same idea); `simon`: Simon's model;
 - `<provider>:<model>`: any OpenAI-compatible endpoint, e.g. `lmstudio:google/gemma-4-e4b`,
   `ollama:qwen3:8b`, `openrouter:deepseek/deepseek-chat`, `groq:llama-3.3-70b-versatile`.
 
@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-CLI_ENGINES = ("opus", "sonnet", "haiku", "chatgpt", "mistral", "cursor", "antigravity", "kimi")
+CLI_ENGINES = ("opus", "sonnet", "haiku", "chatgpt", "mistral", "cursor", "antigravity", "simon")
 MAX_MODEL = 120
 
 

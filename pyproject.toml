@@ -84,7 +84,7 @@ files = ["src"]
 
 [[tool.mypy.overrides]]
 # Optional voice extra: untyped, and absent from CI.
-module = ["sounddevice", "vosk", "faster_whisper", "av", "piper", "piper.*", "cv2", "cv2.*", "onnxruntime"]
+module = ["sounddevice", "vosk", "faster_whisper", "av", "piper", "piper.*", "cv2", "cv2.*", "onnxruntime", "laya", "laya.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

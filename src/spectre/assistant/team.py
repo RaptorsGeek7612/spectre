@@ -1,10 +1,11 @@
 """The team page: every agent with its department, the tool and model it runs on (both can be
 changed), its voice on the video call, its record and what it did lately.
 
-An agent with its own tool (Kyra on Codex, Octavya on Cursor, Simon on Kimi...) keeps its name
-and its specialty when the user moves it to another engine (`agent_engines`): Simon on DeepSeek
-is still the accountant. Spectre, Gétro and Kaïto are the brain, execution and verification
-roles, whose engine is the role's setting.
+An agent with its own tool (Kyra on Codex, Octavya on Cursor...) keeps its name and its
+specialty when the user moves it to another engine (`agent_engines`); Simon works on a hosted
+model (DeepSeek by default) that can be changed the same way: he is still the accountant.
+Spectre, Gétro and Kaïto are the brain, execution and verification roles, whose engine is the
+role's setting.
 """
 
 from __future__ import annotations
@@ -19,10 +20,12 @@ from spectre.assistant import activity, call
 from spectre.assistant.config import (
     AGENT_ROLES,
     EXTERNAL_AGENTS,
+    HOSTED_AGENTS,
     AssistantConfig,
 )
 from spectre.assistant.custom_agents import PREFIX, CustomAgents
 from spectre.assistant.db import Database
+from spectre.assistant.engines import resolve
 from spectre.assistant.providers import ProviderError, Providers, split_ref
 from spectre.assistant.trust import Trust
 
@@ -34,14 +37,12 @@ MODEL_SETTING = {
     "mistral": "mistral_model",
     "cursor": "cursor_model",
     "antigravity": "antigravity_model",
-    "kimi": "kimi_model",
 }
 BINARY = {
     "chatgpt": "codex_bin",
     "mistral": "vibe_bin",
     "cursor": "cursor_bin",
     "antigravity": "antigravity_bin",
-    "kimi": "kimi_bin",
 }
 
 # Spectre's local voices (Piper), clear and without effect on the call: id -> (model, speaker)
@@ -60,7 +61,7 @@ DEFAULT_VOICES = {
     "mistral": ("tom", "vif"),
     "cursor": ("jessica", "naturel"),
     "antigravity": ("siwis", "pose"),
-    "kimi": ("gilles", "pose"),
+    "simon": ("gilles", "pose"),
 }
 
 
@@ -73,6 +74,17 @@ def voice_of(config: AssistantConfig, key: str, gender: str = "m") -> tuple[str,
     chosen = config.agent_voices.get(key, "")
     default = DEFAULT_VOICES.get(key) or (("siwis" if gender == "f" else "tom"), "naturel")
     return (chosen if chosen in VOICES else default[0]), default[1]
+
+
+def hosted_label(engine: str) -> str:
+    """« DeepSeek · deepseek-v4-pro » for Simon's engine, « Claude · sonnet » for a CLI one."""
+    provider, model = split_ref(engine)
+    names = {"deepseek": "DeepSeek", "openrouter": "OpenRouter", "lmstudio": "LM Studio"}
+    return (
+        f"{names.get(provider, provider.capitalize())} · {model}"
+        if provider
+        else f"Claude · {model}"
+    )
 
 
 def available(config: AssistantConfig, key: str) -> bool:
@@ -110,6 +122,8 @@ def members(db: Database, config: AssistantConfig) -> list[dict[str, Any]]:
             engine = str(getattr(config, ROLE_OF[key])) or key
         elif own:
             engine = config.agent_engines.get(key, "") or key
+        elif key in HOSTED_AGENTS:
+            engine = resolve(config, key)
         else:
             engine = created[key]["engine"] if key in created else ""
         dossier = trust.dossier(key)
@@ -125,6 +139,8 @@ def members(db: Database, config: AssistantConfig) -> list[dict[str, Any]]:
             )
             or {}
         )
+        if key in HOSTED_AGENTS:
+            member = {**member, "tool": hosted_label(engine)}
         out.append(
             {
                 **member,
@@ -168,7 +184,7 @@ def change(
                 changes[ROLE_OF[key]] = providers.check(wanted or key)
             except ProviderError as exc:
                 raise TeamError(str(exc)) from exc
-        elif key in EXTERNAL_AGENTS:
+        elif key in EXTERNAL_AGENTS or key in HOSTED_AGENTS:
             moved = dict(config.agent_engines)
             if not wanted or wanted == key:
                 moved.pop(key, None)  # back to its own tool
@@ -177,7 +193,7 @@ def change(
                     ref = providers.check(wanted)
                 except ProviderError as exc:
                     raise TeamError(str(exc)) from exc
-                if ref in EXTERNAL_AGENTS:
+                if ref in EXTERNAL_AGENTS or ref in HOSTED_AGENTS:
                     raise TeamError(
                         "un agent ne peut pas emprunter l'outil d'un autre agent : choisis Claude "
                         "ou un modèle fournisseur:modèle"

@@ -95,7 +95,7 @@ prêts (BPI, banques, subventions), tarification, et les assurances de l'entrepr
 multirisque, cyber, prévoyance, homme clé). Chaque chiffre donne sa source ou son hypothèse, \
 chaque scénario son pire cas. Tu ne promets aucun rendement et tu n'engages aucune dépense : \
 tu proposes et l'utilisateur décide.""",
-    "kimi": """\
+    "simon": """\
 Tu es Simon, l'expert-comptable de l'équipe. Ta spécialité : la comptabilité française (plan \
 comptable général, écritures, rapprochements, clôture, bilan et compte de résultat), la TVA \
 et ses déclarations, l'impôt sur les sociétés ou sur le revenu, les charges sociales, le \
@@ -536,7 +536,7 @@ class MissionEngine:
             prompt += "\n\nConsignes de l'utilisateur, données en cours de route (prioritaires) :\n"
             prompt += "\n".join(f"- {n}" for n in notes)
         created = CustomAgents(self.db).get(agent) if agent.startswith(PREFIX) else None
-        # `model` is the agent (Simon...), `engine` what really runs it (kimi, or DeepSeek if
+        # `model` is the agent (Simon...), `engine` what really runs it (cursor, or Claude if
         # the user moved him there), `wanted` what that engine's `ask` takes
         model = self._chosen(created["engine"] if created else agent)
         worker, wanted = self.engines.worker(model)

@@ -36,7 +36,7 @@ def db(tmp_path: Path) -> Any:
 
 
 def test_new_agents_and_aliases() -> None:
-    assert [agent_name(k) for k in ("cursor", "antigravity", "kimi")] == [
+    assert [agent_name(k) for k in ("cursor", "antigravity", "simon")] == [
         "Octavya",
         "Clarke",
         "Simon",
@@ -47,9 +47,10 @@ def test_new_agents_and_aliases() -> None:
 
 
 def test_an_agent_moved_to_another_engine() -> None:
-    config = AssistantConfig(agent_engines={"kimi": "deepseek:deepseek-chat", "cursor": "kimi"})
-    assert engines.resolve(config, "kimi") == "deepseek:deepseek-chat"
-    assert engines.resolve(config, "cursor") == "cursor"  # never another agent's tool
+    assert engines.resolve(AssistantConfig(), "simon") == "deepseek:deepseek-v4-pro"
+    config = AssistantConfig(agent_engines={"simon": "lmstudio:qwen", "cursor": "simon"})
+    assert engines.resolve(config, "simon") == "lmstudio:qwen"
+    assert engines.resolve(config, "cursor") == "cursor"  # never another agent
     assert engines.resolve(config, "sonnet") == "sonnet"
 
     class Cli:
@@ -58,7 +59,7 @@ def test_an_agent_moved_to_another_engine() -> None:
             self.root = Path(".")
 
     pool = engines.Engines(Cli(), agents={"http": "HTTP"})
-    assert pool.worker("kimi") == ("HTTP", "deepseek:deepseek-chat")
+    assert pool.worker("simon") == ("HTTP", "lmstudio:qwen")
 
 
 class Runner:
@@ -102,7 +103,7 @@ def test_cli_agents_explain_their_failures(tmp_path: Path) -> None:
     login = Runner("", 1, "401 Unauthorized")
     assert (
         "connecte-toi"
-        in cli_agents.KimiCLI(AssistantConfig(), tmp_path, login).ask("x", system="s").text
+        in cli_agents.AntigravityCLI(AssistantConfig(), tmp_path, login).ask("x", system="s").text
     )
 
     def missing(*a: Any, **k: Any) -> Any:
@@ -110,7 +111,7 @@ def test_cli_agents_explain_their_failures(tmp_path: Path) -> None:
 
     assert (
         "Je ne trouve pas"
-        in cli_agents.KimiCLI(AssistantConfig(), tmp_path, missing).ask("x", system="s").text
+        in cli_agents.CursorCLI(AssistantConfig(), tmp_path, missing).ask("x", system="s").text
     )
 
     def slow(*a: Any, **k: Any) -> Any:
@@ -122,24 +123,18 @@ def test_cli_agents_explain_their_failures(tmp_path: Path) -> None:
     )
 
 
-def test_antigravity_and_kimi_commands(tmp_path: Path) -> None:
-    config = AssistantConfig(antigravity_model="gemini-3.8-flash-low", kimi_model="kimi-code/k3")
+def test_antigravity_command(tmp_path: Path) -> None:
+    config = AssistantConfig(antigravity_model="gemini-3.8-flash-low")
     runner = Runner()
     cli_agents.AntigravityCLI(config, tmp_path, runner).ask("Budget", system="Tu es Clarke.")
     cmd = runner.calls[0]["cmd"]
-    assert (
-        cmd[-2] == "-p"
-        and "Budget" in cmd[-1]
-        and "--sandbox" in cmd
-        and "gemini-3.8-flash-low" in cmd
-    )
+    assert cmd[-2] == "-p" and "Budget" in cmd[-1] and "--sandbox" in cmd
+    assert "gemini-3.8-flash-low" in cmd and "--mode" not in cmd
     assert (tmp_path / "agents" / "antigravity" / ".agents" / "mcp_config.json").is_file()
-    kimi = cli_agents.KimiCLI(config, tmp_path, runner)
-    kimi.ask("TVA", system="Tu es Simon.")
-    assert runner.calls[1]["cmd"][1:3] == ["-m", "kimi-code/k3"]
-    assert runner.calls[1]["env"]["KIMI_CODE_TRUST_WORKSPACE"] == "1"
-    rules = (tmp_path / "agents" / "kimi" / ".kimi-code" / "local.toml").read_text(encoding="utf-8")
-    assert 'pattern = "Bash"' in rules and 'decision = "deny"' in rules
+    assert (
+        "plan"
+        in cli_agents.AntigravityCLI(config, tmp_path, runner).command("x", with_tools=False)[0]
+    )
 
 
 def test_find_cursor_prefers_its_bundled_node(
@@ -182,7 +177,6 @@ def test_model_lists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     cli_agents._cache.clear()
     monkeypatch.setattr(cli_agents, "_run", lambda cmd, env=None: "auto - Auto\n")
     assert cli_agents.models("cursor", AssistantConfig())[0]["id"] == "auto"
-    assert cli_agents.models("kimi", AssistantConfig())[0]["id"] == "kimi-code/k3"
     cli_agents._cache.clear()
 
 
@@ -232,11 +226,11 @@ def _day(db: Database) -> int:
             "VALUES(?, 'write_file', '{}', 2, 'write', 'r')",
             (now_iso(),),
         )
-        db.execute("INSERT INTO approval_agents(approval_id, agent) VALUES(?, 'kimi')", (aid,))
+        db.execute("INSERT INTO approval_agents(approval_id, agent) VALUES(?, 'simon')", (aid,))
         activity.record(
             db,
             "approval",
-            agent="kimi",
+            agent="simon",
             title="write_file",
             detail=json.dumps({"target": "tva.xlsx"}),
             status="pending",
@@ -252,7 +246,7 @@ def _day(db: Database) -> int:
 def test_statuses_lines_and_snapshot(db: Database) -> None:
     mid = _day(db)
     found = {s["key"]: s for s in call.statuses(db)}
-    assert found["kimi"]["status"] == "needs_you" and "write_file" in found["kimi"]["activity"]
+    assert found["simon"]["status"] == "needs_you" and "write_file" in found["simon"]["activity"]
     assert found["cursor"]["status"] == "working" and found["cursor"]["activity"].startswith(
         "web_search"
     )
@@ -269,7 +263,7 @@ def test_statuses_lines_and_snapshot(db: Database) -> None:
         a == "antigravity" for a, _ in said
     )
     assert any(a == "haiku" and "rifi" in t or "Contrôl" in t or "confirme" in t for a, t in said)
-    assert any(a == "kimi" and "accord" in t for a, t in said)
+    assert any(a == "simon" and "accord" in t for a, t in said)
     assert any(a == "mistral" and "labo éteint" in t for a, t in said)
     replay = call.replay(db, mid)
     assert replay["mission"]["goal"] == "Bêta" and replay["tools"]
@@ -285,7 +279,7 @@ def test_standup_recap_tree_board(db: Database) -> None:
     text = {line["agent"]: line["text"] for line in lines}
     assert lines[0]["agent"] == "opus" and "tour de table" in lines[0]["text"]
     assert "Prévisionnel" in text["antigravity"]
-    assert "j'attends ton accord pour write_file" in text["kimi"]
+    assert "j'attends ton accord pour write_file" in text["simon"]
     assert text["sonnet"] == "Rien pour moi depuis hier, je suis disponible."
     assert "1 étape" in text["haiku"]
     assert "attend ton accord" in lines[-1]["text"]
@@ -518,13 +512,16 @@ def test_team_changes(db: Database, tmp_path: Path) -> None:
     assert (
         members["chatgpt"]["tool"] == "Codex" and members["opus"]["role_setting"] == "brain_model"
     )
-    assert team.change(db, config, providers, "kimi", {"engine": "deepseek:deepseek-chat"}) == {
-        "agent_engines": {"kimi": "deepseek:deepseek-chat"}
+    assert {m["key"]: m for m in team.members(db, config)}["simon"]["tool"] == (
+        "DeepSeek · deepseek-v4-pro"
+    )
+    assert team.change(db, config, providers, "simon", {"engine": "deepseek:deepseek-chat"}) == {
+        "agent_engines": {"simon": "deepseek:deepseek-chat"}
     }
     with pytest.raises(team.TeamError, match="emprunter"):
-        team.change(db, config, providers, "kimi", {"engine": "cursor"})
-    config.update({"agent_engines": {"kimi": "deepseek:deepseek-chat"}})
-    assert team.change(db, config, providers, "kimi", {"engine": "kimi"}) == {"agent_engines": {}}
+        team.change(db, config, providers, "simon", {"engine": "cursor"})
+    config.update({"agent_engines": {"simon": "deepseek:deepseek-chat"}})
+    assert team.change(db, config, providers, "simon", {"engine": "simon"}) == {"agent_engines": {}}
     assert team.change(db, config, providers, "opus", {"engine": "sonnet"}) == {
         "brain_model": "sonnet"
     }
@@ -552,10 +549,10 @@ def test_looks_and_portraits(db: Database, tmp_path: Path) -> None:
         db,
         config,
         providers,
-        "kimi",
+        "simon",
         {"look": {"g": "f", "hair": "#AA0000", "style": "bob", "outfit_kind": "tie", "jewel": 1}},
     )
-    look = changes["agent_looks"]["kimi"]
+    look = changes["agent_looks"]["simon"]
     assert (
         look["hair"] == "#aa0000"
         and look["tie"] is True
@@ -564,15 +561,15 @@ def test_looks_and_portraits(db: Database, tmp_path: Path) -> None:
     )
     for bad in ({"style": "mohawk"}, {"hair": "red"}, {"wings": True}, "x"):
         with pytest.raises(team.TeamError):
-            team.change(db, config, providers, "kimi", {"look": bad})
+            team.change(db, config, providers, "simon", {"look": bad})
     config.update(changes)
-    assert {m["key"]: m for m in team.members(db, config)}["kimi"]["gender"] == "f"
-    assert team.change(db, config, providers, "kimi", {"look": {}}) == {"agent_looks": {}}
+    assert {m["key"]: m for m in team.members(db, config)}["simon"]["gender"] == "f"
+    assert team.change(db, config, providers, "simon", {"look": {}}) == {"agent_looks": {}}
     team.save_portrait(tmp_path, "agent:3", PNG)
     assert team.portrait(tmp_path, "agent:3") == (PNG, "image/png")
     assert team.portraits(tmp_path) == {"agent-3"}
     with pytest.raises(team.TeamError):
-        team.save_portrait(tmp_path, "kimi", b"GIF89a")
+        team.save_portrait(tmp_path, "simon", b"GIF89a")
     team.delete_portrait(tmp_path, "agent:3")
     assert team.portrait(tmp_path, "agent:3") is None
 
@@ -685,11 +682,9 @@ def test_api_team_and_call(api: Client, service: AssistantService) -> None:  # n
     _day(service.db)
     status, data = api.json("GET", "/api/assistant/team")
     assert status == 200 and len(data["agents"]) == 8 and "siwis" in data["voices"]
-    status, data = api.json(
-        "POST", "/api/assistant/team/kimi", {"engine": "deepseek:deepseek-chat"}
-    )
-    assert status == 200 and {a["key"]: a for a in data["agents"]}["kimi"]["moved"] is True
-    assert api.json("POST", "/api/assistant/team/kimi", {"engine": "cursor"})[0] == 400
+    status, data = api.json("POST", "/api/assistant/team/cursor", {"engine": "sonnet"})
+    assert status == 200 and {a["key"]: a for a in data["agents"]}["cursor"]["moved"] is True
+    assert api.json("POST", "/api/assistant/team/simon", {"engine": "cursor"})[0] == 400
     assert api.json("GET", "/api/assistant/team/cursor")[1]["key"] == "cursor"
     status, _, _ = api.request(
         "POST",

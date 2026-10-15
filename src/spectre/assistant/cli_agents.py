@@ -1,5 +1,5 @@
-"""Octavya, Clarke and Simon: mission execution agents in the Cursor, Antigravity and Kimi Code
-CLIs, on the user's own accounts (like Kyra with Codex and Syfer with Vibe).
+"""Octavya and Clarke: mission execution agents in the Cursor and Antigravity CLIs, on the
+user's own accounts (like Kyra with Codex and Syfer with Vibe).
 
 Each runs in its own folder of the assistant directory (`agents/<key>`), which Spectre rewrites
 on every run: Spectre's tools over MCP (so every action still goes through the governance gate)
@@ -210,43 +210,6 @@ class AntigravityCLI(_CLIAgent):
         return [*cmd, "-p", prompt[-MAX_ARG:]], None
 
 
-# ---- Kimi Code (Simon) -------------------------------------------------------------------------
-
-
-class KimiCLI(_CLIAgent):
-    """Runs `kimi -p` in its folder: Spectre's tools over MCP, its shell and writes denied."""
-
-    key = "kimi"
-    tool = "Kimi Code"
-
-    def write_files(self) -> None:
-        folder = self.workspace / ".kimi-code"
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / "mcp.json").write_text(
-            json.dumps({"mcpServers": mcp_servers(self.root)}, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        rules = "".join(
-            f'[[permission.rules]]\ndecision = "deny"\npattern = "{tool}"\n\n'
-            for tool in ("Bash", "Write", "Edit")
-        )
-        (folder / "local.toml").write_text(rules, encoding="utf-8")
-
-    def command(self, prompt: str, *, with_tools: bool) -> tuple[list[str], str | None]:
-        cmd = [shutil.which(self.config.kimi_bin) or self.config.kimi_bin]
-        if self.config.kimi_model:
-            cmd += ["-m", self.config.kimi_model]
-        return [*cmd, "-p", prompt[-MAX_ARG:]], None
-
-    def env(self) -> dict[str, str]:
-        return {
-            **super().env(),
-            "KIMI_CODE_TRUST_WORKSPACE": "1",  # its own folder: the MCP file is Spectre's
-            "KIMI_DISABLE_TELEMETRY": "1",
-            "KIMI_CODE_NO_AUTO_UPDATE": "1",
-        }
-
-
 # ---- the models each tool offers ---------------------------------------------------------------
 
 _cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
@@ -325,10 +288,6 @@ def models(key: str, config: AssistantConfig) -> list[dict[str, str]]:
         found = parse_agy_models(_run([find_agy(config.antigravity_bin), "models"]))
     elif key == "chatgpt":
         found = codex_models()
-    elif key == "kimi":  # Kimi Code has no listing command: the aliases its /login provides
-        from spectre.config import KIMI_MODELS
-
-        found = [{"id": alias, "label": label} for alias, label in KIMI_MODELS]
     elif key == "mistral":
         from spectre.assistant.mistral import vibe_command
 

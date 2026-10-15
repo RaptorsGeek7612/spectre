@@ -121,7 +121,7 @@ def _list_agents(ctx: ActionContext) -> str:
     builtin = (
         "Spectre (opus, toi), Gétro (sonnet), Kaïto (haiku, vérificateur), Kyra (chatgpt, "
         "Codex, multimédia), Syfer (mistral, Vibe, cybersécurité), Octavya (cursor, juridique), "
-        "Clarke (antigravity, finances et assurances), Simon (kimi, expert-comptable) ; "
+        "Clarke (antigravity, finances et assurances), Simon (DeepSeek, expert-comptable) ; "
         "rédaction : Scout, Scribe, Warden"
     )
     created = CustomAgents(ctx.db).list()
@@ -933,8 +933,9 @@ TOOLS: dict[str, Tool] = {
             "agent : qui exécute les étapes, par son nom ou son modèle. Kyra (chatgpt) pour les "
             "images, vidéos et le multimédia ; Syfer (mistral) pour la cybersécurité et les tests "
             "d'intrusion autorisés ; Octavya (cursor) pour le juridique ; Clarke (antigravity) "
-            "pour les finances et les assurances ; Simon (kimi) pour la comptabilité, la TVA et "
-            "la fiscalité ; Gétro (sonnet) ou Kaïto (haiku, rapide) pour le reste ; "
+            "pour les finances et les assurances ; Simon (simon, sur DeepSeek) pour la "
+            "comptabilité, la TVA et la fiscalité ; Gétro (sonnet) ou Kaïto (haiku, rapide) "
+            "pour le reste ; "
             "ou un agent que tu as créé (create_agent), par son nom ; vide = le réglage.",
             Level.WRITE,
             "mission",
