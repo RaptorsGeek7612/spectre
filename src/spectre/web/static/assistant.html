@@ -75,6 +75,7 @@
       <button type="button" data-view="approvals"><span>Validations</span><b class="count" id="count-approvals"></b></button>
       <button type="button" data-view="missions"><span>Missions</span><b class="count" id="count-missions"></b></button>
       <button type="button" data-view="company"><span>Entreprise</span><b class="count" id="count-company"></b></button>
+      <button type="button" data-view="automation"><span>Automatisation</span><b class="count" id="count-automation"></b></button>
       <button type="button" data-view="agents"><span>Agents</span><b class="count" id="count-agents"></b></button>
       <button type="button" data-view="memory"><span>Mémoire</span><b class="count" id="count-facts"></b></button>
       <button type="button" data-view="initiatives"><span>Initiatives</span><b class="count" id="count-initiatives"></b></button>
@@ -192,6 +193,39 @@
         <div class="co-actions"><button class="btn btn-primary" type="button" id="company-start">Lancer les tâches prêtes</button><span class="meta" id="company-capacity"></span></div>
         <div id="company-board" class="co-board"></div>
       </div>
+    </section>
+
+    <section class="as-view" data-view="automation" hidden>
+      <h2 class="as-h">Automatisation</h2>
+      <p class="meta">Ce que Spectre fait tout seul à heure fixe, ce que d’autres services lui signalent, et Spectre sur Telegram. Tu peux aussi lui demander : « chaque lundi à 9h, fais le point des ventes ».</p>
+
+      <h3 class="as-h as-h-sub">Routines</h3>
+      <form class="ag-form" id="routine-form" autocomplete="off">
+        <label><span class="label">Nom</span><input type="text" name="name" maxlength="60" required placeholder="ex. Point des ventes"></label>
+        <label><span class="label">Quand</span><input type="text" name="schedule" maxlength="200" required placeholder="ex. chaque lundi à 9h, toutes les 2 heures"></label>
+        <label><span class="label">Type</span><select name="kind"><option value="mission">Mission (plan, étapes vérifiées, rapport)</option><option value="question">Question (Spectre répond avec ses outils)</option><option value="rappel">Rappel (le texte, tel quel)</option></select></label>
+        <label><span class="label">Agent (facultatif)</span><select name="agent" id="routine-agent"><option value="">Selon les réglages</option></select></label>
+        <label class="ag-wide"><span class="label">Ce qu'il faut faire</span><textarea name="prompt" maxlength="4000" rows="2" required placeholder="ex. Résume les ventes de la semaine et les signaux à surveiller."></textarea></label>
+        <div><button class="btn btn-primary" type="submit">Programmer</button></div>
+      </form>
+      <div id="routines" class="cards"></div>
+
+      <h3 class="as-h as-h-sub">Webhooks</h3>
+      <p class="meta">Une adresse que GitHub, Stripe ou un autre service appelle quand il se passe quelque chose ; chaque appel est signé avec un secret, sinon il est refusé. Pour Stripe et GitHub, ce chemin doit être joignable depuis Internet : Tailscale Funnel sur le port 8443, jamais sur 443 (voir le README).</p>
+      <form class="ag-form" id="webhook-form" autocomplete="off">
+        <label><span class="label">Nom</span><input type="text" name="name" maxlength="40" required placeholder="ex. stripe-ventes"></label>
+        <label><span class="label">Source</span><select name="source"><option value="github">GitHub</option><option value="stripe">Stripe</option><option value="generic">Autre (signature HMAC)</option></select></label>
+        <label><span class="label">Que faire</span><select name="action"><option value="notify">Me prévenir (sans modèle)</option><option value="mission">Lancer une mission</option></select></label>
+        <label><span class="label">Événements suivis (facultatif)</span><input type="text" name="events" placeholder="ex. invoice.payment_failed, workflow_run"></label>
+        <label class="ag-wide"><span class="label">Consigne de la mission</span><input type="text" name="instructions" maxlength="4000" placeholder="ex. Analyse l'échec de paiement et prépare un brouillon de relance."></label>
+        <label class="ag-wide" id="webhook-secret-row" hidden><span class="label">Secret de signature Stripe</span><input type="password" name="secret" placeholder="whsec_…" autocomplete="off"></label>
+        <div><button class="btn btn-primary" type="submit">Créer le webhook</button></div>
+      </form>
+      <div id="webhook-created" class="card wh-created" hidden></div>
+      <div id="webhooks" class="cards"></div>
+
+      <h3 class="as-h as-h-sub">Telegram</h3>
+      <div id="telegram" class="card tg-card"></div>
     </section>
 
     <section class="as-view" data-view="agents" hidden>

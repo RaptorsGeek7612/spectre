@@ -260,6 +260,10 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .co-task h3 { font-size: 0.95rem; }
 .co-task[data-status="review"] { border-color: var(--l589); }
 .co-task[data-status="blocked"] { border-style: dashed; }
+.wh-created { border-color: var(--l589); }
+.wh-created code, .tg-code code, #webhooks code { overflow-wrap: anywhere; }
+.tg-card { display: grid; gap: 8px; }
+.tg-card .inline-form { margin: 0; }
 .mi-steer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; margin-top: 8px; }
 .mi-steer input { min-height: 38px; padding: 0 10px; min-width: 0; }
 @media (max-width: 600px) { .mi-steer { grid-template-columns: 1fr 1fr; } .mi-steer input { grid-column: 1 / -1; } }

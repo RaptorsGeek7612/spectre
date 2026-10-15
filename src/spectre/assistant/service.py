@@ -32,8 +32,11 @@ from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
 from spectre.assistant.providers import ProviderError, Providers, split_ref
+from spectre.assistant.routines import Routines
+from spectre.assistant.telegram import Telegram, save_token
 from spectre.assistant.vision.faces import SPOOF, UNKNOWN, FaceBook, Presence
 from spectre.assistant.voice.listen import SAMPLE_RATE, to_wav
+from spectre.assistant.webhooks import Rejected, Webhooks
 from spectre.config import DEFAULT_SPECS, model_label
 
 Event = dict[str, Any]
@@ -74,6 +77,8 @@ class AssistantService:
             parallel=self.config.mission_parallel,
         )
         self.providers = Providers(root)
+        self.telegram = Telegram(root, self.db, self._telegram_reply)
+        self.webhooks = Webhooks(self.db)
         self._config_mtime = self._config_stamp()
         self.voice: Any = None
         self.voice_state = "off"
@@ -99,12 +104,14 @@ class AssistantService:
         if background:  # pragma: no cover - threads exercised manually
             self.missions.start()
             self.proactive.start()
+            self.telegram.start()
             threading.Thread(target=self._watch, name="spectre-watch", daemon=True).start()
 
     def stop(self) -> None:
         self._stop.set()
         self.missions.stop()
         self.proactive.stop()
+        self.telegram.stop()
         if self.voice is not None:
             self.voice.stop.set()
         if self.camera is not None:
@@ -144,6 +151,12 @@ class AssistantService:
             self.publish({"type": "message", "role": "spectre", "text": body, "channel": "voice"})
         if speak and self.voice_state == "sleeping":
             threading.Thread(target=self._announce, args=(kind, title, body), daemon=True).start()
+        self._to_telegram(f"{title}\n{body}" if kind != "lien" else body)
+
+    def _to_telegram(self, text: str) -> None:
+        """Also send it to the paired Telegram chats (in the background: never blocks)."""
+        if self.config.telegram_notify and self.telegram.chats():
+            threading.Thread(target=self.telegram.broadcast, args=(text,), daemon=True).start()
 
     def _announce(self, kind: str, title: str, body: str) -> None:
         if kind == "lien":
@@ -195,6 +208,11 @@ class AssistantService:
             for row in rows:
                 self._seen[table] = row["id"]
                 self.publish({"type": kind, "row": row})
+                if kind == "approval":
+                    self._to_telegram(
+                        f"Spectre attend ta validation (#{row['id']}, {row['tool']}) : "
+                        f"{row['reason']}.\nRéponds /approve {row['id']} ou /deny {row['id']}."
+                    )
 
     def _watch(self) -> None:  # pragma: no cover - thread wrapper
         while not self._stop.wait(1.5):
@@ -286,6 +304,95 @@ class AssistantService:
     def start_mission(self, goal: str, kind: str = "mission", agent: str = "") -> str:
         args = {"goal": goal, "kind": kind} | ({"agent": agent} if agent else {})
         return tools.execute(self.gate, self.ctx, "start_mission", args)
+
+    # ---- Telegram ----------------------------------------------------------------------------
+
+    def _telegram_reply(self, text: str, chat_id: int) -> str:
+        """A message from a paired Telegram chat: a command, or a turn with the brain."""
+        command, _, rest = text.partition(" ")
+        command = command.lower().split("@")[0]
+        try:
+            if command in ("/approve", "/valider") and rest.strip().lstrip("#").isdigit():
+                return f"Validé : {self.approve(int(rest.strip().lstrip('#')))}"
+            if command in ("/deny", "/refuser") and rest.strip().lstrip("#").isdigit():
+                self.deny(int(rest.strip().lstrip("#")), "refusé depuis Telegram")
+                return "Refusé."
+        except (KeyError, ValueError) as exc:
+            return f"Impossible : {exc}"
+        if command == "/status":
+            s = self.status()
+            return (
+                f"Cerveau : {s['brain_label']}. Validations en attente : {s['pending_approvals']}. "
+                f"Missions en cours : {s['missions_running']}."
+            )
+        return self.chat(text, "telegram")
+
+    def telegram_status(self) -> Event:
+        return self.telegram.status() | {"notify": self.config.telegram_notify}
+
+    def telegram_token(self, token: str) -> Event:
+        """Save the bot token (in the assistant's .env, never shown back) and start the bot."""
+        save_token(self.root, token)
+        self.telegram.stop()
+        self.telegram.connect()
+        self.telegram.start()
+        self.gate.record("telegram_token", {}, Level.CRITICAL, "external_send", "user", "jeton")
+        return self.telegram_status()
+
+    def telegram_pair(self) -> Event:
+        if not self.telegram.token:
+            raise ValueError("ajoute d'abord le jeton du bot (donné par @BotFather)")
+        code = self.telegram.pairing_code()
+        return self.telegram_status() | {"code": code}
+
+    def telegram_unlink(self, chat_id: int) -> Event:
+        self.telegram.unlink(chat_id)
+        return self.telegram_status()
+
+    # ---- routines and webhooks -------------------------------------------------------------
+
+    def routines(self) -> list[Event]:
+        return Routines(self.db).all()
+
+    def webhooks_list(self, base: str = "") -> list[Event]:
+        """The webhooks, with their URL; secrets are shown only in part."""
+        return [
+            w | {"secret": f"{w['secret'][:6]}…", "url": f"{base}/hooks/{w['name']}"}
+            for w in self.webhooks.all()
+        ]
+
+    def create_webhook(self, data: dict[str, Any], base: str = "") -> Event:
+        """Create a webhook from the interface; its full secret is returned this once."""
+        events = data.get("events") or []
+        if isinstance(events, str):
+            events = [e for e in events.replace(";", ",").split(",") if e.strip()]
+        row = self.webhooks.create(
+            str(data.get("name", "")),
+            str(data.get("source", "generic")),
+            action=str(data.get("action", "notify")),
+            instructions=str(data.get("instructions", "")),
+            events=[str(e) for e in events],
+            secret=str(data.get("secret", "")),
+            agent=str(data.get("agent", "")),
+        )
+        self.gate.record(
+            "create_webhook", {"name": row["name"]}, Level.WRITE, "webhook", "user", ""
+        )
+        return row | {"url": f"{base}/hooks/{row['name']}"}
+
+    def delete_webhook(self, name: str) -> Event:
+        row = self.webhooks.delete(name)
+        self.gate.record("delete_webhook", {"name": name}, Level.DESTRUCTIVE, "webhook", "user", "")
+        return {"name": row["name"]}
+
+    def hook(self, name: str, headers: dict[str, str], body: bytes) -> tuple[int, str]:
+        """A call on /hooks/<name>: (HTTP status, message)."""
+        try:
+            done = self.webhooks.receive(name, headers, body, self.proactive.add_initiative)
+        except Rejected as exc:
+            self.db.log_event("webhook_refused", "web", f"{name}: {exc.reason}")
+            return exc.status, exc.reason
+        return 200, done
 
     # ---- companies: org chart and task board --------------------------------------------------
 
