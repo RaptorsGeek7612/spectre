@@ -107,6 +107,11 @@ function card(agent, engines, voices) {
     h("button", { class: "btn btn-ghost", type: "button", onclick: () => openLookEditor($("#team-detail"), { key: agent.key, gender: agent.gender, name: agent.name, look: agent.look,
       onSave: (look) => change(agent, { look }, "apparence enregistrée") }) }, h("span", {}, "Apparence")),
     h("button", { class: "btn btn-ghost", type: "button", onclick: () => upload.click() }, h("span", {}, agent.portrait ? "Changer la photo" : "Mettre une photo")),
+    h("button", { class: "btn btn-ghost", type: "button", onclick: async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      try { const { minutes } = await api("POST", `team/${encodeURIComponent(agent.key)}/portrait/generate`, {}); toast(`Portrait réaliste de ${agent.name} lancé (ComfyUI, environ ${minutes} min sur ce PC). Il apparaîtra tout seul une fois prêt.`, "ok", 8000); }
+      catch (err) { toast(err.message, "error", 8000); btn.disabled = false; }
+    } }, h("span", {}, "Portrait réaliste (IA)")),
     agent.portrait ? h("button", { class: "btn btn-ghost", type: "button", onclick: async () => { await api("POST", `team/${encodeURIComponent(agent.key)}/portrait/delete`, {}); loadTeam(); } }, h("span", {}, "Portrait dessiné")) : null,
     upload);
 

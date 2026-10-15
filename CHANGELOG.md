@@ -60,6 +60,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
     numpy-financial, et les bibliothèques installées (QuantLib, chainladder, beancount,
     OpenFisca) pour leurs scripts.
   - Un scan local lit ; sonder une adresse distante attend ton accord.
+- Portraits réalistes générés par le studio (bouton « Portrait réaliste (IA) » dans la page
+  Équipe) : ComfyUI crée un portrait photoréaliste de l'agent et l'enregistre comme sa photo.
 - Le studio de Kyra (`assistant/media.py`) : outils `generate_image` et `generate_video`,
   réservés à Kyra.
   - Les images et les vidéos sont créées sur ce PC par ComfyUI (Z-Image Turbo, Wan 2.2).

@@ -16,6 +16,8 @@ from spectre.assistant.config import AssistantConfig
 from spectre.assistant.db import Database
 from spectre.assistant.governance import Gate
 
+PNG = bytes.fromhex("89504e470d0a1a0a") + b"portrait-bytes"
+
 
 class FakeComfy:
     """Answers like ComfyUI: queue, history, view."""
@@ -59,7 +61,7 @@ class FakeComfy:
             return io.BytesIO(json.dumps({"p1": entry}).encode())
         if "/view?" in url:
             assert "filename=image_00001_.png" in url and "subfolder=spectre" in url
-            return io.BytesIO(b"PNGDATA")
+            return io.BytesIO(PNG)
         raise AssertionError(url)
 
 
@@ -83,10 +85,28 @@ def test_image_job_is_queued_collected_and_announced(db: Database, tmp_path: Pat
     comfy.done = True
     assert studio.poll(lambda *a: said.append(a)) == [job["id"]]
     saved = tmp_path / "workspace" / "medias" / f"image-{job['id']:04d}-image_00001_.png"
-    assert saved.read_bytes() == b"PNGDATA"
+    assert saved.read_bytes() == PNG
     assert said[0][0] == "media" and "Image prête" in said[0][1] and str(saved) in said[0][2]
     row = studio.jobs()[0]
     assert row["status"] == "done" and row["files"] == [str(saved)] and row["agent"] == "chatgpt"
+
+
+def test_portrait_job_saves_as_the_agent_portrait(db: Database, tmp_path: Path) -> None:
+    from spectre.assistant import team
+
+    comfy = FakeComfy()
+    studio = media.Studio(db, AssistantConfig(), tmp_path, comfy)
+    job = studio.submit("portrait:shelby", media.portrait_prompt("shelby"), width=0, height=0)
+    assert (job["width"], job["height"]) == media.PORTRAIT_SIZE
+    workflow = comfy.queued[0]
+    assert "photorealistic" in workflow["5"]["inputs"]["text"]
+    assert "cartoon" in workflow["6"]["inputs"]["text"]  # the portrait negative prompt
+    comfy.done = True
+    said: list[Any] = []
+    studio.poll(lambda *a: said.append(a))
+    assert team.portrait(tmp_path, "shelby") == (PNG, "image/png")
+    assert "Portrait réaliste prêt" in said[0][1] and "shelby" in said[0][2]
+    assert studio.jobs()[0]["files"] == ["portrait:shelby"]
 
 
 def test_video_job_and_failures(db: Database, tmp_path: Path) -> None:

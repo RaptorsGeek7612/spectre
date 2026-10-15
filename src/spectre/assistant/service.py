@@ -973,6 +973,16 @@ class AssistantService:
             agent["portrait"] = agent["key"].replace(":", "-") in mine
         return {"agents": agents, "voices": team.VOICES}
 
+    def generate_portrait(self, key: str) -> Event:
+        """Launch a realistic portrait of an agent (ComfyUI); saved when it is ready."""
+        from spectre.assistant import media
+
+        studio = media.Studio(self.db, self.config, self.root)
+        job = studio.submit(
+            f"portrait:{key}", media.portrait_prompt(key), width=512, height=640, agent="chatgpt"
+        )
+        return {"minutes": job["minutes"]}
+
     def team_portrait(self, key: str, data: bytes | None) -> Event:
         """Set (bytes) or remove (None) the user's own picture of an agent."""
         if data is None:
