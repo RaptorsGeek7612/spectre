@@ -263,7 +263,26 @@ def details(db: Database, config: AssistantConfig, key: str) -> dict[str, Any]:
         "tools": counts,
         "dossier": Trust(db).dossier(key),
         "remote": bool(split_ref(config.agent_engines.get(key, ""))[0]),
+        "toolkit": agent_tools(config, key),
     }
+
+
+def agent_tools(config: AssistantConfig, key: str) -> list[dict[str, Any]]:
+    """The open-source tools this agent may use, and whether each is installed on the PC."""
+    from spectre.assistant import toolkit
+
+    found = [k for k in toolkit.describe(config) if not k["agents"] or key in k["agents"]]
+    if key in toolkit.FINANCE_AGENTS:
+        found.append(
+            {
+                "name": "finance",
+                "label": "Calculs financiers",
+                "installed": True,
+                "agents": [key],
+                "category": "read",
+            }
+        )
+    return found
 
 
 # ---- portraits ----------------------------------------------------------------------------------

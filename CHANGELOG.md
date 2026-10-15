@@ -41,6 +41,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   - Relecture d'une mission en 1×, 2×, 4× ou 8×, avec des repères : première erreur, étape la
     plus longue, attente de ton accord.
   - Enregistrement vidéo de l'onglet, ou clip de 25 s.
+- Des logiciels libres par métier, donnés aux agents à travers le portail (`assistant/toolkit.py`,
+  outils `toolkit` et `finance`). Chaque agent ne voit que ceux de son domaine.
+  - Syfer : Gitleaks (secrets), Trivy (vulnérabilités), Semgrep (analyse de code), Nuclei (scan
+    d'une adresse autorisée, qui demande ta validation).
+  - Octavya et les rédacteurs : Vale et LanguageTool (style et grammaire).
+  - Tous : Pandoc (conversion de documents), Tesseract (texte d'une image).
+  - Clarke et Simon : calculs financiers (mensualité, VAN, TRI, valeur future) via
+    numpy-financial, et les bibliothèques installées (QuantLib, chainladder, beancount,
+    OpenFisca) pour leurs scripts.
+  - Un scan local lit ; sonder une adresse distante attend ton accord.
 - Le studio de Kyra (`assistant/media.py`) : outils `generate_image` et `generate_video`,
   réservés à Kyra.
   - Les images et les vidéos sont créées sur ce PC par ComfyUI (Z-Image Turbo, Wan 2.2).
