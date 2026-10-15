@@ -20,6 +20,9 @@ AGENT_NAMES = {
     "cursor": "Octavya",  # legal department
     "antigravity": "Clarke",  # finance and insurance (a woman)
     "simon": "Simon",  # chartered accountant (on DeepSeek)
+    "shelby": "Shelby",  # animals (a woman)
+    "ysyss": "Ysyss",  # science and humans (a woman)
+    "lexy": "Lexy",  # betting, investing, crypto (a woman)
     "opus": "Spectre",  # Spectre itself, when it runs the steps too
 }
 
@@ -33,6 +36,9 @@ AGENT_TOOLS = {
     "cursor": "Cursor",
     "antigravity": "Antigravity",
     "simon": "DeepSeek",
+    "shelby": "Claude",
+    "ysyss": "Claude",
+    "lexy": "Claude",
 }
 
 # Their department in the team page and the video call
@@ -45,6 +51,9 @@ AGENT_DEPARTMENTS = {
     "cursor": "Juridique",
     "antigravity": "Finances et assurances",
     "simon": "Expertise comptable",
+    "shelby": "Animalier",
+    "ysyss": "Sciences et savoirs",
+    "lexy": "Jeux, paris et investissements",
 }
 
 # Another name the user may give an engine: the tool rather than the account
@@ -71,10 +80,33 @@ AGENT_ROLES = {
     "levée de fonds, contrats d'assurance (via Antigravity, sur ton compte Google).",
     "simon": "Expert-comptable : comptabilité, TVA, liasses et bilans, charges sociales, "
     "fiscalité de l'entreprise (sur DeepSeek, avec ta clé).",
+    "shelby": "Animalière : culture animale, comportement et éducation, biologie, santé et "
+    "soins, toilettage de toutes les espèces.",
+    "ysyss": "Sciences et être humain : physique, chimie, maths, biologie, astronomie, "
+    "santé, psychologie, langues et dialectes, sports, arts et cultures.",
+    "lexy": "Jeux d'argent, paris sportifs, investissement et bourse, blockchain, NFT et "
+    "cryptomonnaies ; jamais de promesse de gain, rappelle les risques.",
 }
-AGENT_ORDER = ("opus", "sonnet", "haiku", "chatgpt", "mistral", "cursor", "antigravity", "simon")
+AGENT_ORDER = (
+    "opus",
+    "sonnet",
+    "haiku",
+    "chatgpt",
+    "mistral",
+    "cursor",
+    "antigravity",
+    "simon",
+    "shelby",
+    "ysyss",
+    "lexy",
+)
 EXTERNAL_AGENTS = ("chatgpt", "mistral", "cursor", "antigravity")  # their own CLI
-HOSTED_AGENTS = ("simon",)  # on a hosted model (`AGENT_DEFAULT_ENGINES`), changeable
+HOSTED_AGENTS = (
+    "simon",
+    "shelby",
+    "ysyss",
+    "lexy",
+)  # on a model (`AGENT_DEFAULT_ENGINES`), changeable
 
 AGENT_CHOICES = ("claude", *AGENT_NAMES)  # what a mission may ask for ("claude" = the setting)
 

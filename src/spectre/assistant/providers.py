@@ -23,7 +23,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-CLI_ENGINES = ("opus", "sonnet", "haiku", "chatgpt", "mistral", "cursor", "antigravity", "simon")
+CLI_ENGINES = (
+    "opus",
+    "sonnet",
+    "haiku",
+    "chatgpt",
+    "mistral",
+    "cursor",
+    "antigravity",
+    "simon",
+    "shelby",
+    "ysyss",
+    "lexy",
+)
 MAX_MODEL = 120
 
 
