@@ -293,6 +293,17 @@ demandant à Spectre :
   parler à Spectre depuis Telegram. Tu y reçois aussi ses notifications et ses demandes de
   validation (`/approve 3`, `/deny 3`). Les autres conversations sont ignorées.
 
+**Conseil d'administration et expériences.** Pour une décision importante (« passer l'offre
+Pro à 29 € ? »), réunis le conseil depuis la vue Entreprise ou demande-le à Spectre.
+
+- **Le conseil.** Les départements concernés donnent leur avis, et la direction tranche. Une
+  note de décision est écrite : options, raisons, risques, prochaines étapes.
+- **La réévaluation.** À la date prévue, la décision est réévaluée avec les vrais chiffres
+  (réussie, mitigée ou ratée), et la leçon sert aux conseils suivants.
+- **Les expériences.** Une expérience mesure une idée sur un indicateur, par exemple « l'essai
+  de 14 jours fait monter les inscriptions ». Le verdict est automatique. C'est une lecture
+  avant/après, pas une preuve de cause.
+
 **Apprentissage.** Spectre apprend de son travail :
 
 - **Compétences.** Après chaque mission réussie, il relit son rapport et peut te proposer une

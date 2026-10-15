@@ -230,6 +230,8 @@ class MissionEngine:
                 self._run_redaction(row)
             elif isinstance(plan, dict) and plan.get("kind") == "company_plan":
                 self._run_company_plan(row, plan)
+            elif isinstance(plan, dict) and plan.get("kind") in ("board", "board_review"):
+                self._run_board(row, plan)
             else:
                 self._run_mission(row)
         except Exception as exc:  # noqa: BLE001 - a mission must never kill the engine
@@ -260,6 +262,50 @@ class MissionEngine:
         result = run_pipeline(row["goal"], models=models)
         report = f"# {row['goal']}\n\n{result.final_text}\n"
         self._finish(row, report, "Texte prêt", "Scout, Scribe et Warden ont terminé.", ok=True)
+
+    def _seat(self, company_id: int, department: str) -> tuple[str, str]:
+        """(engine, role text) of the agent holding a company's post."""
+        key = Companies(self.db).posts(company_id).get(department, "")
+        if key.startswith(PREFIX):
+            created = CustomAgents(self.db).get(key)
+            if created is not None:
+                return created["engine"], f"\n\n{worker_brief(created)}"
+            key = ""
+        if not key or key == "claude":
+            return self.model, ""
+        return key, ""
+
+    def _run_board(self, row: dict[str, Any], plan: dict[str, Any]) -> None:
+        """The board deliberates on a decision, or reviews one with the figures since."""
+        from datetime import datetime
+
+        from spectre.assistant.board import Board
+
+        board = Board(self.db, getattr(self.cli, "root", None))
+        decision = board.get(int(plan["decision"]))
+        now = datetime.now().astimezone()
+
+        def lead(prompt: str, system: str) -> Reply:
+            return self._call(self.lead_model, prompt, system)
+
+        def seat(department: str, prompt: str, system: str) -> Reply:
+            engine, role = self._seat(decision["company_id"], department)
+            return self._call(engine, prompt, system + role)
+
+        try:
+            if plan["kind"] == "board":
+                report = board.deliberate(decision["id"], seat, lead, now)
+                title, body = "Le conseil a décidé", board.get(decision["id"])["decision"][:300]
+            else:
+                body = board.review(decision["id"], lead, now)
+                report, title = (
+                    f"# Réévaluation de la décision #{decision['id']}\n\n{body}\n",
+                    "Décision réévaluée",
+                )
+        except Exception as exc:
+            board.failed(decision["id"], str(exc))
+            raise
+        self._finish(row, report, title, body, ok=True)
 
     def _run_company_plan(self, row: dict[str, Any], plan: dict[str, Any]) -> None:
         """The direction breaks an objective into tasks on the company's board."""

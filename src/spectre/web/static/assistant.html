@@ -211,6 +211,22 @@
           </form>
           <div class="row"><button class="btn" type="button" id="saas-report">Programmer le rapport du lundi 9h</button></div>
         </details>
+        <h3 class="as-h as-h-sub">Conseil et expériences</h3>
+        <p class="meta">Pour une décision importante, le conseil réunit les départements concernés ; la direction tranche, et la décision est réévaluée plus tard avec les vrais chiffres. Une expérience mesure une idée sur un indicateur, avec un verdict automatique.</p>
+        <form class="inline-form" id="board-form" autocomplete="off">
+          <input type="text" name="question" required placeholder="Une décision à prendre, ex. « Passer l’offre Pro de 19 € à 29 € ? »" aria-label="Décision à prendre">
+          <button class="btn btn-primary" type="submit">Réunir le conseil</button>
+        </form>
+        <div id="decisions" class="cards"></div>
+        <form class="inline-form ex-form" id="experiment-form" autocomplete="off">
+          <input type="text" name="hypothesis" required placeholder="Hypothèse, ex. « L’essai de 14 jours augmente les inscriptions »" aria-label="Hypothèse">
+          <select name="metric" id="experiment-metric" aria-label="Indicateur"></select>
+          <select name="direction" aria-label="Sens attendu"><option value="up">en hausse</option><option value="down">en baisse</option></select>
+          <input type="number" name="min_change" value="5" min="1" step="any" aria-label="Variation minimale en %" title="Variation minimale en %">
+          <input type="number" name="days" value="14" min="1" max="180" aria-label="Durée en jours" title="Durée en jours">
+          <button class="btn" type="submit">Lancer l'expérience</button>
+        </form>
+        <div id="experiments" class="cards"></div>
         <h3 class="as-h as-h-sub">Organigramme</h3>
         <div id="company-posts" class="co-posts"></div>
         <h3 class="as-h as-h-sub">Faire avancer l'entreprise</h3>

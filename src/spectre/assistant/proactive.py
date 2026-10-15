@@ -168,6 +168,7 @@ class Proactive:
             self.befriend(now)
         self.routines(now)
         self.saas(now)
+        self.decisions(now)
 
     def routines(self, now: datetime, *, background: bool = True) -> list[int]:
         """Run the routines that are due."""
@@ -205,6 +206,17 @@ class Proactive:
                 "Elles restent restaurables dans la vue Apprentissage.",
             )
         return done
+
+    def decisions(self, now: datetime) -> None:
+        """Conclude the experiments whose time is up, then queue the decisions to review."""
+        from spectre.assistant.board import Board
+        from spectre.assistant.experiments import Experiments
+
+        root = getattr(self.cli, "root", None)
+        Experiments(self.db, root).tick(now, self.add_initiative)
+        board = Board(self.db, root)
+        for decision in board.due_reviews(now):
+            board.queue_review(decision["id"])
 
     def ask(self, prompt: str, system: str) -> Any:
         """The brain's engines (with the fallback chain), with tools: for routines."""

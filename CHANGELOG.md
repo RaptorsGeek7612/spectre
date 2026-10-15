@@ -7,6 +7,30 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-14
+
+### Added
+
+- Conseil d'administration (`assistant/board.py`, outil `convene_board`, vue Entreprise ›
+  Conseil et expériences).
+  - La direction choisit les 2 à 4 départements concernés. Chacun donne son avis, en JSON, sur
+    le moteur de l'agent qui tient son poste.
+  - La direction arbitre : options, décision, raisons, risques, prochaines étapes et
+    l'indicateur qui jugera la décision.
+  - Le contexte fourni au conseil réunit l'organigramme, le tableau de bord SaaS et les leçons
+    des décisions passées.
+  - Une note de décision en Markdown est écrite, et une expérience de mesure est créée
+    d'elle-même quand l'indicateur est suivi.
+- Journal des décisions (`list_decisions`). À la date prévue, ou avec `review_decision`, la
+  direction réévalue la décision avec les vrais chiffres et le verdict de l'expérience : réussie,
+  mitigée ou ratée, avec une leçon. Ces leçons nourrissent les conseils suivants.
+- Expériences mesurées (`assistant/experiments.py`, outils `start_experiment`,
+  `list_experiments`, `stop_experiment`) : une hypothèse, un indicateur, un sens, une variation
+  minimale et une durée.
+  - Le verdict (confirmée, infirmée ou non concluante) est calculé sans modèle, à partir du
+    tableau de bord SaaS.
+  - Il est présenté honnêtement comme une lecture avant/après, sans groupe témoin.
+
 ## [0.11.0] - 2026-10-14
 
 ### Added

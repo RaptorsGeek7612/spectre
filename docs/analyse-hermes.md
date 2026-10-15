@@ -55,6 +55,26 @@ Notion, Stripe en MCP) mais pas de direction d'entreprise intégrée. Le plan po
 - **v0.11.0 Apprentissage** : compétences proposées après les missions, curateur, recherche
   dans les conversations, points de restauration.
 
+## Au-delà de Hermes (v0.12 à v0.16)
+
+Hermes donne de l'étendue. Spectre vise la profondeur : un dirigeant d'entreprise IA qui
+décide, mesure, et rend des comptes.
+
+1. **Conseil d'administration et journal des décisions** (v0.12.0).
+   - Les départements donnent leur avis, la direction tranche.
+   - Chaque décision est réévaluée avec les vrais chiffres, et ses leçons servent aux
+     décisions suivantes.
+2. **Expériences mesurées** (v0.12.0). Une hypothèse, un indicateur, une durée : le verdict est
+   calculé tout seul.
+3. **Autonomie méritée** (v0.13.0). Chaque agent a un dossier de fiabilité. Plus il est fiable,
+   moins il demande de validations, et il perd ce droit s'il se trompe.
+4. **Coût face au revenu** (v0.13.0). Ce que coûte chaque agent ou département, rapporté au MRR.
+5. **Mode réunion local** (v0.14.0). Écoute, transcription et résumé ; les tâches vont au
+   tableau et les décisions au journal. Rien ne quitte le PC.
+6. **Département technique** (v0.15.0). Une branche isolée, des tests, puis une PR validée par
+   l'utilisateur.
+7. **Notifications natives, briefing vocal par entreprise, suivi crypto** (v0.16.0).
+
 ## v0.7.0 « Moteurs » en pratique
 
 - Une référence de moteur s'écrit `opus`, `sonnet`, `haiku`, `chatgpt`, `mistral` ou

@@ -62,6 +62,31 @@ def handle(
             )
         case "GET", ["company", company_id]:
             handler._json(200, service.company(int(company_id)))
+        case "GET", ["company", company_id, "decisions"]:
+            handler._json(200, service.decisions(int(company_id)))
+        case "POST", ["company", company_id, "decisions"]:
+            board_args = {
+                "company": str(int(company_id)),
+                "question": str(body().get("question", "")),
+            }
+            handler._json(200, {"result": service.act("convene_board", board_args)})
+        case "POST", ["decisions", decision_id, "review"]:
+            handler._json(
+                200, {"result": service.act("review_decision", {"decision_id": int(decision_id)})}
+            )
+        case "POST", ["company", company_id, "experiments"]:
+            data = body()
+            experiment: dict[str, Any] = {"company": str(int(company_id))} | pick(
+                data, "hypothesis", "metric", "direction"
+            )
+            experiment |= {
+                "min_change": float(data.get("min_change", 5)),
+                "days": int(data.get("days", 14)),
+            }
+            handler._json(200, {"result": service.act("start_experiment", experiment)})
+        case "POST", ["experiments", experiment_id, "stop"]:
+            stop = {"experiment_id": int(experiment_id)}
+            handler._json(200, {"result": service.act("stop_experiment", stop)})
         case "POST", ["company", company_id, action]:
             handler._json(200, {"result": company_action(service, company_id, action, body())})
         case "POST", ["tasks", task_id]:

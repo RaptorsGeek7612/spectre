@@ -79,4 +79,9 @@ Total                                         0.0499 $
 | v0.8.0 | Équipe d'entreprise : entreprises, organigramme de 8 départements, tableau de tâches durable (dépendances, à valider), découpage d'objectif, pilote automatique, missions en parallèle, orienter et arrêter une mission | PR #41 (2026-10-14) |
 | v0.9.0 | Automatisation : routines planifiées (horaires en mots), webhooks entrants signés (GitHub, Stripe, HMAC), passerelle Telegram jumelée, messages entre agents | PR #42 (2026-10-14) |
 | v0.10.0 | Suivi SaaS : Stripe, Supabase, disponibilité, GitHub CI, API JSON (erreurs...), saisie ; tableau de bord MRR/ARR/churn/ARPA/LTV/CAC ; alertes ; rapport hebdomadaire | PR #43 (2026-10-14) |
-| v0.11.0 | Apprentissage : compétences proposées après les missions (validées par l'utilisateur), curateur, recherche plein texte dans les conversations, points de restauration des missions | En cours |
+| v0.11.0 | Apprentissage : compétences proposées après les missions (validées par l'utilisateur), curateur, recherche plein texte dans les conversations, points de restauration des missions | PR #44 (2026-10-14) |
+| v0.12.0 | Au-delà de Hermes (1/5) : conseil d'administration (avis des départements, arbitrage, note de décision), journal des décisions réévaluées avec les vrais chiffres, expériences mesurées | En cours |
+| v0.13.0 | Autonomie méritée par agent (dossier de fiabilité, validations allégées ou retirées) ; coût de l'IA face au revenu | Prévu |
+| v0.14.0 | Mode réunion local : écoute, transcription, résumé, tâches et décisions | Prévu |
+| v0.15.0 | Département technique : worktree, tests, PR validée | Prévu |
+| v0.16.0 | Notifications natives (Web Push), briefing vocal par entreprise, suivi crypto en lecture seule | Prévu |
