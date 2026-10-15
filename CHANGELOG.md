@@ -7,6 +7,28 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-14
+
+### Added
+
+- Mode réunion local (`assistant/meeting.py`, vue « Réunions », outils `meeting` et
+  `list_meetings`).
+  - Spectre écoute avec le micro du PC et transcrit sur place (faster-whisper) par morceaux de
+    30 secondes. Le son n'est jamais gardé, seul le texte reste, et rien ne quitte le PC.
+  - Sa propre voix est mise en sourdine pendant la réunion, pour qu'il ne réponde pas à
+    « Spectre ».
+  - À l'arrêt, une mission fait le compte rendu : résumé, décisions, tâches et questions
+    ouvertes. Une longue réunion est résumée par tranches.
+  - Avec une entreprise, les tâches vont à son tableau et les décisions à son journal, à
+    réévaluer dans 30 jours.
+  - Un enregistrement WAV (16 bits, toute fréquence, mono ou stéréo, 200 Mo maximum) peut
+    remplacer le micro.
+  - Limite de 4 heures par réunion. Le cerveau lance ou arrête une réunion à la voix.
+
+### Changed
+
+- L'envoi de fichiers bruts accepte une limite par route (`_raw_body(limit)`).
+
 ## [0.13.0] - 2026-10-14
 
 ### Added

@@ -251,6 +251,8 @@ class MissionEngine:
                 self._run_company_plan(row, plan)
             elif isinstance(plan, dict) and plan.get("kind") in ("board", "board_review"):
                 self._run_board(row, plan)
+            elif isinstance(plan, dict) and plan.get("kind") == "meeting":
+                self._run_meeting(row, plan)
             else:
                 self._run_mission(row)
         except Exception as exc:  # noqa: BLE001 - a mission must never kill the engine
@@ -327,6 +329,26 @@ class MissionEngine:
             board.failed(decision["id"], str(exc))
             raise
         self._finish(row, report, title, body, ok=True)
+
+    def _run_meeting(self, row: dict[str, Any], plan: dict[str, Any]) -> None:
+        """A meeting's report: summary, then its tasks and decisions filed."""
+        from datetime import datetime
+
+        from spectre.assistant.meeting import Meetings
+
+        meetings = Meetings(self.db)
+        meeting_id = int(plan["meeting"])
+        try:
+            with runctx.scope(role="réunion"):
+                report = meetings.summarize(
+                    meeting_id,
+                    lambda p, s: self._call(self.lead_model, p, s),
+                    datetime.now().astimezone(),
+                )
+        except Exception as exc:
+            meetings.failed(meeting_id, str(exc))
+            raise
+        self._finish(row, report, "Compte rendu prêt", meetings.get(meeting_id)["title"], ok=True)
 
     def _run_company_plan(self, row: dict[str, Any], plan: dict[str, Any]) -> None:
         """The direction breaks an objective into tasks on the company's board."""

@@ -91,6 +91,8 @@ forge fmt --check ; forge build ; forge test
   `trust.py` (dossier → apprenti/confirmé/expert, lu par `Gate.decide` et le pilote auto) ;
   l'agent en cours voyage via `runctx.py` (thread-local → env `SPECTRE_AGENT` du serveur MCP) ;
   coûts : `spend.py` (registre `usage_ledger`, par rôle/agent/département, face au MRR).
+  Réunions : `meeting.py` (micro → STT local par morceaux de 30 s, son jamais gardé ;
+  mission `meeting` → tâches au tableau, décisions au journal ; outil via kv `meeting_request`).
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.

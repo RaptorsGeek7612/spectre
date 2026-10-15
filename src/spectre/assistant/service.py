@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import json
 import queue
 import shutil
 import threading
@@ -29,6 +30,7 @@ from spectre.assistant.custom_agents import CustomAgents
 from spectre.assistant.db import Database
 from spectre.assistant.governance import Gate, Level
 from spectre.assistant.learning import Learning
+from spectre.assistant.meeting import REQUEST_KV, MeetingError, Meetings, Recorder
 from spectre.assistant.memory import Memory
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
@@ -83,6 +85,10 @@ class AssistantService:
         self.missions.learning_model = self.config.learning_model
         self.missions.earned_autonomy = self.config.earned_autonomy
         self.telegram = Telegram(root, self.db, self._telegram_reply)
+        self.recorder = Recorder(
+            Meetings(self.db), self._meeting_stt, self._meeting_mic, self._meeting_done
+        )
+        self._stt: Any = None
         self.webhooks = Webhooks(self.db)
         self._config_mtime = self._config_stamp()
         self.voice: Any = None
@@ -117,6 +123,8 @@ class AssistantService:
         self.missions.stop()
         self.proactive.stop()
         self.telegram.stop()
+        if self.recorder.recording:
+            self.recorder.stop_event.set()
         if self.voice is not None:
             self.voice.stop.set()
         if self.camera is not None:
@@ -208,6 +216,7 @@ class AssistantService:
     def poll_changes(self) -> None:
         """Publish approvals/initiatives created elsewhere (e.g. by the MCP tool process)."""
         self.reload_config()
+        self._meeting_request()
         for table, kind in (("approvals", "approval"), ("initiatives", "initiative_row")):
             rows = self.db.all(
                 f"SELECT * FROM {table} WHERE id > ? ORDER BY id",  # noqa: S608 - fixed names
@@ -378,6 +387,85 @@ class AssistantService:
     def start_mission(self, goal: str, kind: str = "mission", agent: str = "") -> str:
         args = {"goal": goal, "kind": kind} | ({"agent": agent} if agent else {})
         return tools.execute(self.gate, self.ctx, "start_mission", args)
+
+    # ---- meetings ------------------------------------------------------------------------------
+
+    def _meeting_stt(self) -> Any:
+        """The speech engine: the voice loop's, or a local one loaded on first use."""
+        if self.voice is not None and getattr(self.voice, "stt", None) is not None:
+            return self.voice.stt
+        if self._stt is None:
+            try:
+                from spectre.assistant.voice.engines import WhisperSTT
+            except ImportError as exc:
+                raise MeetingError(
+                    "la reconnaissance vocale n'est pas installée (uv sync --extra voice)"
+                ) from exc
+            self._stt = WhisperSTT(self.config.stt_model, self.config.language)
+        return self._stt
+
+    def _meeting_mic(self) -> Any:  # pragma: no cover - real microphone
+        from spectre.assistant.voice.engines import Microphone, pick_microphone
+
+        return Microphone(device=pick_microphone(self.config.mic_device)[0])
+
+    def _voice_muted(self, muted: bool) -> None:
+        """Spectre must not answer « Spectre » said during a meeting."""
+        mic = getattr(self.voice, "mic", None)
+        muted_event = getattr(mic, "muted", None)
+        if muted_event is not None:
+            (muted_event.set if muted else muted_event.clear)()
+
+    def _meeting_done(self, kind: str, title: str, body: str) -> None:
+        self._voice_muted(False)
+        self.proactive.add_initiative(kind, title, body)
+        self.publish({"type": "meeting"})
+
+    def meetings(self) -> list[Event]:
+        return Meetings(self.db).all()
+
+    def meeting(self, meeting_id: int) -> Event:
+        return Meetings(self.db).get(meeting_id) | {"recording": self.recorder.recording}
+
+    def meeting_start(self, title: str = "", company: str = "") -> Event:
+        company_id = Companies(self.db).get(company)["id"] if company.strip() else None
+        self._voice_muted(True)  # before listening: a short meeting may end at once
+        try:
+            meeting = self.recorder.start(title, company_id)
+        except Exception:
+            self._voice_muted(False)
+            raise
+        self.gate.record("meeting", {"id": meeting["id"]}, Level.WRITE, "meeting", "user", "start")
+        self.publish({"type": "meeting"})
+        return meeting
+
+    def meeting_stop(self) -> Event:
+        meeting_id = self.recorder.stop()
+        self._voice_muted(False)
+        self.publish({"type": "meeting"})
+        return Meetings(self.db).get(int(meeting_id or 0))
+
+    def meeting_upload(self, data: bytes, title: str = "", company: str = "") -> Event:
+        company_id = Companies(self.db).get(company)["id"] if company.strip() else None
+        meeting = self.recorder.transcribe_file(data, title, company_id)
+        self.publish({"type": "meeting"})
+        return meeting
+
+    def _meeting_request(self) -> None:
+        """A start or stop asked by the brain's `meeting` tool (another process)."""
+        raw = self.db.get_kv(REQUEST_KV)
+        if not raw:
+            return
+        self.db.set_kv(REQUEST_KV, "")
+        try:
+            request = json.loads(raw)
+            if request.get("action") == "start":
+                company = str(request.get("company") or "")
+                self.meeting_start(str(request.get("title") or ""), company)
+            elif request.get("action") == "stop" and self.recorder.recording:
+                self.meeting_stop()
+        except (MeetingError, ValueError) as exc:
+            self.proactive.add_initiative("reunion", "Réunion impossible", str(exc))
 
     # ---- Telegram ----------------------------------------------------------------------------
 

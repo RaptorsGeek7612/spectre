@@ -136,11 +136,11 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("le corps de la requête doit être un objet JSON")
         return data
 
-    def _raw_body(self) -> bytes:
-        """The request body as bytes (audio from the phone), within MAX_BODY."""
+    def _raw_body(self, limit: int = MAX_BODY) -> bytes:
+        """The request body as bytes (audio from the phone, a meeting's recording)."""
         length = int(self.headers.get("Content-Length") or 0)
-        if length > MAX_BODY:
-            raise BodyTooLarge("requête trop volumineuse (2 Mo maximum)")
+        if length > limit:
+            raise BodyTooLarge(f"requête trop volumineuse ({limit // (1024 * 1024)} Mo maximum)")
         return self.rfile.read(length) if length else b""
 
     def _cookie(self) -> str | None:

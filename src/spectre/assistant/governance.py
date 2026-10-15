@@ -43,6 +43,7 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "lab_secu": "ASK",  # labo sécurité : contacte une cible -> validation (aussi niveau EXTERNAL)
     "agent": "ALWAYS",  # creating an agent; deleting one is destructive, so it still asks
     "skill": "ALWAYS",  # only a proposal: the user approves it before anything is written
+    "meeting": "ALWAYS",  # local listening at the user's request; nothing leaves the PC
     "company": "ALWAYS",  # companies and their task board: internal, reversible
     "routine": "ALWAYS",  # programmed at the user's request; deleting one still asks
     "model": "ALWAYS",  # switching an engine: reversible, asked for by the user
