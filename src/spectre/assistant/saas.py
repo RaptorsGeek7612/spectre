@@ -33,8 +33,29 @@ from typing import Any
 from spectre.assistant.db import Database, now_iso
 from spectre.assistant.providers import read_env_file, write_env_value
 
-KINDS = ("uptime", "stripe", "supabase", "github", "http_json", "manual")
-INTERVALS = {"uptime": 300, "stripe": 3600, "supabase": 3600, "github": 900, "http_json": 900}
+KINDS = (
+    "uptime",
+    "stripe",
+    "supabase",
+    "github",
+    "http_json",
+    "btc_wallet",
+    "eth_wallet",
+    "crypto_price",
+    "manual",
+)
+INTERVALS = {
+    "uptime": 300,
+    "stripe": 3600,
+    "supabase": 3600,
+    "github": 900,
+    "http_json": 900,
+    "btc_wallet": 900,
+    "eth_wallet": 900,
+    "crypto_price": 900,
+}
+BTC_ADDRESS = re.compile(r"(bc1[02-9ac-hj-np-z]{11,71}|[13][1-9A-HJ-NP-Za-km-z]{25,34})")
+ETH_ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
 OPS = {
     "<": lambda a, b: a < b,
     "<=": lambda a, b: a <= b,
@@ -68,6 +89,8 @@ LABELS = {
     "ci_ok": "CI au vert",
     "open_issues": "Tickets et PR ouverts",
     "marketing_spend_30d": "Dépenses marketing (30 j)",
+    "btc_balance": "Solde BTC",
+    "eth_balance": "Solde ETH",
 }
 HIGHER_IS_BETTER = {
     "mrr": True,
@@ -103,6 +126,8 @@ TILES = (
     "signups_7d",
     "uptime_7d",
     "latency_ms",
+    "btc_balance",
+    "eth_balance",
 )
 
 Response = tuple[int, dict[str, str], bytes]
@@ -248,6 +273,37 @@ class Collect:
             found["ci_ok"] = 1.0 if done[0].get("conclusion") == "success" else 0.0
         return found
 
+    def btc_wallet(self, config: dict[str, Any], key: str) -> dict[str, float]:
+        """A Bitcoin address's balance (confirmed + pending), from mempool.space."""
+        data = self.json(f"https://mempool.space/api/address/{config['address']}", {})
+        sats = 0
+        for part in ("chain_stats", "mempool_stats"):
+            stats = data.get(part) or {}
+            sats += int(stats.get("funded_txo_sum") or 0) - int(stats.get("spent_txo_sum") or 0)
+        return {"btc_balance": sats / 1e8}
+
+    def eth_wallet(self, config: dict[str, Any], key: str) -> dict[str, float]:
+        """An Ethereum address's balance, from Blockscout."""
+        data = self.json(f"https://eth.blockscout.com/api/v2/addresses/{config['address']}", {})
+        return {"eth_balance": int(data.get("coin_balance") or 0) / 1e18}
+
+    def crypto_price(self, config: dict[str, Any], key: str) -> dict[str, float]:
+        """Prices from CoinGecko: one `price_<coin>_<currency>` metric per coin."""
+        coins, currency = config["coins"], config["currency"]
+        data = self.json(
+            "https://api.coingecko.com/api/v3/simple/price?"
+            + urllib.parse.urlencode({"ids": ",".join(coins), "vs_currencies": currency}),
+            {},
+        )
+        found = {}
+        for coin in coins:
+            value = (data.get(coin) or {}).get(currency)
+            if isinstance(value, (int, float)):
+                found[f"price_{coin.replace('-', '_')}_{currency}"[:40]] = float(value)
+        if not found:
+            raise ConnectionError("aucun cours reçu (vérifie les identifiants CoinGecko)")
+        return found
+
     def http_json(self, config: dict[str, Any], key: str) -> dict[str, float]:
         headers = {"Authorization": f"Bearer {key}"} if key else {}
         data = self.json(config["url"], headers)
@@ -360,6 +416,27 @@ class Saas:
             if not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
                 raise SaasError("dépôt GitHub attendu sous la forme propriétaire/nom")
             return {"repo": repo}
+        if kind in ("btc_wallet", "eth_wallet"):
+            address = str(config.get("address") or "").strip()
+            pattern = BTC_ADDRESS if kind == "btc_wallet" else ETH_ADDRESS
+            if len(address.split()) > 1 or not pattern.fullmatch(address):
+                raise SaasError(
+                    "une adresse publique attendue (jamais de clé privée ni de phrase de "
+                    "récupération)"
+                )
+            return {"address": address}
+        if kind == "crypto_price":
+            raw = config.get("coins") or "bitcoin,ethereum"
+            coins = [
+                c.strip().lower() for c in (raw if isinstance(raw, list) else str(raw).split(","))
+            ]
+            coins = [c for c in coins if re.fullmatch(r"[a-z0-9-]{2,40}", c)][:10]
+            currency = str(config.get("currency") or "eur").strip().lower()
+            if not coins or not re.fullmatch(r"[a-z]{3,5}", currency):
+                raise SaasError(
+                    "identifiants CoinGecko attendus (ex. bitcoin, ethereum) et une devise (eur)"
+                )
+            return {"coins": coins, "currency": currency}
         if kind == "http_json":
             fields = config.get("fields") or {}
             if isinstance(fields, str):

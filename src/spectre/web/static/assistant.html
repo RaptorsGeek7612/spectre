@@ -188,12 +188,15 @@
           <p class="meta">Spectre lit tes chiffres, sans jamais rien modifier : Stripe (une clé restreinte en lecture suffit), Supabase (comptage d’une table), la disponibilité de ton site, la CI GitHub ou n’importe quelle API JSON. Les clés restent sur ce PC, dans ~/.spectre/assistant/.env.</p>
           <form class="ag-form" id="saas-source-form" autocomplete="off">
             <label><span class="label">Type</span><select name="kind" id="saas-kind">
-              <option value="uptime">Site (disponibilité)</option><option value="stripe">Stripe</option><option value="supabase">Supabase</option><option value="github">GitHub (CI)</option><option value="http_json">API JSON</option></select></label>
+              <option value="uptime">Site (disponibilité)</option><option value="stripe">Stripe</option><option value="supabase">Supabase</option><option value="github">GitHub (CI)</option><option value="http_json">API JSON</option><option value="btc_wallet">Adresse Bitcoin (solde)</option><option value="eth_wallet">Adresse Ethereum (solde)</option><option value="crypto_price">Cours crypto (CoinGecko)</option></select></label>
             <label><span class="label">Nom</span><input type="text" name="name" maxlength="60" placeholder="ex. Site public"></label>
             <label class="ag-wide" data-for="uptime supabase http_json"><span class="label">Adresse</span><input type="url" name="url" placeholder="https://…"></label>
             <label data-for="supabase"><span class="label">Table</span><input type="text" name="table" placeholder="ex. profiles"></label>
             <label data-for="supabase"><span class="label">Colonne de date (facultatif)</span><input type="text" name="date_column" placeholder="ex. created_at"></label>
             <label data-for="github"><span class="label">Dépôt</span><input type="text" name="repo" placeholder="propriétaire/nom"></label>
+            <label class="ag-wide" data-for="btc_wallet eth_wallet"><span class="label">Adresse publique (jamais de clé ni de phrase de récupération)</span><input type="text" name="address" placeholder="bc1… ou 0x…"></label>
+            <label data-for="crypto_price"><span class="label">Cryptos (identifiants CoinGecko)</span><input type="text" name="coins" value="bitcoin, ethereum"></label>
+            <label data-for="crypto_price"><span class="label">Devise</span><input type="text" name="currency" value="eur"></label>
             <label class="ag-wide" data-for="http_json"><span class="label">Champs</span><input type="text" name="fields" placeholder="ex. errors=data.count, users=meta.total"></label>
             <label class="ag-wide" data-for="stripe supabase github http_json"><span class="label">Clé (facultative pour GitHub public et l’API JSON)</span><input type="password" name="key" autocomplete="off" placeholder="rk_… / clé de service / jeton"></label>
             <div><button class="btn btn-primary" type="submit">Ajouter la source</button></div>
@@ -305,6 +308,17 @@
       </form>
       <div id="webhook-created" class="card wh-created" hidden></div>
       <div id="webhooks" class="cards"></div>
+
+      <h3 class="as-h as-h-sub">Notifications de cet appareil</h3>
+      <div class="card tg-card" id="push-card">
+        <p>Reçois les alertes, les comptes rendus et les validations en notification native, sur ce téléphone ou ce PC, même Spectre fermé. Les messages sont chiffrés pour cet appareil ; aucun service tiers ne les lit.</p>
+        <p class="meta" id="push-state"></p>
+        <div class="row">
+          <button class="btn btn-primary" type="button" id="push-on">Activer sur cet appareil</button>
+          <button class="btn" type="button" id="push-test">Envoyer un test</button>
+          <button class="btn btn-ghost" type="button" id="push-off">Désactiver ici</button>
+        </div>
+      </div>
 
       <h3 class="as-h as-h-sub">Telegram</h3>
       <div id="telegram" class="card tg-card"></div>

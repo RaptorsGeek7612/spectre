@@ -1,6 +1,6 @@
 // Spectre service worker: caches the app shell so the UI opens instantly and installs as an app.
 // API calls (/api/...) are never cached: runs, history and settings always come from the server.
-const CACHE = "spectre-shell-v4";
+const CACHE = "spectre-shell-v5";
 const SHELL = [
   "./", "index.html", "app.css", "app.js", "demo.json", "favicon.svg", "logo.svg", "manifest.webmanifest",
   "fonts/fonts.css", "icons/icon-192.png",
@@ -33,6 +33,25 @@ self.addEventListener("activate", (event) => {
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
+});
+
+// Native notifications (Web Push): the payload is decrypted by the browser.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data ? event.data.text() : "" }; }
+  event.waitUntil(self.registration.showNotification(data.title || "Spectre", {
+    body: data.body || "", icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "spectre", renotify: true,
+    data: { url: data.url || "/assistant.html" },
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || "/assistant.html", self.location.origin).href;
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+    const open = wins.find((w) => w.url.startsWith(self.location.origin));
+    return open ? open.focus() : self.clients.openWindow(url);
+  }));
 });
 
 self.addEventListener("fetch", (event) => {

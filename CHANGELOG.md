@@ -7,6 +7,36 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-14
+
+### Added
+
+- Notifications natives Web Push (`assistant/webpush.py`, vue Automatisation › Notifications de
+  cet appareil).
+  - Les alertes, comptes rendus, initiatives et validations en attente arrivent en notification
+    sur le téléphone ou le PC, même Spectre fermé. Toucher la notification ouvre Spectre.
+  - Chaque message est chiffré pour l'appareil (RFC 8291, aes128gcm) et signé par la clé de
+    Spectre (VAPID, RFC 8292), sans service tiers ni nouvelle bibliothèque.
+  - La clé est créée une fois et gardée dans `~/.spectre/assistant/.env`. Un appareil
+    désinscrit est retiré tout seul. 10 appareils au maximum.
+- Briefing vocal par entreprise (`assistant/brief.py`). Le briefing du matin donne pour chaque
+  entreprise :
+  - le MRR et son évolution sur la semaine, et le churn ;
+  - un site hors ligne ;
+  - les tâches à valider ou bloquées ;
+  - les alertes actives ;
+  - les décisions à réévaluer et les expériences qui se terminent dans la semaine.
+- Suivi crypto en lecture seule, comme sources du tableau de bord : solde d'une adresse Bitcoin
+  (mempool.space), solde d'une adresse Ethereum (Blockscout), cours (CoinGecko).
+  - Seules des adresses publiques sont acceptées : jamais de clé privée ni de phrase de
+    récupération. Aucune clé d'API n'est nécessaire.
+  - Le solde d'un pool de minage se suit avec la source « API JSON ».
+
+### Changed
+
+- `cryptography` est déclarée explicitement dans les dépendances. Elle était déjà installée,
+  par dépendance indirecte.
+
 ## [0.15.0] - 2026-10-14
 
 ### Added
