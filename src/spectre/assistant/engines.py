@@ -1,7 +1,9 @@
 """Which engine serves a reference, and the fallback chain when one fails.
 
 `opus`/`sonnet`/`haiku` -> Claude Code CLI, `chatgpt` -> Codex CLI, `mistral` -> Vibe CLI,
-`provider:model` -> an OpenAI-compatible endpoint (`llm.HttpAgent`). Like Hermes Agent, the
+`cursor` -> Cursor CLI, `antigravity` -> Antigravity CLI, `kimi` -> Kimi Code CLI,
+`provider:model` -> an OpenAI-compatible endpoint (`llm.HttpAgent`). An agent with its own tool
+can be moved to another engine (`agent_engines`: Simon on DeepSeek...). Like Hermes Agent, the
 fallback is per call: the next call tries the chosen engine first again.
 """
 
@@ -30,7 +32,29 @@ def _vibe(config: AssistantConfig, root: Path) -> Any:
     return VibeCLI(config, root)
 
 
-EXTERNAL: dict[str, Any] = {"chatgpt": _codex, "mistral": _vibe}  # non-Claude CLI agents
+def _cli(name: str) -> Any:
+    def make(config: AssistantConfig, root: Path) -> Any:
+        from spectre.assistant import cli_agents
+
+        return getattr(cli_agents, name)(config, root)
+
+    return make
+
+
+EXTERNAL: dict[str, Any] = {  # non-Claude CLI agents
+    "chatgpt": _codex,
+    "mistral": _vibe,
+    "cursor": _cli("CursorCLI"),
+    "antigravity": _cli("AntigravityCLI"),
+    "kimi": _cli("KimiCLI"),
+}
+
+
+def resolve(config: AssistantConfig, ref: str) -> str:
+    """The engine that really serves a reference: an agent moved to another engine
+    (`agent_engines`) runs there; anything else is itself."""
+    moved = config.agent_engines.get(ref, "") if ref in EXTERNAL else ""
+    return moved if moved and moved not in EXTERNAL else ref
 
 
 class Engines:
@@ -55,6 +79,7 @@ class Engines:
 
     def worker(self, ref: str) -> tuple[Any, str]:
         """(agent, model to pass to its `ask`) for a reference."""
+        ref = resolve(self.cli.config, ref) if hasattr(self.cli, "config") else ref
         provider, model = split_ref(ref)
         if provider:
             return self._agent("http"), f"{provider}:{model}"
@@ -167,7 +192,8 @@ def summary(config: AssistantConfig, providers: Providers, with_models: bool = T
     chain = ", ".join(config.fallback_models) or "(aucun)"
     lines += [
         f"Secours, dans l'ordre : {chain}",
-        "Moteurs CLI : opus, sonnet, haiku, chatgpt, mistral",
+        "Moteurs CLI : opus, sonnet, haiku, chatgpt (Codex), mistral (Vibe), cursor, "
+        "antigravity, kimi",
     ]
     for item in providers.describe():
         state = "prêt" if item["ready"] else f"clé manquante ({item['key_env']})"

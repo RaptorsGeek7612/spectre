@@ -7,7 +7,6 @@ import base64
 import contextlib
 import json
 import queue
-import shutil
 import threading
 import time
 from collections.abc import Callable
@@ -15,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import engines, greetings, tools, winapi
+from spectre.assistant import call, engines, greetings, sessions, team, tools, winapi
 from spectre.assistant.brain import Brain, ClaudeCLI
 from spectre.assistant.company import DEPARTMENTS, Companies
 from spectre.assistant.config import (
@@ -800,18 +799,25 @@ class AssistantService:
     def agents(self) -> Event:
         """Every agent by name: Spectre and its sub-agents, then the writing pipeline."""
         cfg = self.config
-        binaries = {"chatgpt": cfg.codex_bin, "mistral": cfg.vibe_bin}
-        engines = {
-            "chatgpt": f"ChatGPT{f' ({cfg.chatgpt_model})' if cfg.chatgpt_model else ''} · Codex",
-            "mistral": f"Mistral{f' ({cfg.mistral_model})' if cfg.mistral_model else ''} · Vibe",
-        }
+        labels = {"chatgpt": "Codex", "mistral": "Vibe", "cursor": "Cursor"}
+        labels |= {"antigravity": "Antigravity", "kimi": "Kimi Code"}
+
+        def engine_of(key: str) -> str:
+            if key not in labels:
+                return f"{model_label(key)} · Claude Code"
+            moved = cfg.agent_engines.get(key, "")
+            if moved:
+                return f"{moved} (au lieu de {labels[key]})"
+            model = str(getattr(cfg, team.MODEL_SETTING[key]))
+            return f"{labels[key]}{f' ({model})' if model else ''}"
+
         assistant = [
             {
                 "key": key,
                 "name": AGENT_NAMES[key],
-                "engine": engines.get(key) or f"{model_label(key)} · Claude Code",
+                "engine": engine_of(key),
                 "role": AGENT_ROLES[key],
-                "available": shutil.which(binaries.get(key, cfg.claude_bin)) is not None,
+                "available": team.available(cfg, key),
                 "default": key == cfg.mission_model,
             }
             for key in AGENT_ORDER
@@ -954,6 +960,93 @@ class AssistantService:
             return {"heard": "", "reply": "", "audio": ""}
         reply = self.chat(text, channel="voice")
         return {"heard": text, "reply": reply, "audio": self.render_speech(reply)}
+
+    # ---- the team and its video call -------------------------------------------------------
+
+    def team(self) -> Event:
+        mine = team.portraits(self.root)
+        agents = team.members(self.db, self.config)
+        for agent in agents:
+            agent["portrait"] = agent["key"].replace(":", "-") in mine
+        return {"agents": agents, "voices": team.VOICES}
+
+    def team_portrait(self, key: str, data: bytes | None) -> Event:
+        """Set (bytes) or remove (None) the user's own picture of an agent."""
+        if data is None:
+            team.delete_portrait(self.root, key)
+        else:
+            team.save_portrait(self.root, key, data)
+        return {"ok": True}
+
+    def team_change(self, key: str, data: dict[str, Any]) -> Event:
+        """Change an agent's engine, its model in its own tool, or its voice on the call."""
+        changes = team.change(self.db, self.config, self.providers, key, data)
+        if changes:
+            self.update_config(changes)
+        return {"agents": team.members(self.db, self.config)}
+
+    def team_models(self, key: str) -> Event:
+        from spectre.assistant import cli_agents
+
+        return {"key": key, "models": cli_agents.models(key, self.config)}
+
+    def team_details(self, key: str) -> Event:
+        return team.details(self.db, self.config, key)
+
+    def call_state(self, since: int, since_event: int) -> Event:
+        state = call.snapshot(self.db, since, since_event)
+        mine = team.portraits(self.root)
+        for agent in state["agents"]:  # the portrait the user chose: drawn look or picture
+            look = self.config.agent_looks.get(agent["key"], {})
+            agent["look"] = look
+            agent["gender"] = look.get("g", agent["gender"])
+            agent["portrait"] = agent["key"].replace(":", "-") in mine
+        return state
+
+    def call_standup(self) -> Event:
+        return {"lines": call.standup(self.db)}
+
+    def call_recap(self, mission: int | None, hours: float) -> Event:
+        return {"markdown": call.recap(self.db, mission=mission, hours=hours)}
+
+    def call_tree(self) -> Event:
+        return call.tree(self.db)
+
+    def call_board(self) -> Event:
+        roots = sessions.Roots.default(self.root)
+        return {"missions": call.board(self.db), "sessions": sessions.scan(roots)}
+
+    def call_replay(self, mission: int) -> Event:
+        return call.replay(self.db, mission)
+
+    def call_session(self, tool: str, sid: str) -> Event:
+        found = sessions.timeline(sessions.Roots.default(self.root), tool, sid)
+        if found is None:
+            raise KeyError(sid)
+        return found
+
+    def speak_as(self, key: str, text: str) -> str:
+        """An agent's own voice saying `text` (base64 WAV), clear and without effect; "" when
+        the local voices are not installed (the page then uses the browser's voices)."""
+        text = text.strip()[:600]
+        if not text:
+            return ""
+        gender = next((m["gender"] for m in call.members(self.db) if m["key"] == key), "m")
+        gender = str(self.config.agent_looks.get(key, {}).get("g", gender))
+        voice, pace = team.voice_of(self.config, key, gender)
+        model, speaker, _label, _gender = team.VOICES[voice]
+        if not (self.root / "models" / "piper" / f"{model}.onnx").is_file():
+            return ""  # never a download during a call: the browser speaks instead
+        cache = self.__dict__.setdefault("_call_voices", {})
+        try:
+            if (voice, pace) not in cache:
+                from spectre.assistant.voice.engines import PiperTTS
+
+                cache[(voice, pace)] = PiperTTS(self.root / "models", model, speaker, "aucun", pace)
+            rendered = cache[(voice, pace)].render(text)
+        except Exception:  # noqa: BLE001 - no Piper here: the browser speaks instead
+            return ""
+        return base64.b64encode(to_wav(*rendered)).decode("ascii") if rendered else ""
 
     def render_speech(self, text: str) -> str:
         """Spectre's voice saying `text`, as a base64 WAV for another device (the phone) to

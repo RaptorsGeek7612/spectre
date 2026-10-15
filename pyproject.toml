@@ -1,9 +1,9 @@
 [project]
 name = "spectre"
-version = "0.16.0"
+version = "0.17.0"
 description = "Spectre: a multi-agent Claude pipeline (Scout, Scribe, Warden) orchestrated with LangGraph."
 readme = "README.md"
-license = "MIT"
+license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [{ name = "RaptorsGeek7612" }]

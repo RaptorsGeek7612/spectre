@@ -74,7 +74,8 @@ forge fmt --check ; forge build ; forge test
   `assistant/engines.py`, un moteur par rôle (`config.ROLES`) ; agents
   d'exécution des missions externes possibles : `chatgpt` (Codex CLI, `assistant/codex.py`) et
   `mistral` (Vibe CLI, `assistant/mistral.py`), toujours avec les seuls outils MCP de Spectre ;
-  noms des sous-agents dans `assistant/config.py` (`AGENT_NAMES` : Gétro, Kaïto, Kyra, Syfer) ; toute
+  noms des sous-agents dans `assistant/config.py` (`AGENT_NAMES` : Gétro, Kaïto, Kyra, Syfer,
+  Octavya, Clarke, Simon) ; toute
   action passe par `tools.execute` (portail + audit). Entreprises, organigramme, tableau de
   tâches et pilotage des missions : `assistant/company.py` (tables dans `db.SCHEMA`) ; le
   moteur de missions (`missions.py`) lance jusqu'à `mission_parallel` missions à la fois.
@@ -98,6 +99,12 @@ forge fmt --check ; forge build ; forge test
   `open_pr` = action EXTERNAL validée). Notifications : `webpush.py` (RFC 8291 + VAPID avec
   `cryptography`, clé dans le `.env`) ; briefing par entreprise : `brief.py` ; crypto en lecture
   seule : sources `btc_wallet`/`eth_wallet`/`crypto_price` de `saas.py` (adresses publiques).
+  Agents sur outil : `cursor` (Octavya), `antigravity` (Clarke, une femme), `kimi` (Simon) dans
+  `cli_agents.py` ; `agent_engines` déplace un agent sur un autre moteur. Équipe : `team.py`
+  (moteur, modèle, voix, apparence, photo) ; visio : `call.py` (statuts et répliques depuis la
+  table `activity`, sans modèle) et `sessions.py` (sessions Claude Code/Codex/Vibe en lecture
+  seule) ; Laya : `laya.py`, outil `laya_decide` réservé à Spectre (`Tool.lead_only`).
+  Licence GPL-3.0-or-later.
   `voice/engines.py` et `winapi.py` sont exclus de la couverture (matériel).
 - Aucun appel réseau dans les tests par défaut (`@pytest.mark.live` pour les vrais appels).
 - Ne jamais lire, afficher ni committer une clé API ; `.env` est ignoré par git.

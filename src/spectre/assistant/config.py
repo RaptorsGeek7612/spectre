@@ -17,7 +17,41 @@ AGENT_NAMES = {
     "haiku": "Kaïto",  # the verifier of every mission step
     "chatgpt": "Kyra",  # images, video and multimedia
     "mistral": "Syfer",  # cybersecurity and penetration tests
+    "cursor": "Octavya",  # legal department
+    "antigravity": "Clarke",  # finance and insurance (a woman)
+    "kimi": "Simon",  # chartered accountant
     "opus": "Spectre",  # Spectre itself, when it runs the steps too
+}
+
+# The tool each agent runs in, as the interface names it (the key stays the engine reference)
+AGENT_TOOLS = {
+    "opus": "Claude Code",
+    "sonnet": "Claude Code",
+    "haiku": "Claude Code",
+    "chatgpt": "Codex",
+    "mistral": "Vibe",
+    "cursor": "Cursor",
+    "antigravity": "Antigravity",
+    "kimi": "Kimi",
+}
+
+# Their department in the team page and the video call
+AGENT_DEPARTMENTS = {
+    "opus": "Direction",
+    "sonnet": "Exécution",
+    "haiku": "Vérification",
+    "chatgpt": "Multimédia",
+    "mistral": "Cybersécurité",
+    "cursor": "Juridique",
+    "antigravity": "Finances et assurances",
+    "kimi": "Expertise comptable",
+}
+
+# Another name the user may give an engine: the tool rather than the account
+ENGINE_ALIASES = {
+    "codex": "chatgpt",
+    "vibe": "mistral",
+    "agy": "antigravity",
 }
 
 
@@ -30,8 +64,15 @@ AGENT_ROLES = {
     "chatgpt": "Images, vidéo et multimédia (via Codex, sur ton compte ChatGPT).",
     "mistral": "Cybersécurité et tests d'intrusion, sur un périmètre autorisé uniquement "
     "(via Vibe, sur ton compte Le Chat).",
+    "cursor": "Juridique : statuts, contrats, CGV et CGU, RGPD, propriété intellectuelle, "
+    "conformité (via Cursor, sur ton compte Cursor).",
+    "antigravity": "Finances et assurances : trésorerie, budget, prévisionnel, financement, "
+    "levée de fonds, contrats d'assurance (via Antigravity, sur ton compte Google).",
+    "kimi": "Expert-comptable : comptabilité, TVA, liasses et bilans, charges sociales, "
+    "fiscalité de l'entreprise (via Kimi Code, sur ton compte Kimi).",
 }
-AGENT_ORDER = ("opus", "sonnet", "haiku", "chatgpt", "mistral")
+AGENT_ORDER = ("opus", "sonnet", "haiku", "chatgpt", "mistral", "cursor", "antigravity", "kimi")
+EXTERNAL_AGENTS = ("chatgpt", "mistral", "cursor", "antigravity", "kimi")  # their own CLI
 
 AGENT_CHOICES = ("claude", *AGENT_NAMES)  # what a mission may ask for ("claude" = the setting)
 
@@ -75,6 +116,7 @@ def resolve_agent(value: str) -> str:
         return "".join(c for c in decomposed if not unicodedata.combining(c))
 
     wanted = plain(value)
+    wanted = ENGINE_ALIASES.get(wanted, wanted)
     if wanted in AGENT_CHOICES:
         return wanted
     return next((key for key, name in AGENT_NAMES.items() if plain(name) == wanted), "")
@@ -117,6 +159,18 @@ class AssistantConfig:
     chatgpt_model: str = ""  # empty = Codex's default model for the ChatGPT account
     vibe_bin: str = "vibe"  # Mistral Vibe CLI, for the Mistral execution agent
     mistral_model: str = ""  # a Vibe model alias; empty = Vibe's default Mistral model
+    cursor_bin: str = "cursor-agent"  # Cursor CLI, for Octavya (legal)
+    cursor_model: str = ""  # empty = Cursor's « auto »
+    antigravity_bin: str = "agy"  # Antigravity CLI, for Clarke (finance and insurance)
+    antigravity_model: str = ""  # empty = the model chosen in Antigravity
+    kimi_bin: str = "kimi"  # Kimi Code CLI, for Simon (accounting)
+    kimi_model: str = ""  # a Kimi Code model alias; empty = its default model
+    # Another engine for an agent than its own tool: agent key -> engine reference
+    # (for example {"kimi": "deepseek:deepseek-chat"}: Simon then works on DeepSeek)
+    agent_engines: dict[str, str] = field(default_factory=dict)
+    agent_voices: dict[str, str] = field(default_factory=dict)  # agent key -> voice id
+    agent_looks: dict[str, dict[str, Any]] = field(default_factory=dict)  # portraits
+    laya_url: str = ""  # a laya-serve address; empty = the local `laya` package
     brain_timeout_s: float = 300.0
     city: str = "Paris"
     briefing_hour: int = 8

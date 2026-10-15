@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="assistant.css">
+<link rel="stylesheet" href="team.css">
 </head>
 <body class="assistant">
 <svg width="0" height="0" class="sr-only" aria-hidden="true" focusable="false">
@@ -78,6 +79,8 @@
       <button type="button" data-view="meetings"><span>Réunions</span><b class="count" id="count-meetings"></b></button>
       <button type="button" data-view="automation"><span>Automatisation</span><b class="count" id="count-automation"></b></button>
       <button type="button" data-view="learning"><span>Apprentissage</span><b class="count" id="count-learning"></b></button>
+      <button type="button" data-view="team"><span>Équipe</span><b class="count" id="count-team"></b></button>
+      <button type="button" data-view="call"><span>Visio</span></button>
       <button type="button" data-view="agents"><span>Agents</span><b class="count" id="count-agents"></b></button>
       <button type="button" data-view="memory"><span>Mémoire</span><b class="count" id="count-facts"></b></button>
       <button type="button" data-view="initiatives"><span>Initiatives</span><b class="count" id="count-initiatives"></b></button>
@@ -340,6 +343,29 @@
       <div id="skills-archived" class="cards"></div>
     </section>
 
+    <section class="as-view" data-view="team" hidden>
+      <h2 class="as-h">L'équipe</h2>
+      <p class="meta">Chaque agent, son département, l'outil et le modèle sur lesquels il travaille (les deux se changent ici), sa voix dans la visio, son dossier et ce qu'il coûte. Un agent passé sur un autre moteur garde son nom et sa spécialité.</p>
+      <label class="tm-mode"><span class="label">Style des portraits</span>
+        <select id="team-art">
+          <option value="manga">Manga</option>
+          <option value="realiste">Réaliste</option>
+        </select></label>
+      <label class="tm-mode"><span class="label">Voix de la visio</span>
+        <select id="team-voice-mode">
+          <option value="auto">Automatique : voix naturelles du navigateur s'il en a, sinon celles de Spectre</option>
+          <option value="navigateur">Voix du navigateur (naturelles, Edge ou Android)</option>
+          <option value="spectre">Voix de Spectre (locales, sans Internet)</option>
+        </select></label>
+      <div id="team" class="tm-grid"></div>
+      <dialog id="team-detail" class="tm-dialog"></dialog>
+    </section>
+
+    <section class="as-view call-view" data-view="call" hidden>
+      <div id="call"></div>
+      <dialog id="call-recap" class="tm-dialog"></dialog>
+    </section>
+
     <section class="as-view" data-view="agents" hidden>
       <h2 class="as-h">Les agents de Spectre</h2>
       <p class="meta">Spectre dirige ; ses sous-agents exécutent et vérifient les missions. Il confie d'office le multimédia à Kyra et la cybersécurité à Syfer.</p>
@@ -359,9 +385,16 @@
         <label><span class="label">Moteur</span><select name="engine" id="agent-engine"></select></label>
         <label class="ag-wide"><span class="label">Rôle</span><input type="text" name="role" maxlength="300" required placeholder="ex. Recettes, menus de la semaine et liste de courses"></label>
         <label class="ag-wide"><span class="label">Consignes (facultatif)</span><textarea name="instructions" maxlength="4000" rows="3" placeholder="ex. Cuisine de saison, budget serré, pas de porc."></textarea></label>
+        <div class="ag-wide ag-look"><span class="label">Apparence</span>
+          <div class="ag-look-row"><div id="agent-look-preview" class="tm-face"></div>
+            <button class="btn" type="button" id="agent-look-edit"><span>Choisir son apparence</span></button>
+            <button class="btn btn-ghost" type="button" id="agent-photo-pick"><span>Mettre une photo</span></button>
+            <input type="file" id="agent-photo" accept="image/png,image/jpeg,image/webp" hidden>
+            <span class="help" id="agent-photo-name"></span></div></div>
         <div><button class="btn btn-primary" type="submit">Créer l'agent</button></div>
       </form>
       <div id="agents-created" class="ag-grid"></div>
+      <dialog id="agent-look" class="tm-dialog"></dialog>
       <h3 class="as-h as-h-sub">Rédaction</h3>
       <p class="meta">La chaîne qui écrit les textes soignés : recherche, rédaction, contrôle.</p>
       <div id="agents-redaction" class="ag-grid"></div>

@@ -7,12 +7,13 @@ Both the MCP server (called by the brain) and the web UI (approvals) use `execut
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import actions, competences, powershell
+from spectre.assistant import actions, activity, competences, powershell, runctx
 from spectre.assistant.actions import ActionContext, ActionError
 from spectre.assistant.company import (
     DEPARTMENTS,
@@ -40,6 +41,7 @@ class Tool:
     category: str
     run: Callable[..., str]
     classify: Callable[[ActionContext, dict[str, Any]], tuple[Level, str]] | None = None
+    lead_only: bool = False  # a skill of Spectre alone, not of the agents it leads
 
     def risk(self, ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
         return self.classify(ctx, args) if self.classify else (self.level, self.category)
@@ -118,7 +120,9 @@ def _create_agent(
 def _list_agents(ctx: ActionContext) -> str:
     builtin = (
         "Spectre (opus, toi), Gétro (sonnet), Kaïto (haiku, vérificateur), Kyra (chatgpt, "
-        "multimédia), Syfer (mistral, cybersécurité) ; rédaction : Scout, Scribe, Warden"
+        "Codex, multimédia), Syfer (mistral, Vibe, cybersécurité), Octavya (cursor, juridique), "
+        "Clarke (antigravity, finances et assurances), Simon (kimi, expert-comptable) ; "
+        "rédaction : Scout, Scribe, Warden"
     )
     created = CustomAgents(ctx.db).list()
     lines = [f"- {a['name']} ({a['engine']}) : {a['role']}" for a in created]
@@ -495,6 +499,16 @@ def _propose_skill(ctx: ActionContext, name: str, description: str, content: str
         f"compétence « {row['name']} » proposée{update} : elle attend la validation de "
         "l'utilisateur dans la vue Apprentissage"
     )
+
+
+def _laya_decide(ctx: ActionContext, state: str, questions: str) -> str:
+    from spectre.assistant.config import AssistantConfig
+    from spectre.assistant.laya import LayaError, decide, describe
+
+    try:
+        return describe(decide(AssistantConfig.load(ctx.root), state, questions))
+    except LayaError as exc:
+        raise ActionError(str(exc)) from exc
 
 
 def _search_history(ctx: ActionContext, query: str, limit: int = 10) -> str:
@@ -918,7 +932,9 @@ TOOLS: dict[str, Tool] = {
             "rapport). kind=redaction pour un texte soigné rédigé par Scout, Scribe et Warden. "
             "agent : qui exécute les étapes, par son nom ou son modèle. Kyra (chatgpt) pour les "
             "images, vidéos et le multimédia ; Syfer (mistral) pour la cybersécurité et les tests "
-            "d'intrusion autorisés ; Gétro (sonnet) ou Kaïto (haiku, rapide) pour le reste ; "
+            "d'intrusion autorisés ; Octavya (cursor) pour le juridique ; Clarke (antigravity) "
+            "pour les finances et les assurances ; Simon (kimi) pour la comptabilité, la TVA et "
+            "la fiscalité ; Gétro (sonnet) ou Kaïto (haiku, rapide) pour le reste ; "
             "ou un agent que tu as créé (create_agent), par son nom ; vide = le réglage.",
             Level.WRITE,
             "mission",
@@ -1141,6 +1157,21 @@ TOOLS: dict[str, Tool] = {
             _propose_skill,
         ),
         Tool(
+            "laya_decide",
+            "Ton intuition (Laya, modèle de décision local, sans jetons ni texte généré) : juge "
+            "vite un état (message, mission, ticket, JSON) en répondant à des questions typées. "
+            'questions = JSON {"nom": {"type": "choice", "instructions": "...", "criteria": '
+            '{"option": "description", ...}}, "nom2": {"type": "score", "instructions": "...", '
+            '"criteria": ["bas", "moyen", "haut"]}, "nom3": {"type": "noul", "instructions": '
+            '"affirmation à vérifier"}}. '
+            "Pour choisir l'agent d'une mission, trier un message, "
+            "noter une urgence ou repérer un risque avant d'y réfléchir en détail. Réservé à toi.",
+            Level.READ,
+            "read",
+            _laya_decide,
+            lead_only=True,
+        ),
+        Tool(
             "search_history",
             "Chercher dans les conversations passées (et les missions) par mots-clés ; rend "
             "des extraits datés.",
@@ -1343,6 +1374,8 @@ def execute(gate: Gate, ctx: ActionContext, name: str, args: dict[str, Any]) -> 
     tool = TOOLS.get(name)
     if tool is None:
         return f"outil inconnu : {name}"
+    if tool.lead_only and (ctx.agent or str(runctx.current().get("agent", ""))) not in ("", "opus"):
+        return f"REFUSÉ : {name} est une compétence de Spectre seul"
     level, category = tool.risk(ctx, args)
     from spectre.assistant.trust import Trust
 
@@ -1370,6 +1403,19 @@ def execute(gate: Gate, ctx: ActionContext, name: str, args: dict[str, Any]) -> 
                 (approval_id, ctx.agent),
             )
         gate.record(name, args, level, category, "approval", f"demande #{approval_id}")
+        context = runctx.current()
+        activity.record(  # the agent now waits for the user, on the video call too
+            ctx.db,
+            "approval",
+            agent=ctx.agent or str(context.get("agent", "")),
+            mission=ctx.mission if ctx.mission is not None else context.get("mission"),
+            title=name,
+            detail=json.dumps(
+                {"id": approval_id, "reason": decision.reason, "target": activity.target(args)},
+                ensure_ascii=False,
+            ),
+            status="pending",
+        )
         return (
             f"EN ATTENTE DE VALIDATION (#{approval_id}) : {decision.reason}. "
             "Dis à l'utilisateur ce que tu veux faire et qu'il peut valider ou refuser."
@@ -1386,6 +1432,11 @@ def _run(
     category: str,
     decision: str,
 ) -> str:
+    context = runctx.current()
+    agent = ctx.agent or str(context.get("agent", ""))
+    mission = ctx.mission if ctx.mission is not None else context.get("mission")
+    started = time.perf_counter()
+    row = activity.tool_started(ctx.db, agent, mission, tool.name, args)
     try:
         result = tool.run(ctx, **args)
     except ActionError as exc:
@@ -1394,6 +1445,10 @@ def _run(
         result = f"ÉCHEC : paramètres invalides ({exc})"
     except OSError as exc:
         result = f"ÉCHEC : {exc}"
+    except Exception as exc:
+        activity.tool_finished(ctx.db, row, tool.name, args, f"ÉCHEC : {exc}", started)
+        raise
+    activity.tool_finished(ctx.db, row, tool.name, args, result, started)
     gate.record(tool.name, args, level, category, decision, result)
     ctx.db.log_event("action", "spectre", f"{tool.name}: {result[:300]}", tool=tool.name, args=args)
     return result
