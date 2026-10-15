@@ -9,7 +9,6 @@ import * as voice from "./voice.js";
 const LEVEL = { apprenti: "○ apprenti", "confirmé": "◐ confirmé", expert: "● expert" };
 const CLAUDE = [["opus", "Opus 5.5 · Claude"], ["sonnet", "Sonnet 5.5 · Claude"], ["haiku", "Haiku 4.5 · Claude"]];
 const INSTALL = {
-  kimi: "Kimi Code n'est pas installé : demande à Spectre de l'installer, ou passe Simon sur un autre moteur (DeepSeek par exemple).",
   cursor: "Cursor CLI introuvable sur ce PC.",
   antigravity: "Antigravity CLI (agy) introuvable sur ce PC.",
 };

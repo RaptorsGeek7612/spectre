@@ -172,9 +172,13 @@ def test_agents(service: AssistantService, monkeypatch: pytest.MonkeyPatch) -> N
     kyra, syfer = data["assistant"][3], data["assistant"][4]
     assert kyra["engine"] == "Codex (gpt-5.5)" and kyra["default"] is True
     assert syfer["engine"] == "Vibe" and syfer["available"] is False
-    service.config.update({"agent_engines": {"kimi": "deepseek:deepseek-chat"}})
-    simon = service.agents()["assistant"][7]
-    assert simon["engine"] == "deepseek:deepseek-chat (au lieu de Kimi Code)"
+    assert service.agents()["assistant"][7]["engine"] == "deepseek:deepseek-v4-pro"
+    service.config.update(
+        {"agent_engines": {"simon": "deepseek:deepseek-chat", "cursor": "sonnet"}}
+    )
+    moved = service.agents()["assistant"]
+    assert moved[7]["engine"] == "deepseek:deepseek-chat"
+    assert moved[5]["engine"] == "sonnet (au lieu de Cursor)"
     assert data["assistant"][0]["engine"] == "Opus 5.5 · Claude Code"
     assert [(a["name"], a["engine"]) for a in data["redaction"]] == [
         ("Scout", "Haiku 4.5"),

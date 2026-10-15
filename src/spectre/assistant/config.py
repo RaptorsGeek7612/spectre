@@ -19,7 +19,7 @@ AGENT_NAMES = {
     "mistral": "Syfer",  # cybersecurity and penetration tests
     "cursor": "Octavya",  # legal department
     "antigravity": "Clarke",  # finance and insurance (a woman)
-    "kimi": "Simon",  # chartered accountant
+    "simon": "Simon",  # chartered accountant (on DeepSeek)
     "opus": "Spectre",  # Spectre itself, when it runs the steps too
 }
 
@@ -32,7 +32,7 @@ AGENT_TOOLS = {
     "mistral": "Vibe",
     "cursor": "Cursor",
     "antigravity": "Antigravity",
-    "kimi": "Kimi",
+    "simon": "DeepSeek",
 }
 
 # Their department in the team page and the video call
@@ -44,7 +44,7 @@ AGENT_DEPARTMENTS = {
     "mistral": "Cybersécurité",
     "cursor": "Juridique",
     "antigravity": "Finances et assurances",
-    "kimi": "Expertise comptable",
+    "simon": "Expertise comptable",
 }
 
 # Another name the user may give an engine: the tool rather than the account
@@ -68,11 +68,12 @@ AGENT_ROLES = {
     "conformité (via Cursor, sur ton compte Cursor).",
     "antigravity": "Finances et assurances : trésorerie, budget, prévisionnel, financement, "
     "levée de fonds, contrats d'assurance (via Antigravity, sur ton compte Google).",
-    "kimi": "Expert-comptable : comptabilité, TVA, liasses et bilans, charges sociales, "
-    "fiscalité de l'entreprise (via Kimi Code, sur ton compte Kimi).",
+    "simon": "Expert-comptable : comptabilité, TVA, liasses et bilans, charges sociales, "
+    "fiscalité de l'entreprise (sur DeepSeek, avec ta clé).",
 }
-AGENT_ORDER = ("opus", "sonnet", "haiku", "chatgpt", "mistral", "cursor", "antigravity", "kimi")
-EXTERNAL_AGENTS = ("chatgpt", "mistral", "cursor", "antigravity", "kimi")  # their own CLI
+AGENT_ORDER = ("opus", "sonnet", "haiku", "chatgpt", "mistral", "cursor", "antigravity", "simon")
+EXTERNAL_AGENTS = ("chatgpt", "mistral", "cursor", "antigravity")  # their own CLI
+HOSTED_AGENTS = ("simon",)  # on a hosted model (`AGENT_DEFAULT_ENGINES`), changeable
 
 AGENT_CHOICES = ("claude", *AGENT_NAMES)  # what a mission may ask for ("claude" = the setting)
 
@@ -163,10 +164,8 @@ class AssistantConfig:
     cursor_model: str = ""  # empty = Cursor's « auto »
     antigravity_bin: str = "agy"  # Antigravity CLI, for Clarke (finance and insurance)
     antigravity_model: str = ""  # empty = the model chosen in Antigravity
-    kimi_bin: str = "kimi"  # Kimi Code CLI, for Simon (accounting)
-    kimi_model: str = ""  # a Kimi Code model alias; empty = its default model
     # Another engine for an agent than its own tool: agent key -> engine reference
-    # (for example {"kimi": "deepseek:deepseek-chat"}: Simon then works on DeepSeek)
+    # (for example {"cursor": "sonnet"}: Octavya then works on Claude Sonnet)
     agent_engines: dict[str, str] = field(default_factory=dict)
     agent_voices: dict[str, str] = field(default_factory=dict)  # agent key -> voice id
     agent_looks: dict[str, dict[str, Any]] = field(default_factory=dict)  # portraits

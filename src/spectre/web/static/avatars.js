@@ -14,7 +14,7 @@ export const LOOKS = {
   mistral: { g: "m", skin: "#b88964", shade: "#8e6142", hair: "#0e0e11", eyes: "#2f2a26", lips: "#9b5e4a", outfit: "#18191c", shirt: "#2b2d33", accent: "#ff9f43", style: "undercut", beard: "short", hoodie: true, bg: "#4a3020" },
   cursor: { g: "f", skin: "#8b5838", shade: "#663d24", hair: "#18100c", eyes: "#3a2214", lips: "#7a3b35", outfit: "#1f2b4a", shirt: "#f1ece4", accent: "#7d86ff", style: "bun", beard: "", jewel: true, blazer: true, bg: "#26305a" },
   antigravity: { g: "f", skin: "#f0cdb2", shade: "#c99c7d", hair: "#87552d", eyes: "#4a6f92", lips: "#c0656a", outfit: "#3a3f47", shirt: "#eef1f5", accent: "#ef5f6f", style: "bob", beard: "", blazer: true, jewel: true, bg: "#4a2a33" },
-  kimi: { g: "m", skin: "#e5bd9d", shade: "#bd8f6f", hair: "#3b2c22", eyes: "#4a3826", lips: "#ad7462", outfit: "#5a4632", shirt: "#e9e4d8", accent: "#ffd23f", style: "receding", beard: "", glasses: "square", age: 1, cardigan: true, bg: "#4a4022" },
+  simon: { g: "m", skin: "#e5bd9d", shade: "#bd8f6f", hair: "#3b2c22", eyes: "#4a3826", lips: "#ad7462", outfit: "#5a4632", shirt: "#e9e4d8", accent: "#ffd23f", style: "receding", beard: "", glasses: "square", age: 1, cardigan: true, bg: "#4a4022" },
 };
 const CREATED = [
   { g: "m", skin: "#d8b08f", shade: "#b0835f", hair: "#3a2a1e", eyes: "#3b5a40", lips: "#a96a58", outfit: "#2c3e50", shirt: "#e6e6e6", accent: "#8bd450", style: "side", beard: "", bg: "#2a3d36" },

@@ -720,7 +720,7 @@ async function loadTrust() {
 const TRUST_KIND = { step_ok: "étapes ✓", step_fail: "étapes ✗", task_validated: "tâches validées", task_redo: "à refaire", approval_granted: "accords", approval_denied: "refus", rollback: "annulations" };
 
 /* ---- engines: which LLM serves each role, and the fallback chain ---- */
-const CLI_LABELS = { opus: "Opus 5.5 · Claude", sonnet: "Sonnet 5.5 · Claude", haiku: "Haiku 4.5 · Claude", chatgpt: "Kyra · Codex (ton compte ChatGPT)", mistral: "Syfer · Vibe (ton compte Le Chat)", cursor: "Octavya · Cursor (ton compte)", antigravity: "Clarke · Antigravity (ton compte Google)", kimi: "Simon · Kimi Code (ton compte)" };
+const CLI_LABELS = { opus: "Opus 5.5 · Claude", sonnet: "Sonnet 5.5 · Claude", haiku: "Haiku 4.5 · Claude", chatgpt: "Kyra · Codex (ton compte ChatGPT)", mistral: "Syfer · Vibe (ton compte Le Chat)", cursor: "Octavya · Cursor (ton compte)", antigravity: "Clarke · Antigravity (ton compte Google)" };
 let engineGroups = [];
 function engineSelect(name, value, { empty = "" } = {}) {
   const known = engineGroups.some((g) => g.items.some((i) => i.value === value));
@@ -742,7 +742,7 @@ async function loadEngines() {
   const chat = (m) => !/embed/i.test(m);  // embedding models cannot chat
   engineGroups = [
     { label: "Claude, sur ton abonnement", items: ["opus", "sonnet", "haiku"].map((v) => ({ value: v, text: CLI_LABELS[v] })) },
-    { label: "Tes autres comptes", items: ["chatgpt", "mistral", "cursor", "antigravity", "kimi"].map((v) => ({ value: v, text: CLI_LABELS[v] })) },
+    { label: "Tes autres comptes", items: ["chatgpt", "mistral", "cursor", "antigravity"].map((v) => ({ value: v, text: CLI_LABELS[v] })) },
     ...ready.map((p, i) => ({ label: p.label, items: lists[i].models.filter(chat).map((m) => ({ value: `${p.id}:${m}`, text: m })) }))
       .filter((g) => g.items.length),
   ];
@@ -912,7 +912,7 @@ async function loadAudit() {
 }
 
 /* ---- settings ---- */
-const AGENT_NAMES = { sonnet: "Gétro", haiku: "Kaïto", chatgpt: "Kyra", mistral: "Syfer", cursor: "Octavya", antigravity: "Clarke", kimi: "Simon", opus: "Spectre" };
+const AGENT_NAMES = { sonnet: "Gétro", haiku: "Kaïto", chatgpt: "Kyra", mistral: "Syfer", cursor: "Octavya", antigravity: "Clarke", simon: "Simon", opus: "Spectre" };
 const FIELDS = [
   ["user_name", "Ton prénom", "text", "Spectre l'utilise pour s'adresser à toi."],
   ["city", "Ta ville", "text", "Pour la météo du briefing."],

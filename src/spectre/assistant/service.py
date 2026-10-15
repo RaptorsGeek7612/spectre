@@ -21,6 +21,7 @@ from spectre.assistant.config import (
     AGENT_NAMES,
     AGENT_ORDER,
     AGENT_ROLES,
+    HOSTED_AGENTS,
     ROLES,
     AssistantConfig,
     resolve_role,
@@ -800,9 +801,11 @@ class AssistantService:
         """Every agent by name: Spectre and its sub-agents, then the writing pipeline."""
         cfg = self.config
         labels = {"chatgpt": "Codex", "mistral": "Vibe", "cursor": "Cursor"}
-        labels |= {"antigravity": "Antigravity", "kimi": "Kimi Code"}
+        labels |= {"antigravity": "Antigravity"}
 
         def engine_of(key: str) -> str:
+            if key in HOSTED_AGENTS:
+                return engines.resolve(cfg, key)
             if key not in labels:
                 return f"{model_label(key)} · Claude Code"
             moved = cfg.agent_engines.get(key, "")

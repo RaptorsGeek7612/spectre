@@ -297,7 +297,7 @@ demandant à Spectre :
 
 - **Les agents.** Spectre dirige Gétro (exécution) et Kaïto (vérification), Kyra
   (multimédia, Codex), Syfer (cybersécurité, Vibe), Octavya (juridique, Cursor), Clarke
-  (finances et assurances, Antigravity) et Simon (expert-comptable, Kimi Code).
+  (finances et assurances, Antigravity) et Simon (expert-comptable, DeepSeek).
 - **La page Équipe.** Pour chaque agent, tu changes ici le moteur (LLM), le modèle, la voix et
   l'apparence (portrait manga ou réaliste, ou ta photo). Tu y vois aussi son dossier, ce qu'il
   coûte et ses dernières actions.
