@@ -61,7 +61,8 @@ AGENT_ROLES = {
     "rapports.",
     "sonnet": "Agent d'exécution par défaut : il mène les étapes des missions.",
     "haiku": "Le vérificateur : il contrôle chaque étape des missions ; rapide.",
-    "chatgpt": "Images, vidéo et multimédia (via Codex, sur ton compte ChatGPT).",
+    "chatgpt": "Images, vidéo et multimédia (via Codex, sur ton compte ChatGPT) ; elle crée "
+    "les images et les vidéos sur ce PC avec ComfyUI.",
     "mistral": "Cybersécurité et tests d'intrusion, sur un périmètre autorisé uniquement "
     "(via Vibe, sur ton compte Le Chat).",
     "cursor": "Juridique : statuts, contrats, CGV et CGU, RGPD, propriété intellectuelle, "
@@ -169,6 +170,8 @@ class AssistantConfig:
     agent_engines: dict[str, str] = field(default_factory=dict)
     agent_voices: dict[str, str] = field(default_factory=dict)  # agent key -> voice id
     agent_looks: dict[str, dict[str, Any]] = field(default_factory=dict)  # portraits
+    comfyui_url: str = "http://127.0.0.1:8188"  # Kyra's studio (images and videos)
+    comfyui_dir: str = ""  # ComfyUI folder (start_comfyui.cmd); empty = ~/ComfyUI
     laya_url: str = ""  # a laya-serve address; empty = the local `laya` package
     brain_timeout_s: float = 300.0
     city: str = "Paris"

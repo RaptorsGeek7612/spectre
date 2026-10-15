@@ -42,6 +42,12 @@ class Tool:
     run: Callable[..., str]
     classify: Callable[[ActionContext, dict[str, Any]], tuple[Level, str]] | None = None
     lead_only: bool = False  # a skill of Spectre alone, not of the agents it leads
+    agents: tuple[str, ...] = ()  # only these agents may use it (empty = anyone)
+
+    def allowed(self, agent: str) -> bool:
+        if self.lead_only and agent not in ("", "opus"):
+            return False
+        return not self.agents or agent in self.agents
 
     def risk(self, ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
         return self.classify(ctx, args) if self.classify else (self.level, self.category)
@@ -498,6 +504,60 @@ def _propose_skill(ctx: ActionContext, name: str, description: str, content: str
     return (
         f"compétence « {row['name']} » proposée{update} : elle attend la validation de "
         "l'utilisateur dans la vue Apprentissage"
+    )
+
+
+def _studio(ctx: ActionContext) -> Any:
+    from spectre.assistant.config import AssistantConfig
+    from spectre.assistant.media import Studio
+
+    return Studio(ctx.db, AssistantConfig.load(ctx.root), ctx.root)
+
+
+def _media(
+    ctx: ActionContext, kind: str, prompt: str, width: int, height: int, seconds: float
+) -> str:
+    from spectre.assistant.media import MediaError
+
+    try:
+        job = _studio(ctx).submit(
+            kind,
+            prompt,
+            width=int(width),
+            height=int(height),
+            seconds=float(seconds),
+            agent=ctx.agent,
+            mission=ctx.mission,
+        )
+    except MediaError as exc:
+        raise ActionError(str(exc)) from exc
+    what = "image" if kind == "image" else "vidéo"
+    return (
+        f"Création #{job['id']} lancée dans ComfyUI ({what} {job['width']}×{job['height']}). "
+        f"Environ {job['minutes']} min sur ce PC sans carte graphique dédiée : le fichier "
+        "arrivera dans workspace\\medias et l'utilisateur sera prévenu. Ne l'attends pas."
+    )
+
+
+def _generate_image(ctx: ActionContext, prompt: str, width: int = 1024, height: int = 1024) -> str:
+    return _media(ctx, "image", prompt, width, height, 0)
+
+
+def _generate_video(
+    ctx: ActionContext, prompt: str, width: int = 640, height: int = 352, seconds: float = 2.0
+) -> str:
+    return _media(ctx, "video", prompt, width, height, seconds)
+
+
+def _media_jobs(ctx: ActionContext) -> str:
+    jobs = _studio(ctx).jobs(10)
+    if not jobs:
+        return "Aucune création pour l'instant."
+    return "\n".join(
+        f"#{j['id']} {j['kind']} [{j['status']}] {j['prompt'][:80]}"
+        + (f" → {', '.join(j['files'])}" if j["files"] else "")
+        + (f" ({j['error'][:120]})" if j["error"] else "")
+        for j in jobs
     )
 
 
@@ -1158,6 +1218,35 @@ TOOLS: dict[str, Tool] = {
             _propose_skill,
         ),
         Tool(
+            "generate_image",
+            "Créer une image sur ce PC avec ComfyUI (Z-Image Turbo, rendu réaliste). Décris la "
+            "scène précisément, en anglais de préférence : sujet, cadrage, lumière, style. "
+            "width/height de 256 à 1536 (1024 par défaut). Long sur ce PC (environ 30 min) : la "
+            "demande part en file et l'utilisateur est prévenu quand l'image est prête.",
+            Level.WRITE,
+            "media",
+            _generate_image,
+            agents=("chatgpt",),
+        ),
+        Tool(
+            "generate_video",
+            "Créer une courte vidéo sur ce PC avec ComfyUI (Wan 2.2). Décris le mouvement, le "
+            "cadrage et l'ambiance. seconds de 1 à 5 ; 640×352 par défaut. Très long sur ce PC "
+            "(plusieurs heures) : préviens l'utilisateur ; il est averti à la fin.",
+            Level.WRITE,
+            "media",
+            _generate_video,
+            agents=("chatgpt",),
+        ),
+        Tool(
+            "media_jobs",
+            "Les dernières créations d'images et de vidéos (en cours, prêtes, échouées) et leurs "
+            "fichiers.",
+            Level.READ,
+            "read",
+            _media_jobs,
+        ),
+        Tool(
             "laya_decide",
             "Ton intuition (Laya, modèle de décision local, sans jetons ni texte généré) : juge "
             "vite un état (message, mission, ticket, JSON) en répondant à des questions typées. "
@@ -1375,8 +1464,13 @@ def execute(gate: Gate, ctx: ActionContext, name: str, args: dict[str, Any]) -> 
     tool = TOOLS.get(name)
     if tool is None:
         return f"outil inconnu : {name}"
-    if tool.lead_only and (ctx.agent or str(runctx.current().get("agent", ""))) not in ("", "opus"):
-        return f"REFUSÉ : {name} est une compétence de Spectre seul"
+    if not tool.allowed(ctx.agent or str(runctx.current().get("agent", ""))):
+        owner = (
+            "de Spectre seul"
+            if tool.lead_only
+            else "réservée à " + ", ".join(agent_name(a) for a in tool.agents)
+        )
+        return f"REFUSÉ : {name} est une compétence {owner}"
     level, category = tool.risk(ctx, args)
     from spectre.assistant.trust import Trust
 

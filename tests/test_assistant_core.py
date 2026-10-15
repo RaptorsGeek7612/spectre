@@ -491,6 +491,11 @@ def test_build_server_lists_every_tool() -> None:
     if inspect.isawaitable(listed):
         listed = asyncio.run(listed)
     by_name = {t.name: t for t in listed}
-    assert set(by_name) == set(tools.TOOLS)
+    assert set(by_name) == {name for name, tool in tools.TOOLS.items() if tool.allowed("")}
+    assert "generate_image" not in by_name  # Kyra's studio: her tool, not Spectre's
+    kyra = mcp_server.build_server(lambda n, a: "ok", "chatgpt").list_tools()
+    if inspect.isawaitable(kyra):
+        kyra = asyncio.run(kyra)
+    assert {"generate_image", "generate_video"} <= {t.name for t in kyra}
     assert by_name["set_reminder"].input_schema["required"] == ["when", "text"]
     assert sys.executable  # the brain launches this server with the same interpreter

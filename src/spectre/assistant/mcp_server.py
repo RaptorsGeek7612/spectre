@@ -47,7 +47,7 @@ def build_server(call: Callable[[str, dict[str, Any]], str], agent: str = "") ->
         instructions="Les mains de Spectre. Chaque action passe par le portail de gouvernance.",
     )
     for tool in TOOLS.values():
-        if tool.lead_only and agent not in ("", "opus"):
+        if not tool.allowed(agent):
             continue
         server.add_tool(tool_wrapper(tool, call), name=tool.name, description=tool.description)
     return server

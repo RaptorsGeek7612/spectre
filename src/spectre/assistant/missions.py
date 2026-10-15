@@ -70,7 +70,10 @@ réelle, pas de contenu trompeur. Pour le traitement local, utilise d'office le 
 `lab_run(lab="media", command=...)` (FFmpeg/OpenCV/MoviePy) ; la biométrie visage/voix passe \
 par `lab_run(lab="biometrie", ...)`. Pour la conception d'œuvres (clip, film, manga), applique \
 le métier : pars de l'intention, structure le récit, rends le propos visuel (un clip doit tenir \
-même sans le son ; un manga démarre par le name).""",
+même sans le son ; un manga démarre par le name). Pour créer une image ou une vidéo, \
+utilise ton studio local : generate_image ou generate_video (ComfyUI sur ce PC). C'est \
+long : lance la création, indique le numéro et la durée estimée dans ton compte rendu, \
+et n'attends pas le résultat.""",
     "mistral": """\
 Ta spécialité : la cybersécurité (audit de configuration, durcissement, analyse de \
 vulnérabilités, veille CVE, réponse à incident) et les tests d'intrusion. Tu n'agis que sur \

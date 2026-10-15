@@ -168,6 +168,7 @@ class Proactive:
             self.befriend(now)
         self.routines(now)
         self.saas(now)
+        self.media()
         self.decisions(now)
         self.trust()
 
@@ -190,6 +191,16 @@ class Proactive:
             ).start()
         else:
             monitor.tick(now, self.add_initiative)
+
+    def media(self) -> list[int]:
+        """Collect Kyra's finished images and videos (ComfyUI jobs) and announce them."""
+        from spectre.assistant.media import Studio
+
+        root = getattr(self.cli, "root", None)
+        if root is None or not self.db.one("SELECT 1 FROM media_jobs WHERE status = 'running'"):
+            return []
+        studio = Studio(self.db, self.config, root)
+        return studio.poll(lambda kind, title, body: self.add_initiative(kind, title, body))
 
     def curate(self, now: datetime) -> dict[str, list[str]]:
         """Age the learned skills (never deletes; pinned ones are kept)."""

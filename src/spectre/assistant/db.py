@@ -190,6 +190,12 @@ CREATE TABLE IF NOT EXISTS activity (
 );
 CREATE INDEX IF NOT EXISTS activity_ts ON activity(ts);
 CREATE INDEX IF NOT EXISTS activity_mission ON activity(mission_id);
+CREATE TABLE IF NOT EXISTS media_jobs (
+  id INTEGER PRIMARY KEY, ts TEXT NOT NULL, kind TEXT NOT NULL, prompt TEXT NOT NULL,
+  prompt_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL, files TEXT NOT NULL DEFAULT '[]',
+  agent TEXT NOT NULL DEFAULT '', mission_id INTEGER, error TEXT NOT NULL DEFAULT '',
+  done_at TEXT
+);
 """
 
 
