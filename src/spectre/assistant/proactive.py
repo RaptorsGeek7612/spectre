@@ -280,6 +280,9 @@ class Proactive:
         )
         if running and running["n"]:
             parts.append(f"{running['n']} mission(s) en cours.")
+        from spectre.assistant.brief import company_lines
+
+        parts += company_lines(self.db, getattr(self.cli, "root", None), now)
         text = " ".join(parts)
         self.add_initiative("briefing", "Briefing du matin", text, level=0)
         return text

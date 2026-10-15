@@ -297,7 +297,7 @@ async function loadSaas() {
   $("#saas-status").replaceChildren(...chips);
   $("#saas-tiles").replaceChildren(...(data.tiles.length ? data.tiles.map(statTile) : [h("p", { class: "empty-cards" }, data.sources.length ? "Les premiers chiffres arrivent : la collecte est en cours." : "Aucun chiffre encore. Ouvre « Sources, alertes et rapport » pour brancher Stripe, Supabase ou ton site.")]));
   if (!data.sources.length) $("#saas-setup").open = true;
-  const KIND = { uptime: "site", stripe: "Stripe", supabase: "Supabase", github: "GitHub", http_json: "API JSON", manual: "saisie" };
+  const KIND = { uptime: "site", stripe: "Stripe", supabase: "Supabase", github: "GitHub", http_json: "API JSON", btc_wallet: "adresse BTC", eth_wallet: "adresse ETH", crypto_price: "cours crypto", manual: "saisie" };
   $("#saas-sources").replaceChildren(...data.sources.map((s) => h("article", { class: "card", "data-status": s.last_error ? "failed" : "done" },
     h("h3", {}, s.name),
     h("span", { class: "meta" }, `${KIND[s.kind] || s.kind}${s.config.url ? ` · ${s.config.url}` : ""}${s.config.repo ? ` · ${s.config.repo}` : ""}${s.config.table ? ` · table ${s.config.table}` : ""} · ${s.last_check ? `relevé ${date(s.last_check)}` : "pas encore relevé"}${s.has_key ? " · clé enregistrée" : ""}`),
@@ -320,6 +320,7 @@ $("#saas-source-form").addEventListener("submit", async (e) => {
   const kind = $("#saas-kind").value;
   const data = Object.fromEntries([...new FormData(e.target)].filter(([k]) => { const el = e.target.elements[k]; return !el.closest("[data-for]") || !el.closest("[data-for]").hidden; }));
   data.kind = kind;
+  if (data.coins) data.coins = data.coins.split(",").map((c) => c.trim()).filter(Boolean);
   try { await api("POST", `company/${companyId}/saas/sources`, data); toast("Source ajoutée : premier relevé en cours.", "ok"); e.target.reset(); saasKindFields(); }
   catch (err) { toast(err.message, "error", 8000); }
   setTimeout(loadSaas, 2500);
@@ -540,6 +541,43 @@ $("#meeting-upload").addEventListener("submit", async (e) => {
   loadMeetings();
 });
 
+/* ---- native notifications (Web Push) ---- */
+async function pushRegistration() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+  return navigator.serviceWorker.ready;
+}
+async function loadPush() {
+  const reg = await pushRegistration();
+  const state = $("#push-state");
+  if (!reg) { state.textContent = "Ce navigateur ne gère pas les notifications natives (ou la page n'est pas en HTTPS)."; return; }
+  const [info, sub] = await Promise.all([api("GET", "push"), reg.pushManager.getSubscription()]);
+  state.textContent = `${sub ? "Activées sur cet appareil" : "Pas activées sur cet appareil"} · ${info.devices} appareil${info.devices > 1 ? "s" : ""} abonné${info.devices > 1 ? "s" : ""}.`;
+  $("#push-on").hidden = !!sub; $("#push-off").hidden = !sub;
+}
+$("#push-on").addEventListener("click", async () => {
+  try {
+    const reg = await pushRegistration();
+    if (!reg) throw new Error("notifications non disponibles ici");
+    if ((await Notification.requestPermission()) !== "granted") throw new Error("autorisation refusée par le navigateur");
+    const { key } = await api("GET", "push");
+    const raw = atob(key.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - key.length % 4) % 4));
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(raw, (c) => c.charCodeAt(0)) });
+    await api("POST", "push/subscribe", { subscription: sub.toJSON(), label: navigator.userAgent.slice(0, 80) });
+    toast("Notifications activées sur cet appareil.", "ok");
+  } catch (err) { toast(err.message, "error", 8000); }
+  loadPush();
+});
+$("#push-off").addEventListener("click", async () => {
+  const reg = await pushRegistration();
+  const sub = reg && await reg.pushManager.getSubscription();
+  if (sub) { await api("POST", "push/unsubscribe", { endpoint: sub.endpoint }); await sub.unsubscribe(); }
+  loadPush();
+});
+$("#push-test").addEventListener("click", async () => {
+  try { const r = await api("POST", "push/test", {}); toast(r.sent ? `Test envoyé à ${r.sent} appareil(s).` : "Aucun appareil abonné n'a accepté le test.", r.sent ? "ok" : "error"); }
+  catch (err) { toast(err.message, "error"); }
+});
+
 /* ---- automation: routines, webhooks, Telegram ---- */
 const RKIND = { mission: "mission", question: "question", rappel: "rappel" };
 async function loadAutomation() {
@@ -551,6 +589,7 @@ async function loadAutomation() {
   $("#routines").replaceChildren(...(routines.length ? routines.map(routineCard) : [h("p", { class: "empty-cards" }, "Aucune routine. Programme-en une ici ou demande-la à Spectre.")]));
   $("#webhooks").replaceChildren(...(hooks.length ? hooks.map(webhookCard) : [h("p", { class: "empty-cards" }, "Aucun webhook.")]));
   renderTelegram(tg);
+  loadPush().catch(() => {});
 }
 function routineCard(r) {
   const call = (path, body, done) => async () => {

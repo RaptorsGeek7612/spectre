@@ -2309,9 +2309,10 @@ wheels = [
 
 [[package]]
 name = "spectre"
-version = "0.15.0"
+version = "0.16.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "langchain-anthropic" },
     { name = "langchain-core" },
     { name = "langgraph" },
@@ -2347,6 +2348,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=43" },
     { name = "faster-whisper", marker = "extra == 'voice'", specifier = ">=1.2" },
     { name = "langchain-anthropic", specifier = ">=1.5.3" },
     { name = "langchain-core", specifier = ">=1.5.2" },

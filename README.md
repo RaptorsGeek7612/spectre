@@ -293,6 +293,16 @@ demandant à Spectre :
   parler à Spectre depuis Telegram. Tu y reçois aussi ses notifications et ses demandes de
   validation (`/approve 3`, `/deny 3`). Les autres conversations sont ignorées.
 
+**Notifications, briefing, crypto.**
+
+- **Notifications.** Dans la vue Automatisation, « Activer sur cet appareil » fait arriver les
+  alertes, comptes rendus et validations en notification native sur ton téléphone ou ton PC.
+  Elles sont chiffrées pour l'appareil et passent sans service tiers. Il faut une page en HTTPS
+  (Tailscale) ou ouverte sur le PC lui-même.
+- **Briefing.** Le briefing du matin résume chaque entreprise.
+- **Crypto.** Le tableau de bord suit en lecture seule des adresses Bitcoin et Ethereum et des
+  cours crypto. Donne seulement des adresses publiques, jamais une clé.
+
 **Département technique.** Dans la vue Entreprise › Développement, indique le dépôt git de ton
 SaaS et sa commande de tests, puis confie-lui un changement.
 
