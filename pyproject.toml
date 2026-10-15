@@ -51,6 +51,8 @@ dev = [
     "pytest-cov>=5",
     "ruff>=0.6",
     "mypy>=1.11",
+    "numpy-financial>=1.0",
+    "sympy>=1.12",
 ]
 
 [build-system]
