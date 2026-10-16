@@ -896,7 +896,8 @@ class AssistantService:
         }
 
     def provider_models(self, provider: str) -> Event:
-        return {"provider": provider, "models": self.providers.models(provider)}
+        online, models = self.providers.listing(provider)
+        return {"provider": provider, "models": models, "online": online}
 
     def set_engine(self, data: dict[str, Any]) -> Event:
         """Switch a role's engine, or replace the fallback chain, from the interface."""

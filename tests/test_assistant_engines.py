@@ -133,6 +133,11 @@ def test_models_list(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert found.models("ollama") == []  # not running
     assert found.models("groq") == []  # no key: not even tried
     assert seen == ["http://127.0.0.1:1234/v1/models", "http://127.0.0.1:11434/v1/models"]
+    assert found.listing("ollama") == (False, [])  # stopped
+    monkeypatch.setattr(
+        providers.urllib.request, "urlopen", lambda r, timeout: io.BytesIO(b'{"data": null}')
+    )
+    assert found.listing("ollama") == (True, [])  # running, no model installed yet
 
 
 # ---- the OpenAI-compatible agent ------------------------------------------------------------
@@ -451,7 +456,7 @@ def test_models_api(
     service: AssistantService,  # noqa: F811
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(service.providers, "models", lambda pid, timeout=5.0: [f"{pid}-m"])
+    monkeypatch.setattr(service.providers, "listing", lambda pid, timeout=5.0: (True, [f"{pid}-m"]))
     status, data = api.json("GET", "/api/assistant/models")
     assert status == 200 and data["roles"][0] == {
         "role": "brain_model",
@@ -462,6 +467,7 @@ def test_models_api(
     assert api.json("GET", "/api/assistant/models/lmstudio")[1] == {
         "provider": "lmstudio",
         "models": ["lmstudio-m"],
+        "online": True,
     }
     status, data = api.json(
         "POST", "/api/assistant/models", {"role": "mission", "engine": "ollama:q"}
