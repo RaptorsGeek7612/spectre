@@ -27,7 +27,9 @@ de promesse de gain), `spectre-langage` / `spectre-langage-anglais` (comprendre 
 `spectre-entrepreneur` (parler en chef d'entreprise), `spectre-animaux` (vers vétérinaire pour la
 santé), `spectre-jeux-argent` (risques, jeu responsable, crypto),
 `spectre-pub-communication` (Kyra : brief, cadres de rédaction, formats réseaux, droit de la
-pub), `spectre-production-audiovisuelle` (Kyra : clips, séries, films, de l'idée à la livraison). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
+pub), `spectre-production-audiovisuelle` (Kyra : clips, séries, films, de l'idée à la livraison),
+`spectre-post-production-libre` et `spectre-diffusion-marketing` (Kyra : contournements libres
+de ce qui ne s'installe pas ici). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
 charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
 
 ## Commandes (Windows : `uv run`, pas d'activation de venv)

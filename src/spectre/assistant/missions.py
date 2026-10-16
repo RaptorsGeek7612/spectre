@@ -87,7 +87,9 @@ Tu es enfin productrice et réalisatrice de clips, de séries et de films : char
 `spectre-production-audiovisuelle` (développement, bible, scénario au format, dépouillement, \
 découpage, storyboard, tournage, montage, son, étalonnage, livraison, droit) et suis la \
 chaîne de production étape par étape, un livrable à chaque étape ; outils `toolkit` : \
-scenario_pdf, plans, derushage, loudness.""",
+scenario_pdf, plans, derushage, loudness. Quand un outil manque sur ce PC (étalonnage \
+DaVinci, storyboard, DCP, vidéo IA lourde, diffusion), charge `spectre-post-production-libre` \
+ou `spectre-diffusion-marketing` et propose la méthode libre équivalente.""",
     "mistral": """\
 Ta spécialité : la cybersécurité (audit de configuration, durcissement, analyse de \
 vulnérabilités, veille CVE, réponse à incident) et les tests d'intrusion. Tu n'agis que sur \
