@@ -92,6 +92,15 @@ KOKORO = Path.home() / "Apps" / "kokoro"
 KOKORO_VOICE = "ff_siwis"  # the French voice of Kokoro
 
 
+def _uv_tool(name: str, module: str) -> list[str]:
+    """Run a uv-installed tool through its own Python: Windows' Smart App Control can block
+    the freshly generated `.exe` launcher while the interpreter itself is trusted."""
+    python = Path.home() / "AppData" / "Roaming" / "uv" / "tools" / name / "Scripts" / "python.exe"
+    if python.is_file():
+        return [str(python), "-m", module]
+    return [_bin((name,)) or name]
+
+
 def _format(options: str) -> tuple[str, int, int]:
     name = options.strip().lower() or "story"
     if name not in FORMATS:
@@ -435,7 +444,7 @@ KITS: dict[str, Kit] = {
         Level.WRITE,
         "convert",
         lambda ctx, t, o: [
-            _bin(("scenedetect",)) or "scenedetect",
+            *_uv_tool("scenedetect", "scenedetect"),
             "--input",
             _local(ctx, t),
             "--output",
@@ -691,11 +700,21 @@ def _crypto_daily(symbol: str, days: int) -> list[list[float]]:
 
 def _yahoo_daily(symbol: str, period: str) -> list[list[float]]:
     """[timestamp ms, open, high, low, close, volume] per day, like ccxt."""
+    from datetime import UTC, datetime
+
     import yfinance as yf
 
     frame = yf.Ticker(symbol).history(period=period, interval="1d", auto_adjust=True)
+    # Yahoo stamps a session at local midnight (Paris = the day before in UTC): keep its date.
     return [
-        [ts.timestamp() * 1000, row["Open"], row["High"], row["Low"], row["Close"], row["Volume"]]
+        [
+            datetime(ts.year, ts.month, ts.day, 12, tzinfo=UTC).timestamp() * 1000,
+            row["Open"],
+            row["High"],
+            row["Low"],
+            row["Close"],
+            row["Volume"],
+        ]
         for ts, row in frame.iterrows()
     ]
 
