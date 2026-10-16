@@ -243,7 +243,7 @@ def test_subtitles_voice_and_burn_in_commands(ctx: Any) -> None:
     with pytest.raises(ActionError):
         toolkit.run(ctx, "incruster", "clip.mp4")
     burn = " ".join(ctx.runner.calls[-1])
-    assert "subtitles='" in burn and "\:" in burn and burn.endswith("clip-soustitree.mp4")
+    assert "subtitles='" in burn and r"\:" in burn and burn.endswith("clip-soustitree.mp4")
     with pytest.raises(ActionError):
         toolkit.run(ctx, "voix_off", "texte.txt", "3")
     voice = ctx.runner.calls[-1]
@@ -275,3 +275,82 @@ def test_production_tools_commands(ctx: Any) -> None:
         toolkit.run(ctx, "scenario_pdf", "film.fountain")
     with pytest.raises(ActionError, match="ton domaine"):
         toolkit.run(ctx, "derushage", "rush.mp4")
+
+
+# ---- Simon: trading maths and market data ---------------------------------------------------
+
+
+def test_trading_operations() -> None:
+    size = toolkit.trading("taille_position", [10000, 1, 100, 95])
+    assert "20 unités" in size and "100.00" in size  # 1 % of 10 000 = 100 at risk, 5 per unit
+    assert "+0.20 R" in toolkit.trading("esperance", [40, 200, 100])  # 0.4*200 - 0.6*100 = 20
+    assert "33.3 %" in toolkit.trading("esperance", [0.5, 200, 100])  # breakeven win rate
+    assert "2.00 R" in toolkit.trading("gain_risque", [100, 95, 110])
+    assert "-50.0 %" in toolkit.trading("drawdown", [100, 200, 100, 150])
+    with pytest.raises(ActionError, match="opération inconnue"):
+        toolkit.trading("martingale", [1])
+    with pytest.raises(ActionError, match="calcul impossible"):
+        toolkit.trading("taille_position", [1000, 1, 100, 100])  # stop on the entry
+
+
+def _candles(closes: list[float]) -> list[list[float]]:
+    return [[i * 86_400_000.0, c, c * 1.01, c * 0.99, c, 1.0] for i, c in enumerate(closes)]
+
+
+def test_indicators_from_candles() -> None:
+    rising = toolkit.indicators(_candles([100 + i for i in range(60)]))
+    assert rising["rsi14"] == 100.0 and rising["sma50"] is not None and rising["sma200"] is None
+    assert rising["drawdown"] == 0.0 and (rising["performance"] or 0) > 0.5
+    falling = toolkit.indicators(_candles([100, 50, 75]))
+    assert falling["drawdown"] == pytest.approx(-0.5)
+    with pytest.raises(ActionError, match="pas assez"):
+        toolkit.indicators(_candles([1]))
+
+
+def test_market_is_dated_and_sourced(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        toolkit,
+        "_crypto_ticker",
+        lambda s: {"last": 70000, "bid": 69990, "ask": 70010, "percentage": 1.5, "timestamp": 0},
+    )
+    monkeypatch.setattr(
+        toolkit, "_crypto_book", lambda s: {"bids": [[69990, 1]], "asks": [[70010, 2]]}
+    )
+    monkeypatch.setattr(toolkit, "_yahoo_daily", lambda s, p: _candles([100.0] * 30 + [110.0]))
+    monkeypatch.setattr(toolkit, "_crypto_daily", lambda s, d: _candles([1.0, 2.0]))
+    price = toolkit.market("prix", "btc/eur")
+    assert "BTC/EUR : 70000" in price and "temps réel" in price and "UTC" in price
+    stock = toolkit.market("prix", "^FCHI")
+    assert "+10.00%" in stock and "retard" in stock
+    assert "écart 20" in toolkit.market("carnet", "BTC/EUR")
+    report = toolkit.market("analyse", "AAPL", "3mo")
+    assert "RSI14" in report and "pas un signal" in report
+    assert "performance +100.0%" in toolkit.market("analyse", "ETH/EUR", "")
+    with pytest.raises(ActionError, match="crypto"):
+        toolkit.market("carnet", "AAPL")
+    with pytest.raises(ActionError, match="période"):
+        toolkit.market("analyse", "AAPL", "10y")
+    with pytest.raises(ActionError, match="symbole"):
+        toolkit.market("prix", " ")
+
+    def down(symbol: str) -> dict[str, Any]:
+        raise OSError("réseau coupé")
+
+    monkeypatch.setattr(toolkit, "_crypto_ticker", down)
+    with pytest.raises(ActionError, match="injoignable"):
+        toolkit.market("prix", "BTC/EUR")
+
+
+def test_market_tools_are_simons_and_lexys(ctx: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(toolkit, "market", lambda op, sym, opt="": f"{op} {sym}")
+    gate = Gate(ctx.db)
+    ctx.agent = "simon"
+    assert tools_mod.execute(gate, ctx, "marche", {"operation": "prix", "symbol": "AAPL"}) == (
+        "prix AAPL"
+    )
+    assert "R" in tools_mod.execute(
+        gate, ctx, "trading", {"operation": "gain_risque", "values": [100, 95, 110]}
+    )
+    ctx.agent = "shelby"
+    refused = tools_mod.execute(gate, ctx, "marche", {"operation": "prix", "symbol": "AAPL"})
+    assert refused.startswith("REFUSÉ")

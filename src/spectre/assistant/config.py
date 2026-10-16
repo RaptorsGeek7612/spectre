@@ -50,7 +50,7 @@ AGENT_DEPARTMENTS = {
     "mistral": "Cybersécurité",
     "cursor": "Juridique",
     "antigravity": "Finances et assurances",
-    "simon": "Expertise comptable",
+    "simon": "Expertise comptable et trading",
     "shelby": "Animalier",
     "ysyss": "Sciences et savoirs",
     "lexy": "Jeux, paris et investissements",
@@ -80,7 +80,8 @@ AGENT_ROLES = {
     "antigravity": "Finances et assurances : trésorerie, budget, prévisionnel, financement, "
     "levée de fonds, contrats d'assurance (via Antigravity, sur ton compte Google).",
     "simon": "Expert-comptable : comptabilité, TVA, liasses et bilans, charges sociales, "
-    "fiscalité de l'entreprise (sur DeepSeek, avec ta clé).",
+    "fiscalité de l'entreprise ; expert et formateur en trading, données de marché en temps "
+    "réel (sur DeepSeek, avec ta clé).",
     "shelby": "Animalière : culture animale, comportement et éducation, biologie, santé et "
     "soins, toilettage de toutes les espèces.",
     "ysyss": "Sciences et être humain : physique, chimie, maths, biologie, astronomie, "

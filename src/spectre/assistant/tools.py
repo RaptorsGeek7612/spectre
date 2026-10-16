@@ -527,6 +527,18 @@ def _toolkit_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]
     return (kit.level, kit.category) if kit else (Level.READ, "read")
 
 
+def _trading(ctx: ActionContext, operation: str, values: list[float]) -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.trading(operation, list(values))
+
+
+def _market(ctx: ActionContext, operation: str, symbol: str, options: str = "") -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.market(operation, symbol, options)
+
+
 def _finance(ctx: ActionContext, operation: str, values: list[float]) -> str:
     from spectre.assistant import toolkit
 
@@ -1309,6 +1321,30 @@ TOOLS: dict[str, Tool] = {
             "read",
             _betting,
             agents=("lexy",),
+        ),
+        Tool(
+            "trading",
+            "Calculs de trading (Simon, Lexy). operation : taille_position (capital, risque en % "
+            "du capital, entrée, stop), esperance (taux de réussite, gain moyen, perte moyenne), "
+            "gain_risque (entrée, stop, objectif), drawdown (la suite des valeurs du capital). "
+            "values : les nombres. Un calcul, jamais un conseil ni un signal.",
+            Level.READ,
+            "read",
+            _trading,
+            agents=("simon", "lexy"),
+        ),
+        Tool(
+            "marche",
+            "Données de marché en lecture seule (Simon, Lexy). operation : prix (dernier prix ; "
+            "crypto en temps réel « BTC/EUR », action, indice ou forex « AAPL », « ^FCHI », "
+            "« EURUSD=X » parfois avec 15 min de retard), analyse (performance, volatilité, "
+            "drawdown, moyennes mobiles, RSI, ATR ; options = 1mo, 3mo, 6mo, 1y, 2y, 5y), carnet "
+            "(carnet d'ordres d'une crypto). symbol : le symbole. Cite toujours l'heure et la "
+            "source ; jamais un signal d'achat ou de vente.",
+            Level.READ,
+            "read",
+            _market,
+            agents=("simon", "lexy"),
         ),
         Tool(
             "generate_image",
