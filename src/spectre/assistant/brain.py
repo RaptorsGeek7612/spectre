@@ -190,6 +190,12 @@ class ClaudeCLI:
         path.write_text(json.dumps(config, indent=2), encoding="utf-8")
         return path
 
+    def write_system_prompt(self, system: str) -> Path:
+        """The system prompt in a file of this thread (missions run in parallel threads)."""
+        path = self.root / f"system-{threading.get_ident()}.txt"
+        path.write_text(system, encoding="utf-8")
+        return path
+
     def env(self) -> dict[str, str]:
         return {k: v for k, v in os.environ.items() if k not in STRIPPED_ENV}
 
@@ -203,8 +209,8 @@ class ClaudeCLI:
             "json",
             "--model",
             ASSISTANT_MODELS.get(model, model),
-            "--system-prompt",
-            system,
+            "--system-prompt-file",  # in a file: Windows caps a command line at 32 767 chars
+            str(self.write_system_prompt(system)),
             "--permission-mode",
             "dontAsk",
             "--setting-sources",
