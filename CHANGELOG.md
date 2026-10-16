@@ -15,6 +15,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   carre, paysage), `sous_titres` (Whisper), `incruster` (sous-titres gravés), `detourage`
   (rembg), `voix_off` (Kokoro, voix française), `agrandir` (Real-ESRGAN). Chaque outil crée un
   nouveau fichier à côté de la source et échoue si rien n'a été produit.
+- **Kyra, productrice et réalisatrice** (clips, séries, films) : compétence
+  `spectre-production-audiovisuelle` (chaîne de production, bible, découpage, storyboard,
+  grammaire des plans, montage, son, étalonnage, livraison, droit) et outils `scenario_pdf`
+  (Screenplain), `plans` (PySceneDetect), `derushage` (auto-editor), `loudness` (EBU R128).
 
 ## [0.17.0] - 2026-10-15
 

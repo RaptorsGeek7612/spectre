@@ -46,7 +46,7 @@ AGENT_DEPARTMENTS = {
     "opus": "Direction",
     "sonnet": "Exécution",
     "haiku": "Vérification",
-    "chatgpt": "Multimédia, pub et communication",
+    "chatgpt": "Multimédia, production, pub et communication",
     "mistral": "Cybersécurité",
     "cursor": "Juridique",
     "antigravity": "Finances et assurances",
@@ -71,8 +71,8 @@ AGENT_ROLES = {
     "sonnet": "Agent d'exécution par défaut : il mène les étapes des missions.",
     "haiku": "Le vérificateur : il contrôle chaque étape des missions ; rapide.",
     "chatgpt": "Images, vidéo et multimédia, publicité et communication (via Codex, sur ton "
-    "compte ChatGPT) ; elle crée les images et les vidéos sur ce PC avec ComfyUI et les "
-    "décline pour chaque réseau.",
+    "compte ChatGPT) ; productrice et réalisatrice de clips, séries et films ; elle crée les "
+    "images et les vidéos sur ce PC avec ComfyUI et les décline pour chaque réseau.",
     "mistral": "Cybersécurité et tests d'intrusion, sur un périmètre autorisé uniquement "
     "(via Vibe, sur ton compte Le Chat).",
     "cursor": "Juridique : statuts, contrats, CGV et CGU, RGPD, propriété intellectuelle, "

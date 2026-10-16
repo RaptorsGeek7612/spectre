@@ -126,6 +126,16 @@ def _subtitle_filter(path: Path) -> str:
     return f"subtitles='{escaped}'"
 
 
+LOUDNESS = {"web": -14, "tv": -23}  # LUFS: streaming platforms; French TV (EBU R128)
+
+
+def _loudness(options: str) -> int:
+    name = options.strip().lower() or "web"
+    if name not in LOUDNESS:
+        raise ActionError("options = web (-14 LUFS) ou tv (-23 LUFS)")
+    return LOUDNESS[name]
+
+
 def _srt(ctx: ActionContext, target: str, options: str) -> Path:
     if options.strip():
         return resolve_path(ctx, options)
@@ -402,6 +412,82 @@ KITS: dict[str, Kit] = {
         ],
         ("realesrgan-ncnn-vulkan",),
         output=lambda ctx, t, o: _beside(ctx, t, "x4", ".png"),
+    ),
+    # ---- Kyra, producer: screenplay, shots, rushes, sound delivery
+    "scenario_pdf": Kit(
+        "Screenplain (scénario Fountain mis en page en PDF)",
+        ("chatgpt", "scribe", "warden"),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("screenplain",)) or "screenplain",
+            "--format",
+            "pdf",
+            _local(ctx, t),
+            str(_beside(ctx, t, "scenario", ".pdf")),
+        ],
+        ("screenplain",),
+        output=lambda ctx, t, o: _beside(ctx, t, "scenario", ".pdf"),
+    ),
+    "plans": Kit(
+        "PySceneDetect (liste des plans d'une vidéo, en CSV)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("scenedetect",)) or "scenedetect",
+            "--input",
+            _local(ctx, t),
+            "--output",
+            str(resolve_path(ctx, t).parent),
+            "--quiet",
+            "detect-adaptive",
+            "list-scenes",
+            "--filename",
+            f"{resolve_path(ctx, t).stem}-plans.csv",
+        ],
+        ("scenedetect",),
+        output=lambda ctx, t, o: _beside(ctx, t, "plans", ".csv"),
+        timeout=3600.0,
+    ),
+    "derushage": Kit(
+        "auto-editor (retire les silences et temps morts d'un rush)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("auto-editor",)) or "auto-editor",
+            _local(ctx, t),
+            "--output",
+            str(_beside(ctx, t, "derushe")),
+            "--no-open",
+        ],
+        ("auto-editor",),
+        output=lambda ctx, t, o: _beside(ctx, t, "derushe"),
+        timeout=3600.0,
+    ),
+    "loudness": Kit(
+        "FFmpeg (son normalisé pour la diffusion : web -14 ou tv -23 LUFS)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("ffmpeg",)) or "ffmpeg",
+            "-n",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            _local(ctx, t),
+            "-af",
+            f"loudnorm=I={_loudness(o)}:TP=-1.5:LRA=11",
+            "-c:v",
+            "copy",
+            str(_beside(ctx, t, f"{-_loudness(o)}lufs")),
+        ],
+        ("ffmpeg",),
+        output=lambda ctx, t, o: _beside(ctx, t, f"{-_loudness(o)}lufs"),
+        timeout=1800.0,
     ),
 }
 
