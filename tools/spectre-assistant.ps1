@@ -10,6 +10,18 @@ function Test-Spectre {
     catch { return $false }
 }
 
+# Open the interface in Chrome as an app window (clean, no tabs/address bar) when Chrome is
+# installed; otherwise fall back to the default browser.
+function Open-Spectre {
+    $chrome = @(
+        "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
+        "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+        "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($chrome) { Start-Process $chrome -ArgumentList "--app=$url" }
+    else { Start-Process $url }
+}
+
 # --silent: started with the Windows session (shortcut in the Startup folder): no page opened.
 $silent = $args -contains "--silent"
 $args = @($args | Where-Object { $_ -ne "--silent" })
@@ -39,7 +51,7 @@ $mutex = New-Object System.Threading.Mutex($false, "Local\SpectreStart")
 if (-not $mutex.WaitOne(0)) {
     if (-not $silent) {
         for ($i = 0; $i -lt 90 -and -not (Test-Spectre); $i++) { Start-Sleep -Milliseconds 500 }
-        if (Test-Spectre) { Start-Process $url }
+        if (Test-Spectre) { Open-Spectre }
     }
     exit 0
 }
@@ -49,7 +61,7 @@ $alive = Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" |
     Where-Object { $_.CommandLine -like "*spectre.assistant*" }
 if ((Test-Spectre) -or $alive) {
     for ($i = 0; $i -lt 90 -and -not (Test-Spectre); $i++) { Start-Sleep -Milliseconds 500 }
-    if (-not $silent -and (Test-Spectre)) { Start-Process $url }  # just show it
+    if (-not $silent -and (Test-Spectre)) { Open-Spectre }  # just show it
     exit 0
 }
 
@@ -94,7 +106,7 @@ Start-Process -FilePath "cmd.exe" -ArgumentList "/v:on", "/c", $command -Working
 $tries = if ($silent) { 240 } else { 60 }  # slower at sign-in, while Windows starts everything
 for ($i = 0; $i -lt $tries -and -not (Test-Spectre); $i++) { Start-Sleep -Milliseconds 500 }
 if (Test-Spectre) {
-    if (-not $silent) { Start-Process $url }
+    if (-not $silent) { Open-Spectre }
 } else {
     Add-Type -AssemblyName PresentationFramework
     [System.Windows.MessageBox]::Show("Spectre n'a pas démarré. Journal : $log", "Spectre") | Out-Null
