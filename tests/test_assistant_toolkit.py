@@ -354,3 +354,45 @@ def test_market_tools_are_simons_and_lexys(ctx: Any, monkeypatch: pytest.MonkeyP
     ctx.agent = "shelby"
     refused = tools_mod.execute(gate, ctx, "marche", {"operation": "prix", "symbol": "AAPL"})
     assert refused.startswith("REFUSÉ")
+
+
+# ---- Syfer: more pentest tools (authorized scans) -------------------------------------------
+
+
+def test_recon_tools_are_syfers_and_remote(ctx: Any) -> None:
+    for name in ("nmap", "subfinder", "httpx"):
+        assert toolkit.KITS[name].agents == ("mistral",)
+        assert toolkit.KITS[name].remote and toolkit.KITS[name].level == Level.EXTERNAL
+        assert tools_mod._toolkit_risk(ctx, {"name": name}) == (Level.EXTERNAL, "scan_remote")
+    assert not toolkit.KITS["trufflehog"].remote  # secrets in a local folder = a read
+    assert toolkit.KITS["trufflehog"].level == Level.READ
+
+
+def test_recon_commands(ctx: Any) -> None:
+    ctx.agent = "mistral"
+    toolkit.run(ctx, "nmap", "juice-shop")
+    cmd = ctx.runner.calls[-1]
+    assert "-sT" in cmd and "-sV" in cmd and cmd[-1] == "juice-shop"  # connect scan, target last
+    toolkit.run(ctx, "subfinder", "example.com")
+    assert ctx.runner.calls[-1][1:] == ["-d", "example.com", "-silent"]
+    toolkit.run(ctx, "httpx", "http://juice-shop:3000")
+    assert "-tech-detect" in ctx.runner.calls[-1]
+
+
+def test_trufflehog_scans_a_local_folder(ctx: Any) -> None:
+    ctx.agent = "mistral"
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "no secrets", "")
+    toolkit.run(ctx, "trufflehog", "leak.txt")
+    cmd = ctx.runner.calls[-1]
+    assert cmd[1] == "filesystem" and cmd[2].endswith("leak.txt")
+    ctx.agent = "shelby"  # not Syfer's domain
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "nmap", "juice-shop")
+
+
+def test_remote_recon_waits_for_approval(ctx: Any) -> None:
+    gate = Gate(ctx.db, auto_max_level=int(Level.WRITE))
+    ctx.agent = "mistral"
+    answer = tools_mod.execute(gate, ctx, "toolkit", {"name": "nmap", "target": "juice-shop"})
+    assert answer.startswith("EN ATTENTE DE VALIDATION")
+    assert ctx.runner.calls == []  # never runs a remote scan without the user's go

@@ -43,6 +43,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   l'entreprise, attentes réciproques directeur-équipe, entretiens individuels, délégation,
   feedback, recrutement, OKR, EOS, 4DX, RACI, conduite du changement, droit du travail du
   manager, direction de sa propre équipe d'agents), chargée d'office par le cerveau.
+- **Syfer, expert de tous les types de pentests** : compétence `spectre-pentest` (méthodologie
+  PTES, OWASP WSTG/MASTG, MITRE ATT&CK v19 ; web, API, réseau, Active Directory, cloud, mobile,
+  sans-fil, ingénierie sociale, IoT, LLM, red team ; phases, CVSS, rapport, formation ; cadre
+  légal strict — cible autorisée, impact minimal, confidentialité) et nouveaux outils `toolkit`
+  réservés à Syfer : trufflehog (secrets, local=lecture), nmap, subfinder, httpx (cible
+  autorisée, distant=validation).
 
 ## [0.17.0] - 2026-10-15
 
