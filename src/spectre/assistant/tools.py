@@ -1232,7 +1232,10 @@ TOOLS: dict[str, Tool] = {
             "(recadrage pour un réseau ; options = story, fil, carre ou paysage), sous_titres "
             "(fichier .srt ; options = langue), incruster (sous-titres gravés ; options = le "
             ".srt, sinon celui de même nom), detourage (fond transparent), voix_off (voix "
-            "française d'un fichier .txt ; options = vitesse), agrandir (image ×4). Ils créent "
+            "française d'un fichier .txt ; options = vitesse), agrandir (image ×4). Production "
+            "(Kyra) : scenario_pdf (scénario .fountain en PDF), plans (liste des plans d'une "
+            "vidéo), derushage (retire les silences d'un rush), loudness (son de diffusion ; "
+            "options = web ou tv). Ils créent "
             "un nouveau fichier à côté de la source. target : le fichier, le dossier ou "
             "l'adresse. Chaque agent ne voit que les outils de son domaine.",
             Level.READ,

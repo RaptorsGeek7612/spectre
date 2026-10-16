@@ -250,3 +250,28 @@ def test_subtitles_voice_and_burn_in_commands(ctx: Any) -> None:
     assert voice[voice.index("--speed") + 1] == "2.0" and "fr-fr" in voice  # speed is bounded
     with pytest.raises(ActionError, match="vitesse"):
         toolkit.run(ctx, "voix_off", "texte.txt", "vite")
+
+
+def test_production_tools_commands(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    home = ctx.allowed_roots[0]
+    for name in ("film.fountain", "rush.mp4"):
+        (home / name).write_bytes(b"x")
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "", "")
+    for name, target, options, ends in (
+        ("scenario_pdf", "film.fountain", "", "film-scenario.pdf"),
+        ("derushage", "rush.mp4", "", "--no-open"),
+        ("loudness", "rush.mp4", "tv", "rush-23lufs.mp4"),
+        ("plans", "rush.mp4", "", "rush-plans.csv"),
+    ):
+        with pytest.raises(ActionError, match="aucun fichier produit"):
+            toolkit.run(ctx, name, target, options)
+        assert ctx.runner.calls[-1][-1].endswith(ends), name
+    assert "loudnorm=I=-23" in " ".join(ctx.runner.calls[2])
+    with pytest.raises(ActionError, match="web"):
+        toolkit.run(ctx, "loudness", "rush.mp4", "cinema")
+    ctx.agent = "scribe"  # writers may lay out a screenplay, not edit rushes
+    with pytest.raises(ActionError, match="aucun fichier produit"):
+        toolkit.run(ctx, "scenario_pdf", "film.fountain")
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "derushage", "rush.mp4")
