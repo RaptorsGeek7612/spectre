@@ -31,7 +31,9 @@ pub), `spectre-production-audiovisuelle` (Kyra : clips, séries, films, de l'id�
 `spectre-post-production-libre` et `spectre-diffusion-marketing` (Kyra : contournements libres
 de ce qui ne s'installe pas ici), `spectre-trading` (Simon : histoire, styles, risque,
 formation, fiscalité ; outils `marche` et `trading`), `spectre-nature-climat` (Shelby :
-biodiversité, climat air/terre/mer ; outil `nature`, module `nature.py`). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
+biodiversité, climat air/terre/mer ; outil `nature`, module `nature.py`), `spectre-contrats`
+et `spectre-contrats-europe-international` (Octavya : tous les contrats, France, UE,
+international ; outil `contrat`, module `contracts.py`). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
 charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
 
 ## Commandes (Windows : `uv run`, pas d'activation de venv)

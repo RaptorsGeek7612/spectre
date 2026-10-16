@@ -545,6 +545,23 @@ def _nature(ctx: ActionContext, operation: str, subject: str, options: str = "")
     return nature.nature(operation, subject, options)
 
 
+def _contract(ctx: ActionContext, operation: str, target: str, options: str = "") -> str:
+    from spectre.assistant import contracts
+
+    try:
+        return contracts.contract(ctx, operation, target, options)
+    except ActionError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _contract_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
+    if str(args.get("operation", "")).strip().lower() == "comparer":
+        return Level.WRITE, "convert"  # writes the HTML comparison next to the contract
+    return Level.READ, "read"
+
+
 def _finance(ctx: ActionContext, operation: str, values: list[float]) -> str:
     from spectre.assistant import toolkit
 
@@ -1364,6 +1381,19 @@ TOOLS: dict[str, Tool] = {
             "read",
             _nature,
             agents=("shelby", "ysyss"),
+        ),
+        Tool(
+            "contrat",
+            "Outils de contrat (Octavya). operation : analyser (repère les clauses présentes "
+            "et absentes, dates, montants, délais et signaux d'alerte d'un contrat .docx, .txt "
+            "ou .md — une première lecture, pas un avis juridique), comparer (compare deux "
+            "versions et écrit un comparatif HTML à côté ; options = la seconde version). "
+            "target : le fichier du contrat.",
+            Level.READ,
+            "read",
+            _contract,
+            _contract_risk,
+            agents=("cursor",),
         ),
         Tool(
             "generate_image",
