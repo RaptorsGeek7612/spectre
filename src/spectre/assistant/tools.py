@@ -170,6 +170,44 @@ def _set_fallbacks(ctx: ActionContext, engines: str) -> str:
     return _engine_change(ctx, change)
 
 
+def _recommend_engine(ctx: ActionContext, agent: str = "") -> str:
+    from spectre.assistant import local_models
+    from spectre.assistant.config import AssistantConfig
+
+    return local_models.recommend(AssistantConfig.load(ctx.root), agent)
+
+
+def _set_agent_engine(ctx: ActionContext, agent: str, engine: str = "") -> str:
+    from spectre.assistant import local_models, team
+    from spectre.assistant.config import AGENT_NAMES, AssistantConfig
+
+    key = local_models.resolve_agent(agent)
+    wanted = engine.strip()
+    if wanted.lower() in ("origine", "d'origine", "defaut", "défaut", "reset"):
+        wanted = ""
+    providers = Providers(ctx.root)
+    if wanted.startswith("lmstudio:"):
+        found = local_models.installed()
+        if found and wanted.split(":", 1)[1] not in found:
+            raise ActionError(
+                f"modèle absent de LM Studio : {wanted} (recommend_engine liste ceux installés)"
+            )
+    config = AssistantConfig.load(ctx.root)
+    if not wanted and key in team.ROLE_OF:  # Spectre, Gétro, Kaïto: their Claude model
+        wanted = local_models.current(config, key)[1]
+    try:
+        changes = team.change(ctx.db, config, providers, key, {"engine": wanted})
+    except team.TeamError as exc:
+        raise ActionError(str(exc)) from exc
+    config.update(changes)
+    config.save(ctx.root)
+    now, original = local_models.current(config, key)
+    name = AGENT_NAMES.get(key, key)
+    if now == original:
+        return f"{name} revient à son moteur d'origine : {original}."
+    return f"{name} travaille désormais sur {now} (d'origine : {original})."
+
+
 def _company_call(action: Callable[[], str]) -> str:
     try:
         return action()
@@ -1115,6 +1153,27 @@ TOOLS: dict[str, Tool] = {
             Level.WRITE,
             "model",
             _set_model,
+        ),
+        Tool(
+            "recommend_engine",
+            "Conseiller le meilleur modèle local LM Studio pour un agent selon son métier "
+            "(outils, vision, code, raisonnement, contexte) et la mémoire de ce PC. agent : "
+            "son nom (Kyra, Octavya, Gétro…) ; vide = le meilleur pour chaque agent. Ne change "
+            "rien.",
+            Level.READ,
+            "read",
+            _recommend_engine,
+        ),
+        Tool(
+            "set_agent_engine",
+            "Changer le moteur (LLM) d'un agent, UNIQUEMENT quand l'utilisateur le demande. "
+            "agent : son nom (Kyra, Octavya, Gétro…) ; engine : lmstudio:<modèle> (ou un "
+            "autre fournisseur:modèle, ou opus/sonnet/haiku pour Spectre, Gétro et Kaïto) ; "
+            "vide ou « origine » = son moteur d'origine.",
+            Level.WRITE,
+            "model",
+            _set_agent_engine,
+            lead_only=True,  # an agent never moves itself or a colleague
         ),
         Tool(
             "set_fallbacks",
