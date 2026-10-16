@@ -39,6 +39,7 @@ vision = ["numpy>=2.0", "opencv-python-headless>=4.10", "onnxruntime>=1.20"]
 finance = ["numpy-financial>=1.0"]  # Clarke and Simon: bounded financial maths
 science = ["sympy>=1.12", "astropy>=6.0", "skyfield>=1.49"]  # Ysyss: maths and astronomy
 markets = ["ccxt>=4.0", "yfinance>=0.2"]  # Lexy: read-only crypto and stock data
+administration = ["python-stdnum>=2.0", "holidays>=0.60"]  # Spectre: identifiers, holidays
 
 [project.scripts]
 spectre = "spectre.cli:main"
@@ -53,6 +54,8 @@ dev = [
     "mypy>=1.11",
     "numpy-financial>=1.0",
     "sympy>=1.12",
+    "python-stdnum>=2.0",
+    "holidays>=0.60",
 ]
 
 [build-system]
