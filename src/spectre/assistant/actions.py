@@ -39,6 +39,7 @@ class ActionContext:
     root: Path  # assistant data dir (trash lives here)
     allowed_roots: list[Path] = field(default_factory=list)
     launcher: Any = None  # injectable for tests: callable(target) -> None
+    runner: Any = None  # injectable for tests: subprocess.run-like, for the job toolkits
     pwsh_runner: Any = None  # injectable for tests: subprocess.run-like, for PowerShell
     agent: str = ""  # the agent at work (its trust level shapes the gate), empty = Spectre
     mission: int | None = None

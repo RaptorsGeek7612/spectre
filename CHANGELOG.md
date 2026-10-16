@@ -7,6 +7,100 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-15
+
+### Added
+
+- Trois agents : Octavya (juridique, sur Cursor), Clarke (finances et assurances, sur
+  Antigravity) et Simon (expert-comptable, sur DeepSeek `deepseek-v4-pro` par défaut). Chacun
+  a sa spécialité, et Spectre leur confie d'office les missions de leur domaine.
+  - Octavya et Clarke travaillent comme Kyra et Syfer (`assistant/cli_agents.py`) : dans leur
+    propre dossier, avec les seuls outils de Spectre. Le shell et l'écriture directe de leur
+    outil sont coupés quand il le permet.
+  - Simon travaille sur un modèle hébergé, avec ta clé `DEEPSEEK_API_KEY`
+    (`AGENT_DEFAULT_ENGINES`).
+  - Le modèle se choisit dans la liste que donne l'outil lui-même (`cursor-agent
+    --list-models`, `agy models`, le cache de Codex, les alias de Vibe) ou le fournisseur.
+- Un moteur par agent (`agent_engines`). Un agent peut quitter son outil ou son modèle pour un
+  autre moteur, par exemple Octavya sur Claude, et garde son nom et sa spécialité.
+- Page Équipe (`assistant/team.py`). Pour chaque agent :
+  - son portrait, son département, son outil, son moteur et son modèle, modifiables ;
+  - sa voix dans la visio, avec un bouton pour l'écouter ;
+  - son dossier, ses étapes, ses jetons et son coût sur 30 jours ;
+  - le détail de ses 30 dernières actions, avec la commande et le résultat.
+- Visio de l'équipe (`assistant/call.py`, `call.js`), dans l'esprit d'Agent Standup.
+  - Chaque agent apparaît à son bureau avec son statut : au travail, attend, a besoin de toi,
+    bloqué, a fini. S'y ajoutent ce qu'il fait, depuis combien de temps, ses jetons et ses
+    échecs, et des badges pour une commande longue, un silence ou une boucle.
+  - Celui qui parle passe en vedette, avec des sous-titres et la voix de chaque agent.
+  - L'écran partagé montre la dernière commande et sa vraie sortie.
+  - Le tour de table, le compte rendu Markdown et l'arbre de qui a demandé quoi à qui sont
+    construits à partir des faits, sans modèle ni jeton.
+  - Le tableau des sessions montre les missions de Spectre et les sessions Claude Code, Codex
+    et Mistral Vibe du PC, avec leurs sous-agents (`assistant/sessions.py`, en lecture seule).
+  - Relecture d'une mission en 1×, 2×, 4× ou 8×, avec des repères : première erreur, étape la
+    plus longue, attente de ton accord.
+  - Enregistrement vidéo de l'onglet, ou clip de 25 s.
+- Trois agents conseil, toutes femmes, hébergés sur Claude Sonnet par défaut (changeable) :
+  - Shelby (animalier : comportement, santé, toilettage) ;
+  - Ysyss (sciences et être humain : physique, chimie, maths, biologie, astronomie, santé,
+    psychologie, langues, sports, arts) ;
+  - Lexy (jeux d'argent, paris sportifs, bourse, blockchain et crypto, sans promesse de gain).
+  - Outils bornés : `science` (SymPy) pour Ysyss, `paris` (probabilités, Kelly) pour Lexy ;
+    bibliothèques Astropy, Skyfield, ccxt, yfinance installées.
+  - Nouvelles compétences `spectre-animaux` et `spectre-jeux-argent`.
+  - Tous les agents respectent la logique métier du projet en construction (prompt WORKER).
+- Des logiciels libres par métier, donnés aux agents à travers le portail (`assistant/toolkit.py`,
+  outils `toolkit` et `finance`). Chaque agent ne voit que ceux de son domaine.
+  - Syfer : Gitleaks (secrets), Trivy (vulnérabilités), Semgrep (analyse de code), Nuclei (scan
+    d'une adresse autorisée, qui demande ta validation).
+  - Octavya et les rédacteurs : Vale et LanguageTool (style et grammaire).
+  - Tous : Pandoc (conversion de documents), Tesseract (texte d'une image).
+  - Clarke et Simon : calculs financiers (mensualité, VAN, TRI, valeur future) via
+    numpy-financial, et les bibliothèques installées (QuantLib, chainladder, beancount,
+    OpenFisca) pour leurs scripts.
+  - Un scan local lit ; sonder une adresse distante attend ton accord.
+- Portraits réalistes générés par le studio (bouton « Portrait réaliste (IA) » dans la page
+  Équipe) : ComfyUI crée un portrait photoréaliste de l'agent et l'enregistre comme sa photo.
+- Le studio de Kyra (`assistant/media.py`) : outils `generate_image` et `generate_video`,
+  réservés à Kyra.
+  - Les images et les vidéos sont créées sur ce PC par ComfyUI (Z-Image Turbo, Wan 2.2).
+    Spectre démarre ComfyUI s'il ne tourne pas.
+  - Chaque demande devient une tâche suivie par la boucle proactive : le fichier arrive dans
+    `workspace/medias` et tu es prévenu, avec la durée estimée annoncée à l'avance.
+  - L'outil `media_jobs` liste les créations.
+  - Les fichiers de modèles sont listés dans `COMFY_MODELS`.
+- Journal d'activité des agents (table `activity`). Il note chaque mission, chaque étape et
+  chaque outil passé par le portail, avec l'agent, la durée et le résultat.
+- Portraits manga (par défaut) ou réalistes, qui clignent des yeux et bougent les lèvres avec la
+  voix.
+  - Un éditeur d'apparence règle la peau, la coiffure, les cheveux, les yeux, la barbe, les
+    lunettes, la tenue et le fond, aussi dès la création d'un agent.
+  - On peut aussi donner une photo à un agent.
+- Voix claires, sans effet, propres à chaque agent : les voix naturelles du navigateur, ou
+  celles de Spectre (Piper, dont deux nouvelles voix françaises).
+- Laya, l'intuition de Spectre, une compétence réservée à lui seul (`assistant/laya.py`, outil
+  `laya_decide`).
+  - Laya est un modèle de décision libre (Apache 2.0). Il répond sans jeton à des questions de
+    choix, de note ou de oui/non sur un message ou une mission.
+  - Il tourne par le paquet `laya` local ou par un serveur `laya-serve`.
+  - Les agents ne voient pas cet outil.
+
+### Changed
+
+- Kyra est présentée comme « Codex » et Syfer comme « Vibe ». On peut aussi les nommer `codex`
+  et `vibe`.
+- Clarke est une femme.
+- Licence : GPL 3.0 ou ultérieure (avant : MIT).
+
+### Fixed
+
+- Les menus des pages Rédaction et Assistant défilent sur PC comme sur téléphone, au lieu
+  d'être coupés en bas.
+- Le serveur web lit toujours le corps d'une requête POST, même quand la route n'en a pas
+  besoin. Le corps non lu se collait auparavant à la requête suivante (« {}GET »), par exemple
+  après le bouton Parler.
+
 ## [0.16.0] - 2026-10-14
 
 ### Added

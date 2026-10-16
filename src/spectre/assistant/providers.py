@@ -3,6 +3,7 @@
 An engine is named by a reference:
 - `opus`, `sonnet`, `haiku`: Claude through the Claude Code CLI (the subscription);
 - `chatgpt`, `mistral`: the Codex and Vibe CLIs (the user's ChatGPT and Le Chat accounts);
+- `cursor`, `antigravity`: the Cursor and Antigravity CLIs (same idea); `simon`: Simon's model;
 - `<provider>:<model>`: any OpenAI-compatible endpoint, e.g. `lmstudio:google/gemma-4-e4b`,
   `ollama:qwen3:8b`, `openrouter:deepseek/deepseek-chat`, `groq:llama-3.3-70b-versatile`.
 
@@ -22,7 +23,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-CLI_ENGINES = ("opus", "sonnet", "haiku", "chatgpt", "mistral")
+CLI_ENGINES = (
+    "opus",
+    "sonnet",
+    "haiku",
+    "chatgpt",
+    "mistral",
+    "cursor",
+    "antigravity",
+    "simon",
+    "shelby",
+    "ysyss",
+    "lexy",
+)
 MAX_MODEL = 120
 
 
@@ -150,8 +163,11 @@ class Providers:
         """The normalised reference, or ProviderError if it cannot name an engine."""
         provider, model = split_ref(ref)
         if not provider:
-            if model.lower() in CLI_ENGINES:
-                return model.lower()
+            from spectre.assistant.config import ENGINE_ALIASES
+
+            name = ENGINE_ALIASES.get(model.lower(), model.lower())
+            if name in CLI_ENGINES:
+                return name
             raise ProviderError(
                 f"moteur inconnu « {ref} » ; au choix : {', '.join(CLI_ENGINES)} ou "
                 "fournisseur:modèle (par exemple lmstudio:google/gemma-4-e4b)"
@@ -163,9 +179,13 @@ class Providers:
 
     def models(self, pid: str, timeout: float = 5.0) -> list[str]:
         """The provider's model list (`GET /models`); empty when it cannot be reached."""
+        return self.listing(pid, timeout)[1]
+
+    def listing(self, pid: str, timeout: float = 5.0) -> tuple[bool, list[str]]:
+        """(answered, models): a local server can run with no model installed yet."""
         provider = self.get(pid)
         if provider.needs_key and not self.key(provider):
-            return []
+            return False, []
         request = urllib.request.Request(
             f"{provider.base_url}/models", headers=self.headers(provider)
         )
@@ -173,9 +193,9 @@ class Providers:
             with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
                 data = json.loads(response.read().decode("utf-8"))
         except (OSError, ValueError, urllib.error.URLError):
-            return []
+            return False, []
         items = (data.get("data") or []) if isinstance(data, dict) else []  # Ollama: null
-        return sorted(str(m.get("id")) for m in items if isinstance(m, dict) and m.get("id"))
+        return True, sorted(str(m.get("id")) for m in items if isinstance(m, dict) and m.get("id"))
 
     def headers(self, provider: Provider) -> dict[str, str]:
         headers = {"Content-Type": "application/json", "User-Agent": "Spectre"}

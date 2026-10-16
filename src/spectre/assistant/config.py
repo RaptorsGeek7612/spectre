@@ -17,7 +17,50 @@ AGENT_NAMES = {
     "haiku": "Kaïto",  # the verifier of every mission step
     "chatgpt": "Kyra",  # images, video and multimedia
     "mistral": "Syfer",  # cybersecurity and penetration tests
+    "cursor": "Octavya",  # legal department
+    "antigravity": "Clarke",  # finance and insurance (a woman)
+    "simon": "Simon",  # chartered accountant (on DeepSeek)
+    "shelby": "Shelby",  # animals (a woman)
+    "ysyss": "Ysyss",  # science and humans (a woman)
+    "lexy": "Lexy",  # betting, investing, crypto (a woman)
     "opus": "Spectre",  # Spectre itself, when it runs the steps too
+}
+
+# The tool each agent runs in, as the interface names it (the key stays the engine reference)
+AGENT_TOOLS = {
+    "opus": "Claude Code",
+    "sonnet": "Claude Code",
+    "haiku": "Claude Code",
+    "chatgpt": "Codex",
+    "mistral": "Vibe",
+    "cursor": "Cursor",
+    "antigravity": "Antigravity",
+    "simon": "DeepSeek",
+    "shelby": "Claude",
+    "ysyss": "Claude",
+    "lexy": "Claude",
+}
+
+# Their department in the team page and the video call
+AGENT_DEPARTMENTS = {
+    "opus": "Direction",
+    "sonnet": "Exécution",
+    "haiku": "Vérification",
+    "chatgpt": "Multimédia",
+    "mistral": "Cybersécurité",
+    "cursor": "Juridique",
+    "antigravity": "Finances et assurances",
+    "simon": "Expertise comptable",
+    "shelby": "Animalier",
+    "ysyss": "Sciences et savoirs",
+    "lexy": "Jeux, paris et investissements",
+}
+
+# Another name the user may give an engine: the tool rather than the account
+ENGINE_ALIASES = {
+    "codex": "chatgpt",
+    "vibe": "mistral",
+    "agy": "antigravity",
 }
 
 
@@ -27,11 +70,43 @@ AGENT_ROLES = {
     "rapports.",
     "sonnet": "Agent d'exécution par défaut : il mène les étapes des missions.",
     "haiku": "Le vérificateur : il contrôle chaque étape des missions ; rapide.",
-    "chatgpt": "Images, vidéo et multimédia (via Codex, sur ton compte ChatGPT).",
+    "chatgpt": "Images, vidéo et multimédia (via Codex, sur ton compte ChatGPT) ; elle crée "
+    "les images et les vidéos sur ce PC avec ComfyUI.",
     "mistral": "Cybersécurité et tests d'intrusion, sur un périmètre autorisé uniquement "
     "(via Vibe, sur ton compte Le Chat).",
+    "cursor": "Juridique : statuts, contrats, CGV et CGU, RGPD, propriété intellectuelle, "
+    "conformité (via Cursor, sur ton compte Cursor).",
+    "antigravity": "Finances et assurances : trésorerie, budget, prévisionnel, financement, "
+    "levée de fonds, contrats d'assurance (via Antigravity, sur ton compte Google).",
+    "simon": "Expert-comptable : comptabilité, TVA, liasses et bilans, charges sociales, "
+    "fiscalité de l'entreprise (sur DeepSeek, avec ta clé).",
+    "shelby": "Animalière : culture animale, comportement et éducation, biologie, santé et "
+    "soins, toilettage de toutes les espèces.",
+    "ysyss": "Sciences et être humain : physique, chimie, maths, biologie, astronomie, "
+    "santé, psychologie, langues et dialectes, sports, arts et cultures.",
+    "lexy": "Jeux d'argent, paris sportifs, investissement et bourse, blockchain, NFT et "
+    "cryptomonnaies ; jamais de promesse de gain, rappelle les risques.",
 }
-AGENT_ORDER = ("opus", "sonnet", "haiku", "chatgpt", "mistral")
+AGENT_ORDER = (
+    "opus",
+    "sonnet",
+    "haiku",
+    "chatgpt",
+    "mistral",
+    "cursor",
+    "antigravity",
+    "simon",
+    "shelby",
+    "ysyss",
+    "lexy",
+)
+EXTERNAL_AGENTS = ("chatgpt", "mistral", "cursor", "antigravity")  # their own CLI
+HOSTED_AGENTS = (
+    "simon",
+    "shelby",
+    "ysyss",
+    "lexy",
+)  # on a model (`AGENT_DEFAULT_ENGINES`), changeable
 
 AGENT_CHOICES = ("claude", *AGENT_NAMES)  # what a mission may ask for ("claude" = the setting)
 
@@ -75,6 +150,7 @@ def resolve_agent(value: str) -> str:
         return "".join(c for c in decomposed if not unicodedata.combining(c))
 
     wanted = plain(value)
+    wanted = ENGINE_ALIASES.get(wanted, wanted)
     if wanted in AGENT_CHOICES:
         return wanted
     return next((key for key, name in AGENT_NAMES.items() if plain(name) == wanted), "")
@@ -117,6 +193,18 @@ class AssistantConfig:
     chatgpt_model: str = ""  # empty = Codex's default model for the ChatGPT account
     vibe_bin: str = "vibe"  # Mistral Vibe CLI, for the Mistral execution agent
     mistral_model: str = ""  # a Vibe model alias; empty = Vibe's default Mistral model
+    cursor_bin: str = "cursor-agent"  # Cursor CLI, for Octavya (legal)
+    cursor_model: str = ""  # empty = Cursor's « auto »
+    antigravity_bin: str = "agy"  # Antigravity CLI, for Clarke (finance and insurance)
+    antigravity_model: str = ""  # empty = the model chosen in Antigravity
+    # Another engine for an agent than its own tool: agent key -> engine reference
+    # (for example {"cursor": "sonnet"}: Octavya then works on Claude Sonnet)
+    agent_engines: dict[str, str] = field(default_factory=dict)
+    agent_voices: dict[str, str] = field(default_factory=dict)  # agent key -> voice id
+    agent_looks: dict[str, dict[str, Any]] = field(default_factory=dict)  # portraits
+    comfyui_url: str = "http://127.0.0.1:8188"  # Kyra's studio (images and videos)
+    comfyui_dir: str = ""  # ComfyUI folder (start_comfyui.cmd); empty = ~/ComfyUI
+    laya_url: str = ""  # a laya-serve address; empty = the local `laya` package
     brain_timeout_s: float = 300.0
     city: str = "Paris"
     briefing_hour: int = 8

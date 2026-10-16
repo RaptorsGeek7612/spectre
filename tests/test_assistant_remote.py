@@ -163,15 +163,34 @@ def test_status_reports_power(service: AssistantService) -> None:  # noqa: F811
 
 def test_agents(service: AssistantService, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
     monkeypatch.setattr(
-        "spectre.assistant.service.shutil.which", lambda name: None if name == "vibe" else name
+        "spectre.assistant.team.shutil.which", lambda name: None if name == "vibe" else name
     )
     service.config.update({"mission_model": "chatgpt", "chatgpt_model": "gpt-5.5"})
     data = service.agents()
     names = [a["name"] for a in data["assistant"]]
-    assert names == ["Spectre", "Gétro", "Kaïto", "Kyra", "Syfer"]
+    assert names == [
+        "Spectre",
+        "Gétro",
+        "Kaïto",
+        "Kyra",
+        "Syfer",
+        "Octavya",
+        "Clarke",
+        "Simon",
+        "Shelby",
+        "Ysyss",
+        "Lexy",
+    ]
     kyra, syfer = data["assistant"][3], data["assistant"][4]
-    assert kyra["engine"] == "ChatGPT (gpt-5.5) · Codex" and kyra["default"] is True
-    assert syfer["engine"] == "Mistral · Vibe" and syfer["available"] is False
+    assert kyra["engine"] == "Codex (gpt-5.5)" and kyra["default"] is True
+    assert syfer["engine"] == "Vibe" and syfer["available"] is False
+    assert service.agents()["assistant"][7]["engine"] == "deepseek:deepseek-v4-pro"
+    service.config.update(
+        {"agent_engines": {"simon": "deepseek:deepseek-chat", "cursor": "sonnet"}}
+    )
+    moved = service.agents()["assistant"]
+    assert moved[7]["engine"] == "deepseek:deepseek-chat"
+    assert moved[5]["engine"] == "sonnet (au lieu de Cursor)"
     assert data["assistant"][0]["engine"] == "Opus 5.5 · Claude Code"
     assert [(a["name"], a["engine"]) for a in data["redaction"]] == [
         ("Scout", "Haiku 4.5"),
@@ -181,7 +200,7 @@ def test_agents(service: AssistantService, monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_api_agents_remote_missions(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
-    assert len(api.json("GET", "/api/assistant/agents")[1]["assistant"]) == 5
+    assert len(api.json("GET", "/api/assistant/agents")[1]["assistant"]) == 11
     seen: list[int] = []
 
     class Fake:

@@ -292,7 +292,17 @@ select:focus-visible, input:focus-visible, textarea:focus-visible { outline: non
   padding: 18px 14px 12px 30px;
   background: var(--continuum);
   border-right: 1px solid var(--hair);
+  /* a short window or a phone: the whole rail scrolls, nothing is cut off */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hair-2) transparent;
 }
+.rail > * { flex-shrink: 0; }
+.rail > .run-list { flex: 1 1 0; min-height: 180px; }  /* its own scroll; the rail scrolls below that */
+.rail-foot { margin-top: auto; }
 .rail-axis {
   /* the off-centre calibrated rail every plate registers against */
   position: absolute;

@@ -23,7 +23,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
-from spectre.assistant import runctx, spend
+from spectre.assistant import activity, runctx, spend
 from spectre.assistant.brain import ClaudeCLI, Reply, extract_json, failed, one_shot
 from spectre.assistant.company import Companies, planner_prompt, take_notes
 from spectre.assistant.config import AGENT_CHOICES, agent_name
@@ -51,21 +51,87 @@ Tu es {name}, un agent d'exécution de Spectre (l'assistant personnel de l'utili
 exécutes UNE étape d'une mission en arrière-plan, avec tes outils. \
 Travaille dans le dossier de travail {workspace} : c'est là que tu écris tes fichiers, avec \
 leur chemin complet (par exemple {workspace}\\notes.md). Termine par un compte rendu factuel \
-de ce que tu as réellement fait et obtenu (fichiers créés, sources). N'invente rien."""
+de ce que tu as réellement fait et obtenu (fichiers créés, sources). N'invente rien. \
+Un labo Docker local est à ta disposition via l'outil `lab_run` : lab=biometrie \
+(reconnaissance visage/voix/empreintes), lab=media (FFmpeg/OpenCV/MoviePy), lab=secu (suite \
+Kali). Utilise-le d'office dès qu'une étape relève de ces domaines, sans attendre qu'on te le \
+demande ; les fichiers s'échangent via le dossier `shared/` du labo. \
+Selon le sujet, applique la rigueur scientifique (montrer le raisonnement, vérifier unités et \
+chiffres, annoncer le niveau de certitude, citer les sources) ou le métier créatif (récit \
+structuré autour d'un désir et d'un conflit, sans plagiat, droits d'auteur et à l'image \
+respectés). Respecte toujours les règles de la logique métier du projet en cours de \
+construction : les \
+contraintes du domaine, les invariants, les validations et l'enchaînement attendu priment \
+sur une solution rapide ; en cas de doute, signale-le dans ton compte rendu plutôt que de \
+contourner la règle."""
 
 SPECIALTIES = {  # added to WORKER for the agent in charge of each field
     "chatgpt": """\
 Ta spécialité : les images, la vidéo et le multimédia (création et retouche d'images, montage \
 et sous-titres, audio, formats et conversions, choix d'outils et de banques de médias \
 libres). Respecte les droits d'auteur et le droit à l'image : pas de deepfake d'une personne \
-réelle, pas de contenu trompeur.""",
+réelle, pas de contenu trompeur. Pour le traitement local, utilise d'office le labo via \
+`lab_run(lab="media", command=...)` (FFmpeg/OpenCV/MoviePy) ; la biométrie visage/voix passe \
+par `lab_run(lab="biometrie", ...)`. Pour la conception d'œuvres (clip, film, manga), applique \
+le métier : pars de l'intention, structure le récit, rends le propos visuel (un clip doit tenir \
+même sans le son ; un manga démarre par le name). Pour créer une image ou une vidéo, \
+utilise ton studio local : generate_image ou generate_video (ComfyUI sur ce PC). C'est \
+long : lance la création, indique le numéro et la durée estimée dans ton compte rendu, \
+et n'attends pas le résultat.""",
     "mistral": """\
 Ta spécialité : la cybersécurité (audit de configuration, durcissement, analyse de \
 vulnérabilités, veille CVE, réponse à incident) et les tests d'intrusion. Tu n'agis que sur \
 les systèmes de l'utilisateur ou ceux pour lesquels la mission mentionne une autorisation \
 écrite ; sinon, arrête-toi et dis-le dans ton compte rendu. Pas d'action destructive, pas de \
 déni de service, pas d'exfiltration de données réelles. Chaque constat donne sa gravité, sa \
-preuve et sa correction.""",
+preuve et sa correction. Utilise d'office le labo via `lab_run(lab="secu", command=...)` \
+(suite Kali ; cible d'entraînement OWASP Juice Shop sur http://juice-shop:3000) ; chaque \
+exécution passe par la validation de l'utilisateur.""",
+    "cursor": """\
+Tu es Octavya, la juriste de l'équipe. Ta spécialité : le droit des affaires en France et en \
+Europe (statuts et forme de société, pactes d'associés, contrats commerciaux et de \
+prestation, CGV, CGU, mentions légales, RGPD et registre des traitements, propriété \
+intellectuelle et marques, droit du travail courant, conformité). Cite l'article ou le texte \
+quand tu t'appuies dessus, distingue la règle de ton analyse, signale ce qui demande un \
+avocat ou un notaire, et vérifie sur Légifrance ou les sites officiels ce qui a pu changer \
+récemment. Tu ne signes ni n'envoies rien : tu rédiges et tu recommandes.""",
+    "antigravity": """\
+Tu es Clarke, la responsable des finances et des assurances. Ta spécialité : trésorerie, \
+budget et prévisionnel, plan de financement, seuil de rentabilité, BFR, levée de fonds et \
+prêts (BPI, banques, subventions), tarification, et les assurances de l'entreprise (RC Pro, \
+multirisque, cyber, prévoyance, homme clé). Chaque chiffre donne sa source ou son hypothèse, \
+chaque scénario son pire cas. Tu ne promets aucun rendement et tu n'engages aucune dépense : \
+tu proposes et l'utilisateur décide.""",
+    "simon": """\
+Tu es Simon, l'expert-comptable de l'équipe. Ta spécialité : la comptabilité française (plan \
+comptable général, écritures, rapprochements, clôture, bilan et compte de résultat), la TVA \
+et ses déclarations, l'impôt sur les sociétés ou sur le revenu, les charges sociales, le \
+choix du régime (micro, réel, IS/IR) et le calendrier fiscal. Montre tes calculs, indique les \
+taux et seuils avec l'année à laquelle ils s'appliquent, vérifie sur impots.gouv.fr ou \
+l'URSSAF ce qui a pu changer, et signale ce qui doit être validé par un expert-comptable \
+inscrit à l'Ordre.""",
+    "shelby": """\
+Tu es Shelby, l'experte animalière de l'équipe. Ta spécialité : la culture générale \
+animale (espèces, races, besoins), le comportement et l'éducation (méthodes \
+bienveillantes, renforcement positif), la biologie et l'alimentation, la santé \
+(prévention, symptômes à surveiller) et le toilettage par espèce et par pelage. Pour tout \
+problème de santé, oriente vers un vétérinaire : tu informes, tu ne diagnostiques ni ne \
+prescris. Vérifie tes sources et distingue le fait de l'avis.""",
+    "ysyss": """\
+Tu es Ysyss, l'experte en sciences et en être humain. Ta spécialité : la physique, la \
+chimie, les mathématiques, la biologie et l'astronomie ; et tout sur l'humain : santé \
+générale, psychologie, anatomie, ethnies et leurs physiques, langues et dialectes, tous \
+les sports, les arts et leurs cultures. Applique la rigueur scientifique : montre le \
+raisonnement, vérifie les unités et les chiffres, cite tes sources et annonce ton niveau \
+de certitude. L'astrologie est un fait culturel, pas une science : dis-le. La santé relève \
+d'un médecin : tu informes sans diagnostiquer.""",
+    "lexy": """\
+Tu es Lexy, l'experte en jeux d'argent, paris sportifs, investissement, bourse et crypto \
+(blockchain, NFT, cryptomonnaies). Explique les mécanismes, les cotes, les probabilités, \
+les frais, la fiscalité française et les risques. Ne promets JAMAIS de gain, ne donne pas \
+de conseil en investissement personnalisé, rappelle le jeu responsable (Joueurs Info \
+Service, 09 74 75 13 13) et que les cryptos sont très volatiles. Jamais de clé privée ni \
+de phrase de récupération ; aucune transaction sans l'accord de l'utilisateur.""",
 }
 
 VERIFIER = """\
@@ -401,6 +467,7 @@ class MissionEngine:
 
     def _run_mission(self, row: dict[str, Any]) -> None:
         mark_mission(self.db, row["id"], "from")  # restore point: file changes start here
+        activity.record(self.db, "mission_start", agent="opus", title=row["goal"])
         plan = json.loads(row["plan"] or "{}")
         steps_plan: list[str] = (plan.get("steps") if isinstance(plan, dict) else None) or []
         if not steps_plan:
@@ -442,6 +509,14 @@ class MissionEngine:
         if self._cancelled(row["id"]):
             return
         mark_mission(self.db, row["id"], "to")
+        activity.record(
+            self.db,
+            "mission_done",
+            agent="opus",
+            title=row["goal"],
+            detail=body,
+            status="fail" if missed else "ok",
+        )
         self._finish(row, report, "Mission terminée", body, ok=not missed)
         if not missed and self.learn:
             self._learn(row, report)
@@ -463,13 +538,16 @@ class MissionEngine:
                 "dans la vue Apprentissage)",
             )
 
-    def _worker(self, agent: str) -> tuple[Any, str]:
+    def _chosen(self, agent: str) -> str:
         """Who executes a step: the mission's own choice, else the `mission_model` setting."""
         remote = split_ref(agent)[0] and not agent.startswith(PREFIX)  # provider:model
         name = agent if agent in AGENTS or remote else self.model
         if name == "claude":  # Claude asked for one mission while the setting names another
             name = self.model if self.model in ("opus", "sonnet", "haiku") else "sonnet"
-        return self.engines.worker(name)
+        return name
+
+    def _worker(self, agent: str) -> tuple[Any, str]:
+        return self.engines.worker(self._chosen(agent))
 
     def _run_step(
         self,
@@ -487,7 +565,11 @@ class MissionEngine:
             prompt += "\n\nConsignes de l'utilisateur, données en cours de route (prioritaires) :\n"
             prompt += "\n".join(f"- {n}" for n in notes)
         created = CustomAgents(self.db).get(agent) if agent.startswith(PREFIX) else None
-        worker, model = self._worker(created["engine"] if created else agent)
+        # `model` is the agent (Simon...), `engine` what really runs it (cursor, or Claude if
+        # the user moved him there), `wanted` what that engine's `ask` takes
+        model = self._chosen(created["engine"] if created else agent)
+        worker, wanted = self.engines.worker(model)
+        engine = wanted if split_ref(wanted)[0] else model
         name = created["name"] if created else agent_name(model)
         system = WORKER.format(name=name, workspace=self.cli.workspace)
         learned = Learning(self.db, self.cli.root).catalogue() if hasattr(self.cli, "root") else ""
@@ -504,12 +586,14 @@ class MissionEngine:
             system += f"\n\n{brief}"
         note, ok, result = "", False, ""
         key = f"{PREFIX}{created['id']}" if created else model  # whose record this step feeds
+        activity.record(self.db, "step_start", agent=key, title=step, detail=name)
+        step_started = time.perf_counter()
         for attempt in range(2):
             extra = f"\n\nTentative précédente insuffisante : {note}" if attempt else ""
             start = time.perf_counter()
             with runctx.scope(agent=key, role="exécution"):
-                answer = worker.ask(prompt + extra, system=system, model=model, with_tools=True)
-                spend.record(self.db, answer, time.perf_counter() - start, engine=model)
+                answer = worker.ask(prompt + extra, system=system, model=wanted, with_tools=True)
+                spend.record(self.db, answer, time.perf_counter() - start, engine=engine)
                 if failed(answer) and self.fallbacks:
                     start = time.perf_counter()
                     answer, model = self.engines.ask_chain(
@@ -528,6 +612,15 @@ class MissionEngine:
             if ok:
                 break
         Trust(self.db).record(key, "step_ok" if ok else "step_fail")
+        activity.record(
+            self.db,
+            "step_done",
+            agent=key,
+            title=step,
+            status="ok" if ok else "fail",
+            detail=json.dumps({"result": result[:1500], "note": note}, ensure_ascii=False),
+            seconds=time.perf_counter() - step_started,
+        )
         return {
             "step": step,
             "result": result,

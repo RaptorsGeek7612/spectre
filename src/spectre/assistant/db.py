@@ -183,6 +183,19 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 CREATE TABLE IF NOT EXISTS faces (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, feature TEXT NOT NULL, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS activity (
+  id INTEGER PRIMARY KEY, ts TEXT NOT NULL, agent TEXT NOT NULL DEFAULT '', mission_id INTEGER,
+  kind TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', detail TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT '', seconds REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS activity_ts ON activity(ts);
+CREATE INDEX IF NOT EXISTS activity_mission ON activity(mission_id);
+CREATE TABLE IF NOT EXISTS media_jobs (
+  id INTEGER PRIMARY KEY, ts TEXT NOT NULL, kind TEXT NOT NULL, prompt TEXT NOT NULL,
+  prompt_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL, files TEXT NOT NULL DEFAULT '[]',
+  agent TEXT NOT NULL DEFAULT '', mission_id INTEGER, error TEXT NOT NULL DEFAULT '',
+  done_at TEXT
+);
 """
 
 

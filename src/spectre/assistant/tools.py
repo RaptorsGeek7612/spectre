@@ -7,12 +7,13 @@ Both the MCP server (called by the brain) and the web UI (approvals) use `execut
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import actions, powershell
+from spectre.assistant import actions, activity, powershell, runctx
 from spectre.assistant.actions import ActionContext, ActionError
 from spectre.assistant.company import (
     DEPARTMENTS,
@@ -40,6 +41,13 @@ class Tool:
     category: str
     run: Callable[..., str]
     classify: Callable[[ActionContext, dict[str, Any]], tuple[Level, str]] | None = None
+    lead_only: bool = False  # a skill of Spectre alone, not of the agents it leads
+    agents: tuple[str, ...] = ()  # only these agents may use it (empty = anyone)
+
+    def allowed(self, agent: str) -> bool:
+        if self.lead_only and agent not in ("", "opus"):
+            return False
+        return not self.agents or agent in self.agents
 
     def risk(self, ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
         return self.classify(ctx, args) if self.classify else (self.level, self.category)
@@ -111,7 +119,10 @@ def _create_agent(
 def _list_agents(ctx: ActionContext) -> str:
     builtin = (
         "Spectre (opus, toi), Gétro (sonnet), Kaïto (haiku, vérificateur), Kyra (chatgpt, "
-        "multimédia), Syfer (mistral, cybersécurité) ; rédaction : Scout, Scribe, Warden"
+        "Codex, multimédia), Syfer (mistral, Vibe, cybersécurité), Octavya (cursor, juridique), "
+        "Clarke (antigravity, finances et assurances), Simon (DeepSeek, expert-comptable), "
+        "Shelby (animalier), Ysyss (sciences et humain), Lexy (jeux, paris, bourse, crypto) ; "
+        "rédaction : Scout, Scribe, Warden"
     )
     created = CustomAgents(ctx.db).list()
     lines = [f"- {a['name']} ({a['engine']}) : {a['role']}" for a in created]
@@ -488,6 +499,106 @@ def _propose_skill(ctx: ActionContext, name: str, description: str, content: str
         f"compétence « {row['name']} » proposée{update} : elle attend la validation de "
         "l'utilisateur dans la vue Apprentissage"
     )
+
+
+def _toolkit(ctx: ActionContext, name: str, target: str = "", options: str = "") -> str:
+    from spectre.assistant import toolkit
+
+    try:
+        return toolkit.run(ctx, name, target, options)
+    except ActionError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _toolkit_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
+    from spectre.assistant import toolkit
+
+    kit = toolkit.KITS.get(str(args.get("name", "")))
+    return (kit.level, kit.category) if kit else (Level.READ, "read")
+
+
+def _finance(ctx: ActionContext, operation: str, values: list[float]) -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.finance(operation, list(values))
+
+
+def _science(ctx: ActionContext, operation: str, expression: str) -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.science(operation, expression)
+
+
+def _betting(ctx: ActionContext, operation: str, values: list[float]) -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.betting(operation, list(values))
+
+
+def _studio(ctx: ActionContext) -> Any:
+    from spectre.assistant.config import AssistantConfig
+    from spectre.assistant.media import Studio
+
+    return Studio(ctx.db, AssistantConfig.load(ctx.root), ctx.root)
+
+
+def _media(
+    ctx: ActionContext, kind: str, prompt: str, width: int, height: int, seconds: float
+) -> str:
+    from spectre.assistant.media import MediaError
+
+    try:
+        job = _studio(ctx).submit(
+            kind,
+            prompt,
+            width=int(width),
+            height=int(height),
+            seconds=float(seconds),
+            agent=ctx.agent,
+            mission=ctx.mission,
+        )
+    except MediaError as exc:
+        raise ActionError(str(exc)) from exc
+    what = "image" if kind == "image" else "vidéo"
+    return (
+        f"Création #{job['id']} lancée dans ComfyUI ({what} {job['width']}×{job['height']}). "
+        f"Environ {job['minutes']} min sur ce PC sans carte graphique dédiée : le fichier "
+        "arrivera dans workspace\\medias et l'utilisateur sera prévenu. Ne l'attends pas."
+    )
+
+
+def _generate_image(ctx: ActionContext, prompt: str, width: int = 1024, height: int = 1024) -> str:
+    return _media(ctx, "image", prompt, width, height, 0)
+
+
+def _generate_video(
+    ctx: ActionContext, prompt: str, width: int = 640, height: int = 352, seconds: float = 2.0
+) -> str:
+    return _media(ctx, "video", prompt, width, height, seconds)
+
+
+def _media_jobs(ctx: ActionContext) -> str:
+    jobs = _studio(ctx).jobs(10)
+    if not jobs:
+        return "Aucune création pour l'instant."
+    return "\n".join(
+        f"#{j['id']} {j['kind']} [{j['status']}] {j['prompt'][:80]}"
+        + (f" → {', '.join(j['files'])}" if j["files"] else "")
+        + (f" ({j['error'][:120]})" if j["error"] else "")
+        for j in jobs
+    )
+
+
+def _laya_decide(ctx: ActionContext, state: str, questions: str) -> str:
+    from spectre.assistant.config import AssistantConfig
+    from spectre.assistant.laya import LayaError, decide, describe
+
+    try:
+        return describe(decide(AssistantConfig.load(ctx.root), state, questions))
+    except LayaError as exc:
+        raise ActionError(str(exc)) from exc
 
 
 def _search_history(ctx: ActionContext, query: str, limit: int = 10) -> str:
@@ -896,7 +1007,10 @@ TOOLS: dict[str, Tool] = {
             "rapport). kind=redaction pour un texte soigné rédigé par Scout, Scribe et Warden. "
             "agent : qui exécute les étapes, par son nom ou son modèle. Kyra (chatgpt) pour les "
             "images, vidéos et le multimédia ; Syfer (mistral) pour la cybersécurité et les tests "
-            "d'intrusion autorisés ; Gétro (sonnet) ou Kaïto (haiku, rapide) pour le reste ; "
+            "d'intrusion autorisés ; Octavya (cursor) pour le juridique ; Clarke (antigravity) "
+            "pour les finances et les assurances ; Simon (simon, sur DeepSeek) pour la "
+            "comptabilité, la TVA et la fiscalité ; Gétro (sonnet) ou Kaïto (haiku, rapide) "
+            "pour le reste ; "
             "ou un agent que tu as créé (create_agent), par son nom ; vide = le réglage.",
             Level.WRITE,
             "mission",
@@ -1106,6 +1220,96 @@ TOOLS: dict[str, Tool] = {
             _propose_skill,
         ),
         Tool(
+            "toolkit",
+            "Outils libres installés sur ce PC, chacun pour son métier. name : gitleaks (fuite "
+            "de secrets), trivy (vulnérabilités), semgrep (analyse de code), nuclei (scan d'une "
+            "adresse — autorisée, demande ta validation), vale et languagetool (style et "
+            "grammaire d'un texte ; options = langue, fr par défaut), pandoc (conversion : "
+            "options = fichier de sortie), ocr (texte d'une image ; options = langue). target : "
+            "le fichier, le dossier ou l'adresse. Chaque agent ne voit que les outils de son "
+            "domaine.",
+            Level.READ,
+            "scan",
+            _toolkit,
+            _toolkit_risk,
+        ),
+        Tool(
+            "finance",
+            "Calcul financier (Clarke, Simon). operation : mensualite (taux, périodes, "
+            "capital), van (taux puis flux), tri (flux, le premier négatif), valeur_future "
+            "(taux, périodes, versement, valeur présente). values : la liste des nombres. Les "
+            "taux sont par période (mensuel ou annuel selon les périodes).",
+            Level.READ,
+            "read",
+            _finance,
+            agents=("antigravity", "simon"),
+        ),
+        Tool(
+            "science",
+            "Calcul scientifique symbolique (Ysyss). operation : calculer (évaluer), simplifier, "
+            "resoudre (équation en x), deriver, integrer. expression : la formule, x comme "
+            "variable (ex. x**2 - 4, sin(x), sqrt(2)*pi).",
+            Level.READ,
+            "read",
+            _science,
+            agents=("ysyss",),
+        ),
+        Tool(
+            "paris",
+            "Maths des paris et probabilités (Lexy). operation : probabilite (cote décimale → "
+            "probabilité implicite), kelly (cote puis ta probabilité estimée → mise optimale), "
+            "arbitrage (les cotes des issues → garantie de gain ?). values : les nombres. "
+            "Jamais un pronostic ni une promesse de gain.",
+            Level.READ,
+            "read",
+            _betting,
+            agents=("lexy",),
+        ),
+        Tool(
+            "generate_image",
+            "Créer une image sur ce PC avec ComfyUI (Z-Image Turbo, rendu réaliste). Décris la "
+            "scène précisément, en anglais de préférence : sujet, cadrage, lumière, style. "
+            "width/height de 256 à 1536 (1024 par défaut). Long sur ce PC (environ 30 min) : la "
+            "demande part en file et l'utilisateur est prévenu quand l'image est prête.",
+            Level.WRITE,
+            "media",
+            _generate_image,
+            agents=("chatgpt",),
+        ),
+        Tool(
+            "generate_video",
+            "Créer une courte vidéo sur ce PC avec ComfyUI (Wan 2.2). Décris le mouvement, le "
+            "cadrage et l'ambiance. seconds de 1 à 5 ; 640×352 par défaut. Très long sur ce PC "
+            "(plusieurs heures) : préviens l'utilisateur ; il est averti à la fin.",
+            Level.WRITE,
+            "media",
+            _generate_video,
+            agents=("chatgpt",),
+        ),
+        Tool(
+            "media_jobs",
+            "Les dernières créations d'images et de vidéos (en cours, prêtes, échouées) et leurs "
+            "fichiers.",
+            Level.READ,
+            "read",
+            _media_jobs,
+        ),
+        Tool(
+            "laya_decide",
+            "Ton intuition (Laya, modèle de décision local, sans jetons ni texte généré) : juge "
+            "vite un état (message, mission, ticket, JSON) en répondant à des questions typées. "
+            'questions = JSON {"nom": {"type": "choice", "instructions": "...", "criteria": '
+            '{"option": "description", ...}}, "nom2": {"type": "score", "instructions": "...", '
+            '"criteria": ["bas", "moyen", "haut"]}, "nom3": {"type": "noul", "instructions": '
+            '"affirmation à vérifier"}}. '
+            "Pour choisir l'agent d'une mission, trier un message, "
+            "noter une urgence ou repérer un risque avant d'y réfléchir en détail. Réservé à toi.",
+            Level.READ,
+            "read",
+            _laya_decide,
+            lead_only=True,
+        ),
+        Tool(
             "search_history",
             "Chercher dans les conversations passées (et les missions) par mots-clés ; rend "
             "des extraits datés.",
@@ -1308,6 +1512,13 @@ def execute(gate: Gate, ctx: ActionContext, name: str, args: dict[str, Any]) -> 
     tool = TOOLS.get(name)
     if tool is None:
         return f"outil inconnu : {name}"
+    if not tool.allowed(ctx.agent or str(runctx.current().get("agent", ""))):
+        owner = (
+            "de Spectre seul"
+            if tool.lead_only
+            else "réservée à " + ", ".join(agent_name(a) for a in tool.agents)
+        )
+        return f"REFUSÉ : {name} est une compétence {owner}"
     level, category = tool.risk(ctx, args)
     from spectre.assistant.trust import Trust
 
@@ -1335,6 +1546,19 @@ def execute(gate: Gate, ctx: ActionContext, name: str, args: dict[str, Any]) -> 
                 (approval_id, ctx.agent),
             )
         gate.record(name, args, level, category, "approval", f"demande #{approval_id}")
+        context = runctx.current()
+        activity.record(  # the agent now waits for the user, on the video call too
+            ctx.db,
+            "approval",
+            agent=ctx.agent or str(context.get("agent", "")),
+            mission=ctx.mission if ctx.mission is not None else context.get("mission"),
+            title=name,
+            detail=json.dumps(
+                {"id": approval_id, "reason": decision.reason, "target": activity.target(args)},
+                ensure_ascii=False,
+            ),
+            status="pending",
+        )
         return (
             f"EN ATTENTE DE VALIDATION (#{approval_id}) : {decision.reason}. "
             "Dis à l'utilisateur ce que tu veux faire et qu'il peut valider ou refuser."
@@ -1351,6 +1575,11 @@ def _run(
     category: str,
     decision: str,
 ) -> str:
+    context = runctx.current()
+    agent = ctx.agent or str(context.get("agent", ""))
+    mission = ctx.mission if ctx.mission is not None else context.get("mission")
+    started = time.perf_counter()
+    row = activity.tool_started(ctx.db, agent, mission, tool.name, args)
     try:
         result = tool.run(ctx, **args)
     except ActionError as exc:
@@ -1359,6 +1588,10 @@ def _run(
         result = f"ÉCHEC : paramètres invalides ({exc})"
     except OSError as exc:
         result = f"ÉCHEC : {exc}"
+    except Exception as exc:
+        activity.tool_finished(ctx.db, row, tool.name, args, f"ÉCHEC : {exc}", started)
+        raise
+    activity.tool_finished(ctx.db, row, tool.name, args, result, started)
     gate.record(tool.name, args, level, category, decision, result)
     ctx.db.log_event("action", "spectre", f"{tool.name}: {result[:300]}", tool=tool.name, args=args)
     return result

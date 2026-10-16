@@ -28,6 +28,28 @@ FALLBACK_BETA: Final = "server-side-fallback-2026-07-01"
 FALLBACK_MODELS: Final = frozenset({"claude-sonnet-5-5", "claude-opus-5-5"})
 # The voice assistant runs on Claude Code (`claude -p`): its short names map to exact models,
 # so "opus" always means Opus 5.5 whatever the CLI's own alias points to.
+# Kyra's studio (ComfyUI on this PC): the model files of its workflows, quantized for a CPU
+COMFY_MODELS: Final[dict[str, dict[str, str]]] = {
+    "image": {  # Z-Image Turbo (Apache 2.0)
+        "unet": "z_image_turbo-Q4_K_M.gguf",
+        "clip": "Qwen3-4B-Q4_K_M.gguf",
+        "vae": "ae.safetensors",
+    },
+    "video": {  # Wan 2.2 TI2V 5B (Apache 2.0)
+        "unet": "Wan2.2-TI2V-5B-Q4_K_M.gguf",
+        "clip": "umt5-xxl-encoder-Q4_K_M.gguf",
+        "vae": "wan2.2_vae.safetensors",
+    },
+}
+
+# Assistant agents that work on a hosted model rather than in their own CLI: agent -> engine
+AGENT_DEFAULT_ENGINES: Final[dict[str, str]] = {
+    "simon": "deepseek:deepseek-v4-pro",
+    "shelby": "sonnet",  # advisory experts run on the Claude subscription by default
+    "ysyss": "sonnet",
+    "lexy": "sonnet",
+}
+
 ASSISTANT_MODELS: Final[dict[str, str]] = {
     "opus": "claude-opus-5-5",
     "sonnet": "claude-sonnet-5-5",

@@ -37,8 +37,9 @@ def tool_wrapper(tool: Tool, call: Callable[[str, dict[str, Any]], str]) -> Call
     return wrapper
 
 
-def build_server(call: Callable[[str, dict[str, Any]], str]) -> Any:
-    """An `MCPServer` with one MCP tool per Spectre tool."""
+def build_server(call: Callable[[str, dict[str, Any]], str], agent: str = "") -> Any:
+    """An `MCPServer` with one MCP tool per Spectre tool (an agent does not see Spectre's own
+    skills)."""
     from mcp.server.mcpserver import MCPServer
 
     server = MCPServer(
@@ -46,6 +47,8 @@ def build_server(call: Callable[[str, dict[str, Any]], str]) -> Any:
         instructions="Les mains de Spectre. Chaque action passe par le portail de gouvernance.",
     )
     for tool in TOOLS.values():
+        if not tool.allowed(agent):
+            continue
         server.add_tool(tool_wrapper(tool, call), name=tool.name, description=tool.description)
     return server
 
@@ -59,7 +62,7 @@ def main() -> None:  # pragma: no cover - launched by Claude Code over stdio
     ctx.agent = os.environ.get("SPECTRE_AGENT", "")
     mission = os.environ.get("SPECTRE_MISSION", "")
     ctx.mission = int(mission) if mission.isdigit() else None
-    build_server(lambda name, args: execute(gate, ctx, name, args)).run()
+    build_server(lambda name, args: execute(gate, ctx, name, args), ctx.agent).run()
 
 
 if __name__ == "__main__":  # pragma: no cover
