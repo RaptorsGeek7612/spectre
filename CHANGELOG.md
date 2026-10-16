@@ -20,6 +20,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   entreprise Sirene, commune, adresse BAN, TVA VIES, identifiants de tous pays, délais et
   jours fériés), réservé à Spectre. Extra `administration` (python-stdnum, holidays).
 
+### Fixed
+- Cerveau : le prompt système est passé par fichier (`--system-prompt-file`). Avec toutes les
+  compétences, la commande dépassait 32 767 caractères et Windows la refusait (« Je ne trouve
+  pas Claude Code »).
+
 ## [0.18.0] - 2026-10-16
 
 ### Added
