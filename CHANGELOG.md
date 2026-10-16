@@ -19,6 +19,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   `spectre-production-audiovisuelle` (chaîne de production, bible, découpage, storyboard,
   grammaire des plans, montage, son, étalonnage, livraison, droit) et outils `scenario_pdf`
   (Screenplain), `plans` (PySceneDetect), `derushage` (auto-editor), `loudness` (EBU R128).
+- Compétences `spectre-post-production-libre` (étalonnage sans DaVinci, storyboard et
+  animatique, DCP-o-matic, vidéo IA sur GPU loué, Penpot) et `spectre-diffusion-marketing`
+  (Postiz, listmonk, Mautic, Umami : méthode manuelle maintenant, auto-hébergement plus tard).
 
 ## [0.17.0] - 2026-10-15
 
