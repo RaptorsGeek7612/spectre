@@ -164,19 +164,29 @@
 }
 @media (prefers-reduced-motion: reduce) { .cl-tile, .cl-badges .warn, .spin { animation: none !important; transition: none; } }
 
-/* ---- one colour per agent, for its name everywhere (11 hues ~33° apart) ---- */
-[data-agent="opus"] { --agent-h: 250; }
-[data-agent="ysyss"] { --agent-h: 217; }
-[data-agent="haiku"] { --agent-h: 184; }
-[data-agent="shelby"] { --agent-h: 151; }
-[data-agent="sonnet"] { --agent-h: 118; }
-[data-agent="simon"] { --agent-h: 85; }
-[data-agent="mistral"] { --agent-h: 52; }
-[data-agent="antigravity"] { --agent-h: 19; }
-[data-agent="lexy"] { --agent-h: 346; }
-[data-agent="chatgpt"] { --agent-h: 313; }
-[data-agent="cursor"] { --agent-h: 280; }
-[data-agent] { --agent: oklch(80% 0.14 var(--agent-h)); }
-:root[data-theme="light"] [data-agent] { --agent: oklch(50% 0.17 var(--agent-h)); }
+/* ---- one colour per agent, for its name everywhere: 11 distinct colour families ---- */
+[data-agent="opus"] { --agent: #4d8dff; }
+[data-agent="sonnet"] { --agent: #a6e22e; }
+[data-agent="haiku"] { --agent: #c9a36b; }
+[data-agent="chatgpt"] { --agent: #a77bff; }
+[data-agent="mistral"] { --agent: #ff8c2e; }
+[data-agent="cursor"] { --agent: #ffd93d; }
+[data-agent="antigravity"] { --agent: #ff4d5e; }
+[data-agent="simon"] { --agent: #ffa3cf; }
+[data-agent="shelby"] { --agent: #2ecc71; }
+[data-agent="ysyss"] { --agent: #36d6e7; }
+[data-agent="lexy"] { --agent: #f03ccf; }
+:root[data-theme="light"] [data-agent="opus"] { --agent: #1f5fd6; }
+:root[data-theme="light"] [data-agent="sonnet"] { --agent: #5a8a00; }
+:root[data-theme="light"] [data-agent="haiku"] { --agent: #7a5530; }
+:root[data-theme="light"] [data-agent="chatgpt"] { --agent: #6b3fd1; }
+:root[data-theme="light"] [data-agent="mistral"] { --agent: #c45f00; }
+:root[data-theme="light"] [data-agent="cursor"] { --agent: #9c7a00; }
+:root[data-theme="light"] [data-agent="antigravity"] { --agent: #c8102e; }
+:root[data-theme="light"] [data-agent="simon"] { --agent: #c2477f; }
+:root[data-theme="light"] [data-agent="shelby"] { --agent: #138a45; }
+:root[data-theme="light"] [data-agent="ysyss"] { --agent: #00808f; }
+:root[data-theme="light"] [data-agent="lexy"] { --agent: #a0158a; }
+.ag-card[data-agent="opus"], .ag-card[data-agent="sonnet"], .ag-card[data-agent="haiku"], .ag-card[data-agent="chatgpt"], .ag-card[data-agent="mistral"], .ag-card[data-agent="cursor"], .ag-card[data-agent="antigravity"], .ag-card[data-agent="simon"], .ag-card[data-agent="shelby"], .ag-card[data-agent="ysyss"], .ag-card[data-agent="lexy"] { --c: var(--agent); }
 [data-agent] :is(.tm-name, .cl-name, .cl-row-name, .ag-name),
 #cl-lines li[data-agent] > b, #cl-sub b[data-agent] { color: var(--agent, var(--c, currentColor)); }
