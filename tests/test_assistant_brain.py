@@ -98,6 +98,15 @@ def test_cli_command_env_and_mcp_config(tmp_path: Path, monkeypatch: pytest.Monk
     assert "mcp__spectre__*" in cmd
     assert seen["input"] == "bonjour" and seen["cwd"] == tmp_path / "workspace"
     assert "ANTHROPIC_API_KEY" not in seen["env"] and seen["env"]["SPECTRE_TEST_VAR"] == "kept"
+    prompt_file = Path(cmd[cmd.index("--system-prompt-file") + 1])
+    assert prompt_file.read_text(encoding="utf-8") == "SYS"
+
+
+def test_long_system_prompt_stays_off_the_command_line(tmp_path: Path) -> None:
+    # Windows refuses a command line over 32 767 characters ("file not found")
+    cli = ClaudeCLI(AssistantConfig(), tmp_path)
+    cmd = cli.command(system="é" * 50_000, model="opus", resume=None, with_tools=True)
+    assert len(subprocess.list2cmdline(cmd)) < 2_000
     server = json.loads((tmp_path / "mcp.json").read_text(encoding="utf-8"))["mcpServers"][
         "spectre"
     ]
