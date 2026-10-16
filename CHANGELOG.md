@@ -7,6 +7,17 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-16
+
+### Added
+- **Le bon modèle LM Studio pour chaque agent, sur demande** : outil `recommend_engine`
+  (module `local_models.py` : classe les modèles installés dans LM Studio selon le métier de
+  l'agent — outils, vision, code, raisonnement, contexte, vitesse — et la mémoire du PC ;
+  écarte les modèles trop lourds, cassés, anciens, trop compressés ou débridés) et outil
+  `set_agent_engine` (réservé à Spectre : change le moteur d'un agent nommé, Kyra, Octavya,
+  Gétro…, ou le remet sur son moteur d'origine). Règle : chaque agent garde son moteur
+  attribué et n'en change que si l'utilisateur le demande.
+
 ## [0.19.0] - 2026-10-16
 
 ### Added
