@@ -223,6 +223,13 @@ lettre recommandée électronique. Ton : courtois, factuel, ferme ; jamais de me
   Python `C:\Users\sherp\Apps\admin-lab` : pynsee (données INSEE), pyHanko (signer et
   **vérifier une signature électronique PDF**, eIDAS), docxtpl (courriers types), pypdf,
   python-stdnum, holidays, pandas, JupyterLab.
+- **Paperless-ngx** (Docker, `C:\Users\sherp\Apps\paperless`, interface
+  http://127.0.0.1:8010, locale uniquement) : l'archive des papiers administratifs de
+  l'utilisateur. Un PDF ou une image déposé dans `Documents\Paperless\consume` est passé à
+  l'OCR (français et 6 autres langues), daté, classé et rendu cherchable ; un sous-dossier
+  devient une étiquette (`consume\impots`, `consume\caf`…). Spectre y retrouve un avis, une
+  attestation ou un courrier au lieu de le redemander, et n'y supprime rien sans un oui.
+  Démarrer : `docker compose up -d` dans ce dossier.
 - Sources de vérité à consulter : service-public.gouv.fr, legifrance.gouv.fr, les sites des
   caisses, le site de la préfecture, le Bulletin officiel des finances publiques (BOFiP),
   conseil-etat.fr (jurisprudence administrative), data.gouv.fr.
