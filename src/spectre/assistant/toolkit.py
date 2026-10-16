@@ -599,6 +599,244 @@ def betting(operation: str, values: list[float]) -> str:
     raise ActionError(f"opération inconnue : {operation} (au choix : {', '.join(BETTING_OPS)})")
 
 
+# Trading maths, for Simon (and Lexy): sizing, expectancy, risk/reward. Never a signal.
+TRADING_AGENTS = ("simon", "lexy")
+TRADING_OPS = {
+    "taille_position": "capital, risque en % du capital, prix d'entrée, prix du stop",
+    "esperance": "taux de réussite (0 à 1 ou en %), gain moyen, perte moyenne (positive)",
+    "gain_risque": "prix d'entrée, prix du stop, objectif",
+    "drawdown": "la suite des valeurs du capital (au moins deux)",
+}
+RISK_NOTE = "Rappel : un calcul n'est pas un conseil ; le trading comporte un risque de perte."
+
+
+def trading(operation: str, values: list[float]) -> str:
+    """One bounded trading computation; raises ActionError on bad input."""
+    op = operation.strip().lower()
+    nums = [float(v) for v in values]
+    try:
+        if op == "taille_position":
+            capital, risk_pct, entry, stop = nums
+            risk = capital * risk_pct / 100
+            per_unit = abs(entry - stop)
+            qty = risk / per_unit
+            return (
+                f"Risque accepté : {risk:.2f} ({risk_pct:g} % du capital) ; écart au stop "
+                f"{per_unit:g} par unité → taille {qty:.6g} unités, soit {qty * entry:.2f} "
+                f"engagés. Perte maximale au stop : {risk:.2f} (hors glissement et frais)."
+            )
+        if op == "esperance":
+            win, gain, loss = nums
+            win = win / 100 if win > 1 else win
+            loss = abs(loss)
+            expectancy = win * gain - (1 - win) * loss
+            in_r = expectancy / loss
+            verdict = "positive" if expectancy > 0 else "négative ou nulle"
+            return (
+                f"Espérance par trade : {expectancy:.2f} ({in_r:+.2f} R), {verdict}. "
+                f"Seuil de réussite pour être à l'équilibre : {loss / (gain + loss) * 100:.1f} %. "
+                + RISK_NOTE
+            )
+        if op == "gain_risque":
+            entry, stop, target = nums
+            ratio = abs(target - entry) / abs(entry - stop)
+            return (
+                f"Rapport gain/risque : {ratio:.2f} R ; il faut gagner plus de "
+                f"{100 / (1 + ratio):.1f} % des trades pour être rentable (hors frais)."
+            )
+        if op == "drawdown":
+            if len(nums) < 2:
+                raise ActionError("au moins deux valeurs du capital")
+            peak, worst = nums[0], 0.0
+            for value in nums:
+                peak = max(peak, value)
+                worst = min(worst, value / peak - 1)
+            return (
+                f"Drawdown maximal : {worst * 100:.1f} % ; il faut "
+                f"{(1 / (1 + worst) - 1) * 100:.1f} % de gain pour revenir au plus haut."
+            )
+    except (ValueError, ZeroDivisionError) as exc:
+        raise ActionError(f"calcul impossible : {exc}") from exc
+    raise ActionError(f"opération inconnue : {operation} (au choix : {', '.join(TRADING_OPS)})")
+
+
+# Market data, read only: crypto from an exchange (real time), the rest from Yahoo (delayed).
+MARKET_OPS = {
+    "prix": "dernier prix (crypto « BTC/EUR » en temps réel ; action, indice ou forex : AAPL, "
+    "^FCHI, EURUSD=X — parfois 15 min de retard)",
+    "analyse": "tendance et indicateurs sur une période (options : 1mo, 3mo, 6mo, 1y, 2y, 5y)",
+    "carnet": "carnet d'ordres d'une crypto (5 meilleurs prix de chaque côté)",
+}
+PERIODS = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
+CRYPTO_EXCHANGE = "kraken"
+
+
+def _exchange() -> Any:
+    import ccxt
+
+    return getattr(ccxt, CRYPTO_EXCHANGE)({"enableRateLimit": True, "timeout": 15000})
+
+
+def _crypto_ticker(symbol: str) -> dict[str, Any]:
+    return dict(_exchange().fetch_ticker(symbol))
+
+
+def _crypto_book(symbol: str) -> dict[str, Any]:
+    return dict(_exchange().fetch_order_book(symbol, limit=5))
+
+
+def _crypto_daily(symbol: str, days: int) -> list[list[float]]:
+    return [list(c) for c in _exchange().fetch_ohlcv(symbol, "1d", limit=min(days, 720))]
+
+
+def _yahoo_daily(symbol: str, period: str) -> list[list[float]]:
+    """[timestamp ms, open, high, low, close, volume] per day, like ccxt."""
+    import yfinance as yf
+
+    frame = yf.Ticker(symbol).history(period=period, interval="1d", auto_adjust=True)
+    return [
+        [ts.timestamp() * 1000, row["Open"], row["High"], row["Low"], row["Close"], row["Volume"]]
+        for ts, row in frame.iterrows()
+    ]
+
+
+def _when(ms: float | None) -> str:
+    from datetime import UTC, datetime
+
+    moment = datetime.fromtimestamp(ms / 1000, UTC) if ms else datetime.now(UTC)
+    return moment.strftime("%Y-%m-%d %H:%M UTC")
+
+
+def _sma(values: list[float], n: int) -> float | None:
+    return sum(values[-n:]) / n if len(values) >= n else None
+
+
+def _rsi(closes: list[float], n: int = 14) -> float | None:
+    if len(closes) <= n:
+        return None
+    gains = losses = 0.0
+    for prev, cur in zip(closes[-n - 1 : -1], closes[-n:], strict=True):
+        change = cur - prev
+        gains += max(change, 0.0)
+        losses += max(-change, 0.0)
+    if losses == 0:
+        return 100.0
+    return 100 - 100 / (1 + gains / losses)
+
+
+def indicators(candles: list[list[float]]) -> dict[str, float | None]:
+    """Trend, volatility and drawdown from daily candles [ts, open, high, low, close, vol]."""
+    import math
+
+    closes = [float(c[4]) for c in candles]
+    if len(closes) < 2:
+        raise ActionError("pas assez de données sur cette période")
+    returns = [b / a - 1 for a, b in zip(closes, closes[1:], strict=False) if a]
+    mean = sum(returns) / len(returns)
+    var = sum((r - mean) ** 2 for r in returns) / max(1, len(returns) - 1)
+    peak, worst = closes[0], 0.0
+    for value in closes:
+        peak = max(peak, value)
+        worst = min(worst, value / peak - 1)
+    trs = [
+        max(float(c[2]) - float(c[3]), abs(float(c[2]) - p), abs(float(c[3]) - p))
+        for c, p in zip(candles[1:], closes, strict=False)
+    ]
+    return {
+        "dernier": closes[-1],
+        "performance": closes[-1] / closes[0] - 1,
+        "volatilite": math.sqrt(var) * math.sqrt(365 if len(closes) > 300 else 252),
+        "drawdown": worst,
+        "sma20": _sma(closes, 20),
+        "sma50": _sma(closes, 50),
+        "sma200": _sma(closes, 200),
+        "rsi14": _rsi(closes),
+        "atr14": sum(trs[-14:]) / min(14, len(trs)) if trs else None,
+    }
+
+
+def market(operation: str, symbol: str, options: str = "") -> str:
+    """Read-only market data, always dated and sourced; raises ActionError when unreachable."""
+    op = operation.strip().lower()
+    sym = symbol.strip().upper()
+    if not sym:
+        raise ActionError("précise le symbole (BTC/EUR, AAPL, ^FCHI, EURUSD=X…)")
+    crypto = "/" in sym
+    source = (
+        f"{CRYPTO_EXCHANGE.capitalize()} (temps réel)"
+        if crypto
+        else "Yahoo Finance (peut avoir 15 min de retard ou plus)"
+    )
+    try:
+        if op == "prix":
+            if crypto:
+                t = _crypto_ticker(sym)
+                change = t.get("percentage")
+                return (
+                    f"{sym} : {t.get('last')} (achat {t.get('bid')} / vente {t.get('ask')}"
+                    + (f", 24 h {change:+.2f} %" if change is not None else "")
+                    + f") — {_when(t.get('timestamp'))}, source {source}."
+                )
+            candles = _yahoo_daily(sym, "5d")
+            if not candles:
+                raise ActionError(f"symbole introuvable : {sym}")
+            last, prev = candles[-1], candles[-2] if len(candles) > 1 else candles[-1]
+            return (
+                f"{sym} : {last[4]:.4g} (veille {prev[4]:.4g}, {last[4] / prev[4] - 1:+.2%}) — "
+                f"séance du {_when(last[0])[:10]}, source {source}."
+            )
+        if op == "carnet":
+            if not crypto:
+                raise ActionError("le carnet d'ordres n'est disponible que pour une crypto")
+            book = _crypto_book(sym)
+            bids, asks = book.get("bids") or [], book.get("asks") or []
+            if not bids or not asks:
+                raise ActionError("carnet vide")
+            spread = asks[0][0] - bids[0][0]
+            side = " | ".join
+            return (
+                f"{sym} — vente : {side(f'{p:g}×{q:g}' for p, q, *_ in asks[:5])}\n"
+                f"achat : {side(f'{p:g}×{q:g}' for p, q, *_ in bids[:5])}\n"
+                f"écart {spread:g} ({spread / asks[0][0]:.3%}) — {_when(book.get('timestamp'))}, "
+                f"source {source}."
+            )
+        if op == "analyse":
+            period = options.strip().lower() or "6mo"
+            if period not in PERIODS:
+                raise ActionError(f"période : {', '.join(PERIODS)}")
+            candles = _crypto_daily(sym, PERIODS[period]) if crypto else _yahoo_daily(sym, period)
+            if not candles:
+                raise ActionError(f"symbole introuvable : {sym}")
+            ind = indicators(candles)
+
+            def fmt(key: str) -> str:
+                value = ind[key]
+                return "n/d" if value is None else f"{value:.4g}"
+
+            close = ind["dernier"] or 0.0
+            trend = [
+                f"{name} {'au-dessus' if close > (ind[key] or 0) else 'en dessous'}"
+                for name, key in (("MM20", "sma20"), ("MM50", "sma50"), ("MM200", "sma200"))
+                if ind[key] is not None
+            ]
+            return (
+                f"{sym} sur {period} (jusqu'au {_when(candles[-1][0])[:10]}) : dernier "
+                f"{fmt('dernier')}, performance {(ind['performance'] or 0):+.1%}, volatilité "
+                f"annualisée {(ind['volatilite'] or 0):.1%}, drawdown max "
+                f"{(ind['drawdown'] or 0):.1%}.\nMoyennes mobiles : MM20 {fmt('sma20')}, MM50 "
+                f"{fmt('sma50')}, MM200 {fmt('sma200')} (prix {', '.join(trend) or 'n/d'}). "
+                f"RSI14 {fmt('rsi14')}, ATR14 {fmt('atr14')}.\nSource {source}. Des indicateurs "
+                "décrivent le passé ; ce n'est pas un signal d'achat ou de vente."
+            )
+    except ActionError:
+        raise
+    except ImportError as exc:
+        raise ActionError("données de marché indisponibles : installer l'extra markets") from exc
+    except Exception as exc:  # noqa: BLE001 - network and exchange errors of every library
+        raise ActionError(f"marché injoignable ou symbole invalide ({sym}) : {exc}") from exc
+    raise ActionError(f"opération inconnue : {operation} (au choix : {', '.join(MARKET_OPS)})")
+
+
 def describe(config: Any) -> list[dict[str, Any]]:
     """Each tool, whether it is installed, and which agents may use it (for the Agents view)."""
     found = []

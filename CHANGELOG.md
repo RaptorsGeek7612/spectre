@@ -22,6 +22,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 - Compétences `spectre-post-production-libre` (étalonnage sans DaVinci, storyboard et
   animatique, DCP-o-matic, vidéo IA sur GPU loué, Penpot) et `spectre-diffusion-marketing`
   (Postiz, listmonk, Mautic, Umami : méthode manuelle maintenant, auto-hébergement plus tard).
+- **Simon, expert et formateur en trading** : compétence `spectre-trading` (histoire des marchés
+  de 1602 à 2026, fonctionnement, instruments, tous les styles, analyse, risque, psychologie,
+  backtest, prop firms, régulation et fiscalité 2026, cursus du débutant à l'expert) et outils
+  `marche` (prix en temps réel des cryptos via Kraken, cours et indicateurs via Yahoo, carnet
+  d'ordres ; toujours datés et sourcés) et `trading` (taille de position, espérance,
+  gain/risque, drawdown), réservés à Simon et Lexy.
 
 ## [0.17.0] - 2026-10-15
 
