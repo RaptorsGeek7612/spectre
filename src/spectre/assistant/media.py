@@ -333,7 +333,7 @@ PORTRAIT_NEGATIVE = (
 )
 PORTRAIT_BASE = (
     "professional studio headshot portrait, photorealistic, {who}, soft cinematic lighting, "
-    "shallow depth of field, looking at camera, upper body, plain dark neutral background, "
+    "shallow depth of field, looking at camera, upper body, plain {bg} studio background, "
     "highly detailed skin, sharp focus, 85mm lens, natural colors"
 )
 # One realistic look per agent, faithful to its drawn avatar (gender, hair, role attire).
@@ -352,10 +352,28 @@ PORTRAIT_WHO = {
 }
 
 
+# A distinct studio-background colour per agent (echoes its drawn avatar), for the realistic
+# portraits, so the eleven faces read apart at a glance.
+PORTRAIT_BG = {
+    "opus": "deep navy blue",
+    "sonnet": "forest green",
+    "haiku": "cool slate grey-blue",
+    "chatgpt": "rich violet purple",
+    "mistral": "warm dark amber brown",
+    "cursor": "royal indigo blue",
+    "antigravity": "deep burgundy maroon",
+    "simon": "warm olive gold",
+    "shelby": "soft teal green",
+    "ysyss": "bright cobalt blue",
+    "lexy": "plum magenta",
+}
+
+
 def portrait_prompt(key: str, look: dict[str, Any] | None = None) -> str:
     """The realistic-portrait prompt for an agent (default look, or a custom one on request)."""
     who = PORTRAIT_WHO.get(key, "a person, neutral professional look")
-    return PORTRAIT_BASE.format(who=who)
+    bg = PORTRAIT_BG.get(key, "dark neutral")
+    return PORTRAIT_BASE.format(who=who, bg=bg)
 
 
 def installed(config: AssistantConfig) -> bool:
