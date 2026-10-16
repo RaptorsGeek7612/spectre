@@ -48,7 +48,7 @@ AGENT_DEPARTMENTS = {
     "haiku": "Vérification",
     "chatgpt": "Multimédia, production, pub et communication",
     "mistral": "Cybersécurité",
-    "cursor": "Juridique",
+    "cursor": "Juridique et contrats",
     "antigravity": "Finances et assurances",
     "simon": "Expertise comptable et trading",
     "shelby": "Animalier",
@@ -76,7 +76,8 @@ AGENT_ROLES = {
     "mistral": "Cybersécurité et tests d'intrusion, sur un périmètre autorisé uniquement "
     "(via Vibe, sur ton compte Le Chat).",
     "cursor": "Juridique : statuts, contrats, CGV et CGU, RGPD, propriété intellectuelle, "
-    "conformité (via Cursor, sur ton compte Cursor).",
+    "conformité ; experte de tous les contrats en droit français, européen et international "
+    "(via Cursor, sur ton compte Cursor).",
     "antigravity": "Finances et assurances : trésorerie, budget, prévisionnel, financement, "
     "levée de fonds, contrats d'assurance (via Antigravity, sur ton compte Google).",
     "simon": "Expert-comptable : comptabilité, TVA, liasses et bilans, charges sociales, "
