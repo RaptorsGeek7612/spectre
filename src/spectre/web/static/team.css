@@ -163,3 +163,20 @@
   .tm-face { width: 76px; height: 76px; }
 }
 @media (prefers-reduced-motion: reduce) { .cl-tile, .cl-badges .warn, .spin { animation: none !important; transition: none; } }
+
+/* ---- one colour per agent, for its name everywhere (11 hues ~33° apart) ---- */
+[data-agent="opus"] { --agent-h: 250; }
+[data-agent="ysyss"] { --agent-h: 217; }
+[data-agent="haiku"] { --agent-h: 184; }
+[data-agent="shelby"] { --agent-h: 151; }
+[data-agent="sonnet"] { --agent-h: 118; }
+[data-agent="simon"] { --agent-h: 85; }
+[data-agent="mistral"] { --agent-h: 52; }
+[data-agent="antigravity"] { --agent-h: 19; }
+[data-agent="lexy"] { --agent-h: 346; }
+[data-agent="chatgpt"] { --agent-h: 313; }
+[data-agent="cursor"] { --agent-h: 280; }
+[data-agent] { --agent: oklch(80% 0.14 var(--agent-h)); }
+:root[data-theme="light"] [data-agent] { --agent: oklch(50% 0.17 var(--agent-h)); }
+[data-agent] :is(.tm-name, .cl-name, .cl-row-name, .ag-name),
+#cl-lines li[data-agent] > b, #cl-sub b[data-agent] { color: var(--agent, var(--c, currentColor)); }

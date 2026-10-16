@@ -110,7 +110,7 @@ function renderTiles(agents) {
     let tile = grid.querySelector(`[data-key="${CSS.escape(a.key)}"]`);
     if (!tile) {
       const face = faceFor(a);
-      tile = h("article", { class: "cl-tile", "data-key": a.key, tabindex: "0", onclick: () => spotlight(a.key, 25000), ondblclick: () => document.querySelector(`[data-view="team"]`)?.click() },
+      tile = h("article", { class: "cl-tile", "data-key": a.key, "data-agent": a.key, tabindex: "0", onclick: () => spotlight(a.key, 25000), ondblclick: () => document.querySelector(`[data-view="team"]`)?.click() },
         h("div", { class: "cl-face" }, face.el),
         h("p", { class: "cl-tag" }),
         h("div", { class: "cl-badges" }),
@@ -130,7 +130,7 @@ function renderTiles(agents) {
   grid.querySelectorAll(".cl-tile").forEach((t) => { if (!seen.has(t.dataset.key)) t.remove(); });
   const order = { needs_you: 0, stalled: 1, working: 2, waiting: 3, your_turn: 4, done: 5, available: 6, idle: 7 };
   const sorted = [...agents].sort((x, y) => (order[x.status] ?? 9) - (order[y.status] ?? 9));
-  list.replaceChildren(...sorted.map((a) => h("button", { type: "button", class: "cl-row", "data-status": a.status, onclick: () => spotlight(a.key, 25000) },
+  list.replaceChildren(...sorted.map((a) => h("button", { type: "button", class: "cl-row", "data-agent": a.key, "data-status": a.status, onclick: () => spotlight(a.key, 25000) },
     h("i", { class: "dot", "aria-hidden": "true" }),
     h("span", { class: "cl-row-name" }, a.name, h("small", {}, a.activity || STATUS[a.status] || "")),
     a.tokens ? h("span", { class: "cl-row-tok" }, `⚡ ${tokens(a.tokens)}`) : null)));
@@ -180,7 +180,7 @@ async function next() {
   const parts = line.agent === "you" ? [line.text] : sentences(line.text);
   for (const part of parts) {
     if (!state.open) break;
-    sub.replaceChildren(h("b", {}, `${nameOf(line.agent)} : `), part);
+    sub.replaceChildren(h("b", { "data-agent": line.agent }, `${nameOf(line.agent)} : `), part);
     if (state.joined && line.agent !== "you") {
       await voice.speak(line.agent, agent?.gender || "m", part, (v) => face?.mouth(v));
     } else {

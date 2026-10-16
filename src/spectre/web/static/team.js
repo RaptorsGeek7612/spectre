@@ -149,7 +149,7 @@ async function details(agent) {
   }) : [h("p", { class: "meta" }, "Rien encore : son activité apparaîtra ici dès sa première mission.")];
   const counts = Object.entries(data.tools).map(([k, n]) => `${k} ${n}`).join(" · ") || "aucun outil utilisé";
   dialog.replaceChildren(h("div", { class: "tm-detail" },
-    h("header", { class: "tm-head" }, face.el, h("div", {}, h("h3", { class: "tm-name" }, agent.name), h("p", { class: "tm-dept" }, `${agent.department} · ${agent.moved ? agent.engine : agent.tool}`)),
+    h("header", { class: "tm-head", "data-agent": agent.key }, face.el, h("div", {}, h("h3", { class: "tm-name" }, agent.name), h("p", { class: "tm-dept" }, `${agent.department} · ${agent.moved ? agent.engine : agent.tool}`)),
       h("button", { class: "icon-btn", type: "button", "aria-label": "Fermer", onclick: () => dialog.close() }, "✕")),
     h("h4", {}, "Consignes et spécialité"), h("pre", { class: "tm-prompt" }, data.prompt || agent.role),
     data.toolkit && data.toolkit.length ? h("h4", {}, "Logiciels de son métier") : null,
