@@ -67,7 +67,7 @@ ENGINE_ALIASES = {
 # What each one does, as shown in the interface's « Agents » view
 AGENT_ROLES = {
     "opus": "L'agent supérieur : il converse avec toi, planifie les missions et rédige leurs "
-    "rapports.",
+    "rapports ; directeur, et expert de toutes les administrations (France, Europe, monde).",
     "sonnet": "Agent d'exécution par défaut : il mène les étapes des missions.",
     "haiku": "Le vérificateur : il contrôle chaque étape des missions ; rapide.",
     "chatgpt": "Images, vidéo et multimédia, publicité et communication (via Codex, sur ton "

@@ -12,10 +12,10 @@ resolution-markers = [
     "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.12.*' and sys_platform != 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
@@ -365,10 +365,10 @@ version = "18.1.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8d/f4/f22114d30d3435e38c6af2b4870f37b864403dca6ae7af747a289ce0a18e/av-18.1.0.tar.gz", hash = "sha256:47bfc286e1bc9de7ab4681fc2b575cd2460a66919d31ffe1bd5aa54fae531a28", size = 4451061, upload-time = "2026-08-12T22:28:18.761Z" }
@@ -1157,6 +1157,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/6c/dc/03a21b89f118664a0926ff25b0f8e44a519bf22724a6a8fc7a9abbc188b6/hf_xet-1.7.0-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:0a9e802f33bf50c851abe45fc5380e61f959e2d369647d6742b79ad9d6c27cab", size = 4418814, upload-time = "2026-10-06T20:18:37.888Z" },
     { url = "https://files.pythonhosted.org/packages/4d/59/b35106dfa71b6eef605dc88bd038fe99c7f86fb132a15b60d0bf2f235b2c/hf_xet-1.7.0-cp38-abi3-win_amd64.whl", hash = "sha256:2b7bb5727889b0f2436dbaaad8fc4c3e66b8240d992716989e0c086b4278b1bc", size = 3822644, upload-time = "2026-10-06T20:18:40.052Z" },
     { url = "https://files.pythonhosted.org/packages/48/cd/072313585f74fe9d441e2eb5e0a4703c30586cd709810ea369675f61b74e/hf_xet-1.7.0-cp38-abi3-win_arm64.whl", hash = "sha256:acc3851cf2576a8fb2ae926da863f4efabe21303cf292e9a44332802ab0dcc6a", size = 3662436, upload-time = "2026-10-06T20:18:42.205Z" },
+]
+
+[[package]]
+name = "holidays"
+version = "0.106"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a4/85/30fadb3b2014177299eea883bfd74d7e893d495fb4b37adc3f4968004d87/holidays-0.106.tar.gz", hash = "sha256:2e635a59102acb47e79a751c37fb04eff5ac77069a3b33d58cbfad66d243ffb3", size = 1048446, upload-time = "2026-10-05T19:23:13.417Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/f6/59f817df052a81e39bbc23cb10795cf721d14b36a4cf0d897bfe11648a22/holidays-0.106-py3-none-any.whl", hash = "sha256:4be3fb5be6a88a232e92f96825e4fab9b80710caabde90b7c476e57ba0ed9f5d", size = 1656690, upload-time = "2026-10-05T19:23:11.32Z" },
 ]
 
 [[package]]
@@ -2106,10 +2118,10 @@ version = "2.4.6"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d0/ad/fed0499ce6a338d2a03ebae59cd15093910c8875328855781952abf6c2fe/numpy-2.4.6.tar.gz", hash = "sha256:f3a3570c4a2a16746ac2c31a7c7c7b0c186b95ce902e33db6f28094ed7387dda", size = 20735807, upload-time = "2026-05-18T23:37:14.07Z" }
@@ -2279,10 +2291,10 @@ resolution-markers = [
     "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.12.*' and sys_platform != 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3000,6 +3012,15 @@ wheels = [
 ]
 
 [[package]]
+name = "python-stdnum"
+version = "2.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/7f/96c2b9de6024353177dc6139c33730d5ac25877bc33215515d6b95b84555/python_stdnum-2.2.tar.gz", hash = "sha256:e95fcfa858a703d4a40130cb3eaac133c60d8808a7f3c98efeedac968c2479b9", size = 1311813, upload-time = "2026-01-04T19:36:16.753Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2f/61/aa32d9c79f83a2fae033cd6496fb2a24aba918d31c73704271dfcfb48375/python_stdnum-2.2-py3-none-any.whl", hash = "sha256:bdf98fd117a0ca152e4047aa8ad254bae63853d4e915ddd4e0effb33ba0e9260", size = 1193213, upload-time = "2026-01-04T19:36:14.812Z" },
+]
+
+[[package]]
 name = "pytz"
 version = "2026.5"
 source = { registry = "https://pypi.org/simple" }
@@ -3392,7 +3413,7 @@ wheels = [
 
 [[package]]
 name = "spectre"
-version = "0.17.0"
+version = "0.19.0"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
@@ -3406,6 +3427,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+administration = [
+    { name = "holidays" },
+    { name = "python-stdnum" },
+]
 finance = [
     { name = "numpy-financial", version = "1.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "numpy-financial", version = "1.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
@@ -3436,11 +3461,13 @@ voice = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "holidays" },
     { name = "mypy" },
     { name = "numpy-financial", version = "1.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "numpy-financial", version = "1.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "python-stdnum" },
     { name = "ruff" },
     { name = "sympy" },
 ]
@@ -3451,6 +3478,7 @@ requires-dist = [
     { name = "ccxt", marker = "extra == 'markets'", specifier = ">=4.0" },
     { name = "cryptography", specifier = ">=43" },
     { name = "faster-whisper", marker = "extra == 'voice'", specifier = ">=1.2" },
+    { name = "holidays", marker = "extra == 'administration'", specifier = ">=0.60" },
     { name = "langchain-anthropic", specifier = ">=1.5.3" },
     { name = "langchain-core", specifier = ">=1.5.2" },
     { name = "langgraph", specifier = ">=1.0" },
@@ -3463,20 +3491,23 @@ requires-dist = [
     { name = "opencv-python-headless", marker = "extra == 'vision'", specifier = ">=4.10" },
     { name = "piper-tts", marker = "extra == 'voice'", specifier = ">=1.8" },
     { name = "python-dotenv", specifier = ">=1.0" },
+    { name = "python-stdnum", marker = "extra == 'administration'", specifier = ">=2.0" },
     { name = "skyfield", marker = "extra == 'science'", specifier = ">=1.49" },
     { name = "sounddevice", marker = "extra == 'voice'", specifier = ">=0.5" },
     { name = "sympy", marker = "extra == 'science'", specifier = ">=1.12" },
     { name = "vosk", marker = "extra == 'voice'", specifier = ">=0.3.45" },
     { name = "yfinance", marker = "extra == 'markets'", specifier = ">=0.2" },
 ]
-provides-extras = ["voice", "vision", "finance", "science", "markets"]
+provides-extras = ["voice", "vision", "finance", "science", "markets", "administration"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "holidays", specifier = ">=0.60" },
     { name = "mypy", specifier = ">=1.11" },
     { name = "numpy-financial", specifier = ">=1.0" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=5" },
+    { name = "python-stdnum", specifier = ">=2.0" },
     { name = "ruff", specifier = ">=0.6" },
     { name = "sympy", specifier = ">=1.12" },
 ]

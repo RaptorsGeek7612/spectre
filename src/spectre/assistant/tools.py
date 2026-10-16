@@ -538,6 +538,12 @@ def _nature(ctx: ActionContext, operation: str, subject: str, options: str = "")
     return nature.nature(operation, subject, options)
 
 
+def _administration(ctx: ActionContext, operation: str, subject: str, options: str = "") -> str:
+    from spectre.assistant import administration
+
+    return administration.administration(operation, subject, options)
+
+
 def _contract(ctx: ActionContext, operation: str, target: str, options: str = "") -> str:
     from spectre.assistant import contracts
 
@@ -1362,6 +1368,22 @@ TOOLS: dict[str, Tool] = {
             _contract,
             _contract_risk,
             agents=("cursor",),
+        ),
+        Tool(
+            "administration",
+            "Boîte à outils administrative (Spectre seul). operation : annuaire (guichets "
+            "publics compétents pour une commune — mairie, caf, cpam, prefecture, impots, "
+            "france_travail, tribunal, urssaf… ; options = type, vide = liste des types), "
+            "entreprise (fiche Sirene par SIREN, SIRET ou nom), commune (INSEE, département, "
+            "intercommunalité), adresse (normaliser une adresse française), tva (numéro de TVA "
+            "UE dans VIES), identifiant (IBAN, SIREN, SIRET, numéros étrangers ; options = type "
+            "stdnum, ex. fr.siret, de.vat), delai (subject = date de départ, options « 2 mois », "
+            "« 15 jours ouvrés », « 10 jours francs », + pays FR-57…), feries (subject = pays "
+            "ou région, options = année). Cite la source et la date.",
+            Level.READ,
+            "read",
+            _administration,
+            lead_only=True,
         ),
         Tool(
             "generate_image",

@@ -35,6 +35,9 @@ biodiversité, climat air/terre/mer ; outil `nature`, module `nature.py`), `spec
 et `spectre-contrats-europe-international` (Octavya : tous les contrats, France, UE,
 international ; outil `contrat`, module `contracts.py`), `spectre-management` (Spectre :
 diriger une équipe en TPE, PME, ETI ou grand groupe, et sa propre équipe d'agents),
+`spectre-administration` et `spectre-administration-europe-international` (Spectre : toutes
+les administrations, France, UE, international ; outil `administration`, module
+`administration.py`),
 `spectre-pentest` (Syfer : tous les types de tests d'intrusion, cadre légal strict ; outils
 toolkit nmap/subfinder/httpx/trufflehog). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
 charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
