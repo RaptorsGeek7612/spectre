@@ -539,6 +539,12 @@ def _market(ctx: ActionContext, operation: str, symbol: str, options: str = "") 
     return toolkit.market(operation, symbol, options)
 
 
+def _nature(ctx: ActionContext, operation: str, subject: str, options: str = "") -> str:
+    from spectre.assistant import nature
+
+    return nature.nature(operation, subject, options)
+
+
 def _finance(ctx: ActionContext, operation: str, values: list[float]) -> str:
     from spectre.assistant import toolkit
 
@@ -1345,6 +1351,19 @@ TOOLS: dict[str, Tool] = {
             "read",
             _market,
             agents=("simon", "lexy"),
+        ),
+        Tool(
+            "nature",
+            "Données ouvertes sur la nature et le climat (Shelby, Ysyss). operation : espece "
+            "(classification, noms français, statut UICN, observations), observations (par "
+            "année sur 10 ans ; options = code pays, FR par défaut), marin (vie marine, OBIS), "
+            "meteo (météo actuelle et mer d'un point), climat (écart des 30 derniers jours à "
+            "la normale 1991-2020). subject : l'espèce (nom latin de préférence) ou le point "
+            "« lat,lon ». Cite toujours la source et la date.",
+            Level.READ,
+            "read",
+            _nature,
+            agents=("shelby", "ysyss"),
         ),
         Tool(
             "generate_image",
