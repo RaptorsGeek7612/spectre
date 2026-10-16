@@ -7,6 +7,17 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Spectre, expert de toutes les administrations** (France, Europe, international) :
+  compétences `spectre-administration` (carte de l'État, des collectivités, de la sécurité
+  sociale et de la justice, droits de l'usager CRPA, escalier des recours, démarches par
+  domaine, fonction publique, facturation électronique 2026-2027, numérique et arnaques) et
+  `spectre-administration-europe-international` (UE, Schengen EES/ETIAS, eIDAS 2, OOTS,
+  SOLVIT, CEDH, apostille, fiscalité internationale, systèmes de 15 pays) ; outil
+  `administration` (module `administration.py` : annuaire des guichets compétents, fiche
+  entreprise Sirene, commune, adresse BAN, TVA VIES, identifiants de tous pays, délais et
+  jours fériés), réservé à Spectre. Extra `administration` (python-stdnum, holidays).
+
 ## [0.18.0] - 2026-10-16
 
 ### Added
