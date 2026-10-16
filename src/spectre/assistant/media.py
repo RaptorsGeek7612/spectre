@@ -333,7 +333,9 @@ PORTRAIT_NEGATIVE = (
 )
 PORTRAIT_BASE = (
     "professional studio headshot portrait, photorealistic, {who}, soft cinematic lighting, "
-    "shallow depth of field, looking at camera, upper body, plain {bg} studio background, "
+    "shallow depth of field, looking at camera, upper body, "
+    "against a solid vivid saturated {bg} seamless paper backdrop filling the whole frame, "
+    "bold colourful {bg} studio background, evenly lit coloured backdrop, "
     "highly detailed skin, sharp focus, 85mm lens, natural colors"
 )
 # One realistic look per agent, faithful to its drawn avatar (gender, hair, role attire).
