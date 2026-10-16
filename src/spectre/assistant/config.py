@@ -83,7 +83,8 @@ AGENT_ROLES = {
     "fiscalité de l'entreprise ; expert et formateur en trading, données de marché en temps "
     "réel (sur DeepSeek, avec ta clé).",
     "shelby": "Animalière : culture animale, comportement et éducation, biologie, santé et "
-    "soins, toilettage de toutes les espèces.",
+    "soins, toilettage de toutes les espèces ; experte de la nature, de la biodiversité et des "
+    "impacts du climat (air, terre, mer), données ouvertes en temps réel.",
     "ysyss": "Sciences et être humain : physique, chimie, maths, biologie, astronomie, "
     "santé, psychologie, langues et dialectes, sports, arts et cultures.",
     "lexy": "Jeux d'argent, paris sportifs, investissement et bourse, blockchain, NFT et "

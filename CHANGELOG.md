@@ -28,6 +28,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   `marche` (prix en temps réel des cryptos via Kraken, cours et indicateurs via Yahoo, carnet
   d'ordres ; toujours datés et sourcés) et `trading` (taille de position, espérance,
   gain/risque, drawdown), réservés à Simon et Lexy.
+- **Shelby, experte de la nature et du climat** : compétence `spectre-nature-climat`
+  (biodiversité, cinq pressions, état 2026, impacts du climat dans les airs, sur terre, en eau
+  douce et en mer, accords, sciences participatives) et outil `nature` (module `nature.py` :
+  GBIF et UICN, OBIS, Open-Meteo et ERA5 — espèce, observations, vie marine, météo, écart
+  climatique ; datés et sourcés), réservé à Shelby et Ysyss.
 
 ## [0.17.0] - 2026-10-15
 
