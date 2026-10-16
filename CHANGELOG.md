@@ -39,6 +39,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   bis, consommateurs et bouton de rétractation, RGPD, Data Act, AI Act, DORA, CVIM, UNIDROIT,
   Incoterms 2020, arbitrage, common law), outil `contrat` (module `contracts.py` : analyser un
   contrat .docx/.txt/.md, comparer deux versions en HTML), réservé à Octavya.
+- **Spectre, directeur** : compétence `spectre-management` (diriger selon la taille de
+  l'entreprise, attentes réciproques directeur-équipe, entretiens individuels, délégation,
+  feedback, recrutement, OKR, EOS, 4DX, RACI, conduite du changement, droit du travail du
+  manager, direction de sa propre équipe d'agents), chargée d'office par le cerveau.
 
 ## [0.17.0] - 2026-10-15
 

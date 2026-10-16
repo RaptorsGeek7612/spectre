@@ -33,7 +33,8 @@ de ce qui ne s'installe pas ici), `spectre-trading` (Simon : histoire, styles, r
 formation, fiscalité ; outils `marche` et `trading`), `spectre-nature-climat` (Shelby :
 biodiversité, climat air/terre/mer ; outil `nature`, module `nature.py`), `spectre-contrats`
 et `spectre-contrats-europe-international` (Octavya : tous les contrats, France, UE,
-international ; outil `contrat`, module `contracts.py`). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
+international ; outil `contrat`, module `contracts.py`), `spectre-management` (Spectre :
+diriger une équipe en TPE, PME, ETI ou grand groupe, et sa propre équipe d'agents). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
 charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
 
 ## Commandes (Windows : `uv run`, pas d'activation de venv)
