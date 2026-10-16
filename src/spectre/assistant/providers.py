@@ -179,9 +179,13 @@ class Providers:
 
     def models(self, pid: str, timeout: float = 5.0) -> list[str]:
         """The provider's model list (`GET /models`); empty when it cannot be reached."""
+        return self.listing(pid, timeout)[1]
+
+    def listing(self, pid: str, timeout: float = 5.0) -> tuple[bool, list[str]]:
+        """(answered, models): a local server can run with no model installed yet."""
         provider = self.get(pid)
         if provider.needs_key and not self.key(provider):
-            return []
+            return False, []
         request = urllib.request.Request(
             f"{provider.base_url}/models", headers=self.headers(provider)
         )
@@ -189,9 +193,9 @@ class Providers:
             with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
                 data = json.loads(response.read().decode("utf-8"))
         except (OSError, ValueError, urllib.error.URLError):
-            return []
+            return False, []
         items = (data.get("data") or []) if isinstance(data, dict) else []  # Ollama: null
-        return sorted(str(m.get("id")) for m in items if isinstance(m, dict) and m.get("id"))
+        return True, sorted(str(m.get("id")) for m in items if isinstance(m, dict) and m.get("id"))
 
     def headers(self, provider: Provider) -> dict[str, str]:
         headers = {"Content-Type": "application/json", "User-Agent": "Spectre"}

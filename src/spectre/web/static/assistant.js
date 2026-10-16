@@ -758,7 +758,8 @@ async function loadEngines() {
   $("#providers").replaceChildren(...data.providers.map((p) => {
     const index = ready.indexOf(p);
     const count = index >= 0 ? lists[index].models.filter(chat).length : 0;
-    const state = p.ready ? (p.local && !count ? "serveur éteint" : `${count} modèle${count > 1 ? "s" : ""}`) : `clé ${p.key_env} à ajouter`;
+    const off = p.local && !count && !(index >= 0 && lists[index].online);
+    const state = p.ready ? (off ? "serveur éteint" : p.local && !count ? "aucun modèle installé" : `${count} modèle${count > 1 ? "s" : ""}`) : `clé ${p.key_env} à ajouter`;
     return h("article", { class: "ag-card", "data-agent": "provider" },
       h("h3", { class: "ag-name" }, p.label),
       h("p", { class: "ag-engine" }, p.id),
