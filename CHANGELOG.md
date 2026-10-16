@@ -7,6 +7,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Kyra, experte pub et communication** : compétence `spectre-pub-communication` (brief,
+  plateforme de marque, AIDA/PAS/BAB/4U/FAB/StoryBrand, déclinaison par réseau, KPI et UTM,
+  droit français de la publicité) et outils libres dans `toolkit`, réservés à Kyra :
+  `video_info` (ffprobe), `video_format`/`image_format` (FFmpeg/ImageMagick : story, fil,
+  carre, paysage), `sous_titres` (Whisper), `incruster` (sous-titres gravés), `detourage`
+  (rembg), `voix_off` (Kokoro, voix française), `agrandir` (Real-ESRGAN). Chaque outil crée un
+  nouveau fichier à côté de la source et échoue si rien n'a été produit.
+
 ## [0.17.0] - 2026-10-15
 
 ### Added

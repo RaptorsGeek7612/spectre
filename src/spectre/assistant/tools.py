@@ -126,7 +126,8 @@ def _create_agent(
 def _list_agents(ctx: ActionContext) -> str:
     builtin = (
         "Spectre (opus, toi), Gétro (sonnet), Kaïto (haiku, vérificateur), Kyra (chatgpt, "
-        "Codex, multimédia), Syfer (mistral, Vibe, cybersécurité), Octavya (cursor, juridique), "
+        "Codex, multimédia, pub et communication), Syfer (mistral, Vibe, cybersécurité), "
+        "Octavya (cursor, juridique), "
         "Clarke (antigravity, finances et assurances), Simon (DeepSeek, expert-comptable), "
         "Shelby (animalier), Ysyss (sciences et humain), Lexy (jeux, paris, bourse, crypto) ; "
         "rédaction : Scout, Scribe, Warden"
@@ -1028,7 +1029,8 @@ TOOLS: dict[str, Tool] = {
             "Lancer une mission longue en arrière-plan (plan, étapes vérifiées, "
             "rapport). kind=redaction pour un texte soigné rédigé par Scout, Scribe et Warden. "
             "agent : qui exécute les étapes, par son nom ou son modèle. Kyra (chatgpt) pour les "
-            "images, vidéos et le multimédia ; Syfer (mistral) pour la cybersécurité et les tests "
+            "images, vidéos, le multimédia, la publicité et la communication ; Syfer "
+            "(mistral) pour la cybersécurité et les tests "
             "d'intrusion autorisés ; Octavya (cursor) pour le juridique ; Clarke (antigravity) "
             "pour les finances et les assurances ; Simon (simon, sur DeepSeek) pour la "
             "comptabilité, la TVA et la fiscalité ; Gétro (sonnet) ou Kaïto (haiku, rapide) "
@@ -1260,9 +1262,14 @@ TOOLS: dict[str, Tool] = {
             "de secrets), trivy (vulnérabilités), semgrep (analyse de code), nuclei (scan d'une "
             "adresse — autorisée, demande ta validation), vale et languagetool (style et "
             "grammaire d'un texte ; options = langue, fr par défaut), pandoc (conversion : "
-            "options = fichier de sortie), ocr (texte d'une image ; options = langue). target : "
-            "le fichier, le dossier ou l'adresse. Chaque agent ne voit que les outils de son "
-            "domaine.",
+            "options = fichier de sortie), ocr (texte d'une image ; options = langue). Pub et "
+            "multimédia (Kyra) : video_info (infos d'une vidéo), video_format et image_format "
+            "(recadrage pour un réseau ; options = story, fil, carre ou paysage), sous_titres "
+            "(fichier .srt ; options = langue), incruster (sous-titres gravés ; options = le "
+            ".srt, sinon celui de même nom), detourage (fond transparent), voix_off (voix "
+            "française d'un fichier .txt ; options = vitesse), agrandir (image ×4). Ils créent "
+            "un nouveau fichier à côté de la source. target : le fichier, le dossier ou "
+            "l'adresse. Chaque agent ne voit que les outils de son domaine.",
             Level.READ,
             "scan",
             _toolkit,

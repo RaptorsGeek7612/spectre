@@ -10,6 +10,7 @@ outside, so it waits for the user's approval.
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from collections.abc import Callable
@@ -46,6 +47,8 @@ class Kit:
     bins: tuple[str, ...]  # candidate executables, first found wins
     needs_target: bool = True
     remote: bool = False  # the target is a URL or host (probing it reaches outside)
+    output: Callable[[ActionContext, str, str], Path] | None = None  # the file it creates
+    timeout: float = TIMEOUT_S
 
 
 def _bin(names: tuple[str, ...]) -> str | None:
@@ -56,6 +59,9 @@ def _bin(names: tuple[str, ...]) -> str | None:
         Path.home() / "AppData" / "Local" / "Pandoc",
         Path("C:/Program Files/Tesseract-OCR"),
         Path.home() / "AppData" / "Roaming" / "uv" / "tools" / "semgrep" / "Scripts",
+        Path.home() / ".local" / "bin",  # uv tools: rembg, whisper-ctranslate2, kokoro-tts
+        Path.home() / "Apps" / "realesrgan",
+        *sorted(Path("C:/Program Files").glob("ImageMagick-*"), reverse=True),
         *sorted(Path("C:/Program Files/Eclipse Adoptium").glob("*/bin"), reverse=True),
     ]
     for name in names:
@@ -73,6 +79,57 @@ def _bin(names: tuple[str, ...]) -> str | None:
 def _local(ctx: ActionContext, target: str) -> str:
     """A path the agent is allowed to read, for a tool that scans a file or folder."""
     return str(resolve_path(ctx, target))
+
+
+# Kyra's ad and communication formats: (width, height) of each social-network frame.
+FORMATS = {
+    "story": (1080, 1920),  # 9:16 — stories, Reels, TikTok, Shorts
+    "fil": (1080, 1350),  # 4:5 — Instagram / Facebook feed
+    "carre": (1080, 1080),  # 1:1
+    "paysage": (1920, 1080),  # 16:9 — YouTube, screens
+}
+KOKORO = Path.home() / "Apps" / "kokoro"
+KOKORO_VOICE = "ff_siwis"  # the French voice of Kokoro
+
+
+def _format(options: str) -> tuple[str, int, int]:
+    name = options.strip().lower() or "story"
+    if name not in FORMATS:
+        raise ActionError(f"format inconnu : {name} (au choix : {', '.join(FORMATS)})")
+    return name, *FORMATS[name]
+
+
+def _beside(ctx: ActionContext, target: str, suffix: str, ext: str = "") -> Path:
+    """The file a media tool writes: next to its source, `<name>-<suffix><ext>`."""
+    source = resolve_path(ctx, target)
+    return resolve_path(ctx, str(source.with_name(f"{source.stem}-{suffix}{ext or source.suffix}")))
+
+
+def _lang(options: str, default: str = "fr") -> str:
+    lang = options.strip().lower() or default
+    if not re.fullmatch(r"[a-z]{2}", lang):
+        raise ActionError(f"langue attendue sur deux lettres (fr, en…) : {lang}")
+    return lang
+
+
+def _speed(options: str) -> str:
+    try:
+        speed = float(options.strip().replace(",", ".") or 1.0)
+    except ValueError as exc:
+        raise ActionError("options = la vitesse de la voix, entre 0.5 et 2 (1 par défaut)") from exc
+    return str(min(2.0, max(0.5, speed)))
+
+
+def _subtitle_filter(path: Path) -> str:
+    """ffmpeg's `subtitles=` filter wants its path escaped (the drive colon, quotes)."""
+    escaped = path.as_posix().replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+    return f"subtitles='{escaped}'"
+
+
+def _srt(ctx: ActionContext, target: str, options: str) -> Path:
+    if options.strip():
+        return resolve_path(ctx, options)
+    return resolve_path(ctx, str(resolve_path(ctx, target).with_suffix(".srt")))
 
 
 KITS: dict[str, Kit] = {
@@ -182,6 +239,169 @@ KITS: dict[str, Kit] = {
             (o.strip() or "fra"),
         ],
         ("tesseract",),
+    ),
+    # ---- Kyra: advertising and communication media (each writes a new file beside its source)
+    "video_info": Kit(
+        "ffprobe (infos d'une vidéo ou d'un son)",
+        ("chatgpt",),
+        Level.READ,
+        "read",
+        lambda ctx, t, o: [
+            _bin(("ffprobe",)) or "ffprobe",
+            "-v",
+            "error",
+            "-show_format",
+            "-show_streams",
+            "-of",
+            "json",
+            _local(ctx, t),
+        ],
+        ("ffprobe",),
+    ),
+    "video_format": Kit(
+        "FFmpeg (vidéo recadrée au format d'un réseau)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("ffmpeg",)) or "ffmpeg",
+            "-n",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            _local(ctx, t),
+            "-vf",
+            "scale={1}:{2}:force_original_aspect_ratio=increase,crop={1}:{2}".format(*_format(o)),
+            "-c:a",
+            "copy",
+            str(_beside(ctx, t, _format(o)[0])),
+        ],
+        ("ffmpeg",),
+        output=lambda ctx, t, o: _beside(ctx, t, _format(o)[0]),
+        timeout=1800.0,
+    ),
+    "incruster": Kit(
+        "FFmpeg (sous-titres gravés dans la vidéo)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("ffmpeg",)) or "ffmpeg",
+            "-n",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            _local(ctx, t),
+            "-vf",
+            _subtitle_filter(_srt(ctx, t, o)),
+            "-c:a",
+            "copy",
+            str(_beside(ctx, t, "soustitree")),
+        ],
+        ("ffmpeg",),
+        output=lambda ctx, t, o: _beside(ctx, t, "soustitree"),
+        timeout=1800.0,
+    ),
+    "image_format": Kit(
+        "ImageMagick (visuel recadré au format d'un réseau)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("magick",)) or "magick",
+            _local(ctx, t),
+            "-resize",
+            "{1}x{2}^".format(*_format(o)),
+            "-gravity",
+            "center",
+            "-extent",
+            "{1}x{2}".format(*_format(o)),
+            str(_beside(ctx, t, _format(o)[0])),
+        ],
+        ("magick",),
+        output=lambda ctx, t, o: _beside(ctx, t, _format(o)[0]),
+    ),
+    "sous_titres": Kit(
+        "Whisper (sous-titres .srt d'une vidéo ou d'un son)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("whisper-ctranslate2",)) or "whisper-ctranslate2",
+            _local(ctx, t),
+            "--language",
+            _lang(o),
+            "--model",
+            "small",
+            "--device",
+            "cpu",
+            "--compute_type",
+            "int8",
+            "--output_format",
+            "srt",
+            "--output_dir",
+            str(resolve_path(ctx, t).parent),
+        ],
+        ("whisper-ctranslate2",),
+        output=lambda ctx, t, o: resolve_path(ctx, t).with_suffix(".srt"),
+        timeout=3600.0,
+    ),
+    "detourage": Kit(
+        "rembg (détourage : fond transparent)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("rembg",)) or "rembg",
+            "i",
+            _local(ctx, t),
+            str(_beside(ctx, t, "detoure", ".png")),
+        ],
+        ("rembg",),
+        output=lambda ctx, t, o: _beside(ctx, t, "detoure", ".png"),
+    ),
+    "voix_off": Kit(
+        "Kokoro (voix off française d'un fichier texte)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("kokoro-tts",)) or "kokoro-tts",
+            _local(ctx, t),
+            str(_beside(ctx, t, "voix", ".wav")),
+            "--lang",
+            "fr-fr",
+            "--voice",
+            KOKORO_VOICE,
+            "--speed",
+            _speed(o),
+            "--model",
+            str(KOKORO / "kokoro-v1.0.onnx"),
+            "--voices",
+            str(KOKORO / "voices-v1.0.bin"),
+        ],
+        ("kokoro-tts",),
+        output=lambda ctx, t, o: _beside(ctx, t, "voix", ".wav"),
+        timeout=1800.0,
+    ),
+    "agrandir": Kit(
+        "Real-ESRGAN (image agrandie ×4, pour l'impression)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("realesrgan-ncnn-vulkan",)) or "realesrgan-ncnn-vulkan",
+            "-i",
+            _local(ctx, t),
+            "-o",
+            str(_beside(ctx, t, "x4", ".png")),
+            "-n",
+            "realesrgan-x4plus",
+        ],
+        ("realesrgan-ncnn-vulkan",),
+        output=lambda ctx, t, o: _beside(ctx, t, "x4", ".png"),
     ),
 }
 
@@ -332,19 +552,25 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=TIMEOUT_S,
+            timeout=kit.timeout,
             check=False,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except FileNotFoundError as exc:
         raise ActionError(f"{kit.label} est introuvable : {exc}") from exc
     except subprocess.TimeoutExpired as exc:
-        raise ActionError(f"{kit.label} a dépassé {int(TIMEOUT_S)} s") from exc
+        raise ActionError(f"{kit.label} a dépassé {int(kit.timeout)} s") from exc
     out = (proc.stdout or "").strip()
     err = (proc.stderr or "").strip()
     # scanners report findings with a non-zero exit code: that is a result, not a failure
     if proc.returncode not in (0, 1) and not out:
         raise ActionError(f"{kit.label} (code {proc.returncode}) : {(err or 'échec')[:400]}")
+    if kit.output is not None:
+        made = kit.output(ctx, target, options)
+        if proc.returncode != 0 or not made.is_file():
+            detail = (err or out or "aucun fichier produit")[:400]
+            raise ActionError(f"{kit.label} (code {proc.returncode}) : {detail}")
+        return f"Fichier créé : {made}"
     body = out or err or "(aucune sortie : rien à signaler)"
     if err and out:
         body += f"\n[détails] {err[:400]}"

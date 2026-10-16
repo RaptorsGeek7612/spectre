@@ -186,3 +186,67 @@ def test_remote_scan_waits_for_approval(ctx: Any) -> None:
     )
     assert answer.startswith("EN ATTENTE DE VALIDATION")
     assert ctx.runner.calls == []  # not run until the user approves
+
+
+# ---- Kyra: advertising and communication media ----------------------------------------------
+
+
+def test_media_tools_are_kyras(ctx: Any) -> None:
+    for name in ("video_format", "image_format", "sous_titres", "detourage", "voix_off"):
+        assert toolkit.KITS[name].agents == ("chatgpt",)
+        assert toolkit.KITS[name].level == Level.WRITE
+    ctx.agent = "lexy"
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "video_format", "leak.txt", "story")
+
+
+def test_video_format_crops_to_the_network_frame(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    (ctx.allowed_roots[0] / "spot.mp4").write_bytes(b"v")
+    calls: list[list[str]] = []
+    made = toolkit.KITS["video_format"].output(ctx, "spot.mp4", "story")  # type: ignore[misc]
+
+    def run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(cmd)
+        made.write_bytes(b"x")
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    ctx.runner = run
+    out = toolkit.run(ctx, "video_format", "spot.mp4", "story")
+    assert out.startswith("Fichier créé") and made.name == "spot-story.mp4"
+    assert "crop=1080:1920" in " ".join(calls[0]) and "-n" in calls[0]  # never overwrites
+    with pytest.raises(ActionError, match="format inconnu"):
+        toolkit.run(ctx, "video_format", "spot.mp4", "panorama")
+
+
+def test_media_tool_fails_without_its_file(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    (ctx.allowed_roots[0] / "pic.jpg").write_bytes(b"i")
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "", "")  # ran, but wrote nothing
+    with pytest.raises(ActionError, match="aucun fichier produit"):
+        toolkit.run(ctx, "detourage", "pic.jpg")
+    assert ctx.runner.calls[0][-1].endswith("pic-detoure.png")
+
+
+def test_subtitles_voice_and_burn_in_commands(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    home = ctx.allowed_roots[0]
+    for name in ("clip.mp4", "texte.txt"):
+        (home / name).write_bytes(b"x")
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "", "")
+    with pytest.raises(ActionError):  # the fake runner writes nothing
+        toolkit.run(ctx, "sous_titres", "clip.mp4", "en")
+    assert ctx.runner.calls[-1][ctx.runner.calls[-1].index("--language") + 1] == "en"
+    with pytest.raises(ActionError, match="deux lettres"):
+        toolkit.run(ctx, "sous_titres", "clip.mp4", "français")
+    (home / "clip.srt").write_bytes(b"1")
+    with pytest.raises(ActionError):
+        toolkit.run(ctx, "incruster", "clip.mp4")
+    burn = " ".join(ctx.runner.calls[-1])
+    assert "subtitles='" in burn and "\:" in burn and burn.endswith("clip-soustitree.mp4")
+    with pytest.raises(ActionError):
+        toolkit.run(ctx, "voix_off", "texte.txt", "3")
+    voice = ctx.runner.calls[-1]
+    assert voice[voice.index("--speed") + 1] == "2.0" and "fr-fr" in voice  # speed is bounded
+    with pytest.raises(ActionError, match="vitesse"):
+        toolkit.run(ctx, "voix_off", "texte.txt", "vite")
