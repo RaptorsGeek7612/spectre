@@ -1259,8 +1259,11 @@ TOOLS: dict[str, Tool] = {
         Tool(
             "toolkit",
             "Outils libres installés sur ce PC, chacun pour son métier. name : gitleaks (fuite "
-            "de secrets), trivy (vulnérabilités), semgrep (analyse de code), nuclei (scan d'une "
-            "adresse — autorisée, demande ta validation), vale et languagetool (style et "
+            "de secrets), trivy (vulnérabilités), semgrep (analyse de code), trufflehog "
+            "(secrets dans un dossier) ; sécu réseau/web sur cible AUTORISÉE, demande ta "
+            "validation : nuclei (scan de vulnérabilités d'une adresse), nmap (ports et "
+            "services), subfinder (sous-domaines d'un domaine), httpx (sonde HTTP). vale et "
+            "languagetool (style et "
             "grammaire d'un texte ; options = langue, fr par défaut), pandoc (conversion : "
             "options = fichier de sortie), ocr (texte d'une image ; options = langue). Pub et "
             "multimédia (Kyra) : video_info (infos d'une vidéo), video_format et image_format "

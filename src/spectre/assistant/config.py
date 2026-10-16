@@ -47,7 +47,7 @@ AGENT_DEPARTMENTS = {
     "sonnet": "Exécution",
     "haiku": "Vérification",
     "chatgpt": "Multimédia, production, pub et communication",
-    "mistral": "Cybersécurité",
+    "mistral": "Cybersécurité et pentests",
     "cursor": "Juridique et contrats",
     "antigravity": "Finances et assurances",
     "simon": "Expertise comptable et trading",
@@ -73,8 +73,9 @@ AGENT_ROLES = {
     "chatgpt": "Images, vidéo et multimédia, publicité et communication (via Codex, sur ton "
     "compte ChatGPT) ; productrice et réalisatrice de clips, séries et films ; elle crée les "
     "images et les vidéos sur ce PC avec ComfyUI et les décline pour chaque réseau.",
-    "mistral": "Cybersécurité et tests d'intrusion, sur un périmètre autorisé uniquement "
-    "(via Vibe, sur ton compte Le Chat).",
+    "mistral": "Cybersécurité et expert de tous les types de tests d'intrusion (web, réseau, "
+    "AD, cloud, mobile, red team), sur un périmètre autorisé uniquement (via Vibe, sur ton "
+    "compte Le Chat).",
     "cursor": "Juridique : statuts, contrats, CGV et CGU, RGPD, propriété intellectuelle, "
     "conformité ; experte de tous les contrats en droit français, européen et international "
     "(via Cursor, sur ton compte Cursor).",
