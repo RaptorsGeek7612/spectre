@@ -7,6 +7,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-16
+
 ### Added
 - **Le bon modèle LM Studio pour chaque agent, sur demande** : outil `recommend_engine`
   (module `local_models.py` : classe les modèles installés dans LM Studio selon le métier de
