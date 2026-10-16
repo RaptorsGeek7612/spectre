@@ -7,17 +7,17 @@ let uid = 0;
 
 // skin, shade, hair, brows, eyes, lips, outfit, shirt, accent, style, beard, glasses, jewel, age
 export const LOOKS = {
-  opus: { g: "m", skin: "#e9c6a9", shade: "#c39373", hair: "#2a221d", eyes: "#3f6f91", lips: "#b77a6b", outfit: "#1d2738", shirt: "#d9dee6", accent: "#ffd23f", style: "short", beard: "stubble", bg: "#2b3a5c" },
-  sonnet: { g: "m", skin: "#c5966f", shade: "#9a6c4b", hair: "#17110d", eyes: "#4a2f1e", lips: "#a2634f", outfit: "#2f4030", shirt: "#e8e2d4", accent: "#8bd450", style: "crew", beard: "", bg: "#2c4a34" },
-  haiku: { g: "m", skin: "#f1d3b9", shade: "#cfa184", hair: "#cfcac2", eyes: "#56687a", lips: "#b8806f", outfit: "#30363f", shirt: "#f2f2ef", accent: "#4fc3f7", style: "neat", beard: "", glasses: "round", age: 1, bg: "#253e52" },
-  chatgpt: { g: "f", skin: "#dcaa83", shade: "#b47e58", hair: "#6a2f17", eyes: "#2f6a4d", lips: "#b4574f", outfit: "#41324f", shirt: "#c9b8d8", accent: "#a084ff", style: "long", beard: "", jewel: true, bg: "#3d2f55" },
-  mistral: { g: "m", skin: "#b88964", shade: "#8e6142", hair: "#0e0e11", eyes: "#2f2a26", lips: "#9b5e4a", outfit: "#18191c", shirt: "#2b2d33", accent: "#ff9f43", style: "undercut", beard: "short", hoodie: true, bg: "#4a3020" },
-  cursor: { g: "f", skin: "#8b5838", shade: "#663d24", hair: "#18100c", eyes: "#3a2214", lips: "#7a3b35", outfit: "#1f2b4a", shirt: "#f1ece4", accent: "#7d86ff", style: "bun", beard: "", jewel: true, blazer: true, bg: "#26305a" },
-  antigravity: { g: "f", skin: "#f0cdb2", shade: "#c99c7d", hair: "#87552d", eyes: "#4a6f92", lips: "#c0656a", outfit: "#3a3f47", shirt: "#eef1f5", accent: "#ef5f6f", style: "bob", beard: "", blazer: true, jewel: true, bg: "#4a2a33" },
-  simon: { g: "m", skin: "#e5bd9d", shade: "#bd8f6f", hair: "#3b2c22", eyes: "#4a3826", lips: "#ad7462", outfit: "#5a4632", shirt: "#e9e4d8", accent: "#ffd23f", style: "receding", beard: "", glasses: "square", age: 1, cardigan: true, bg: "#4a4022" },
-  shelby: { g: "f", skin: "#edc7a6", shade: "#c79a76", hair: "#9a5b2a", eyes: "#3a7d4a", lips: "#c06a5e", outfit: "#2f5b4a", shirt: "#f1ece0", accent: "#8bd450", style: "long", beard: "", jewel: true, bg: "#2a4a3a" },
-  ysyss: { g: "f", skin: "#c89a73", shade: "#9c7250", hair: "#1a1512", eyes: "#4a5a7a", lips: "#a85c52", outfit: "#2b3550", shirt: "#dfe6f0", accent: "#7d86ff", style: "bun", beard: "", glasses: "round", bg: "#233050" },
-  lexy: { g: "f", skin: "#f2d3bc", shade: "#cba588", hair: "#d8b84a", eyes: "#5a7a8a", lips: "#c85a68", outfit: "#39323f", shirt: "#f2e7ea", accent: "#ffd23f", style: "bob", beard: "", jewel: true, bg: "#46323a" },
+  opus: { g: "m", skin: "#e9c6a9", shade: "#c39373", hair: "#2a221d", eyes: "#3f6f91", lips: "#b77a6b", outfit: "#1d2738", shirt: "#d9dee6", accent: "#4d8dff", style: "short", beard: "stubble", bg: "#2b3a5c" },
+  sonnet: { g: "m", skin: "#c5966f", shade: "#9a6c4b", hair: "#17110d", eyes: "#4a2f1e", lips: "#a2634f", outfit: "#2f4030", shirt: "#e8e2d4", accent: "#a6e22e", style: "crew", beard: "", bg: "#2c4a34" },
+  haiku: { g: "m", skin: "#f1d3b9", shade: "#cfa184", hair: "#cfcac2", eyes: "#56687a", lips: "#b8806f", outfit: "#30363f", shirt: "#f2f2ef", accent: "#c9a36b", style: "neat", beard: "", glasses: "round", age: 1, bg: "#253e52" },
+  chatgpt: { g: "f", skin: "#dcaa83", shade: "#b47e58", hair: "#6a2f17", eyes: "#2f6a4d", lips: "#b4574f", outfit: "#41324f", shirt: "#c9b8d8", accent: "#a77bff", style: "long", beard: "", jewel: true, bg: "#3d2f55" },
+  mistral: { g: "m", skin: "#b88964", shade: "#8e6142", hair: "#0e0e11", eyes: "#2f2a26", lips: "#9b5e4a", outfit: "#18191c", shirt: "#2b2d33", accent: "#ff8c2e", style: "undercut", beard: "short", hoodie: true, bg: "#4a3020" },
+  cursor: { g: "f", skin: "#8b5838", shade: "#663d24", hair: "#18100c", eyes: "#3a2214", lips: "#7a3b35", outfit: "#1f2b4a", shirt: "#f1ece4", accent: "#ffd93d", style: "bun", beard: "", jewel: true, blazer: true, bg: "#26305a" },
+  antigravity: { g: "f", skin: "#f0cdb2", shade: "#c99c7d", hair: "#87552d", eyes: "#4a6f92", lips: "#c0656a", outfit: "#3a3f47", shirt: "#eef1f5", accent: "#ff4d5e", style: "bob", beard: "", blazer: true, jewel: true, bg: "#4a2a33" },
+  simon: { g: "m", skin: "#e5bd9d", shade: "#bd8f6f", hair: "#3b2c22", eyes: "#4a3826", lips: "#ad7462", outfit: "#5a4632", shirt: "#e9e4d8", accent: "#ffa3cf", style: "receding", beard: "", glasses: "square", age: 1, cardigan: true, bg: "#4a4022" },
+  shelby: { g: "f", skin: "#edc7a6", shade: "#c79a76", hair: "#9a5b2a", eyes: "#3a7d4a", lips: "#c06a5e", outfit: "#2f5b4a", shirt: "#f1ece0", accent: "#2ecc71", style: "long", beard: "", jewel: true, bg: "#2a4a3a" },
+  ysyss: { g: "f", skin: "#c89a73", shade: "#9c7250", hair: "#1a1512", eyes: "#4a5a7a", lips: "#a85c52", outfit: "#2b3550", shirt: "#dfe6f0", accent: "#36d6e7", style: "bun", beard: "", glasses: "round", bg: "#233050" },
+  lexy: { g: "f", skin: "#f2d3bc", shade: "#cba588", hair: "#d8b84a", eyes: "#5a7a8a", lips: "#c85a68", outfit: "#39323f", shirt: "#f2e7ea", accent: "#f03ccf", style: "bob", beard: "", jewel: true, bg: "#46323a" },
 };
 const CREATED = [
   { g: "m", skin: "#d8b08f", shade: "#b0835f", hair: "#3a2a1e", eyes: "#3b5a40", lips: "#a96a58", outfit: "#2c3e50", shirt: "#e6e6e6", accent: "#8bd450", style: "side", beard: "", bg: "#2a3d36" },
