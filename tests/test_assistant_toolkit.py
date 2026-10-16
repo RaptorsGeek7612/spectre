@@ -243,7 +243,9 @@ def test_subtitles_voice_and_burn_in_commands(ctx: Any) -> None:
     with pytest.raises(ActionError):
         toolkit.run(ctx, "incruster", "clip.mp4")
     burn = " ".join(ctx.runner.calls[-1])
-    assert "subtitles='" in burn and r"\:" in burn and burn.endswith("clip-soustitree.mp4")
+    assert "subtitles='" in burn and burn.endswith("clip-soustitree.mp4")
+    # the drive colon is escaped for ffmpeg's filter (checked on a path, OS-independent)
+    assert toolkit._subtitle_filter(Path("C:/v/clip.srt")) == r"subtitles='C\:/v/clip.srt'"
     with pytest.raises(ActionError):
         toolkit.run(ctx, "voix_off", "texte.txt", "3")
     voice = ctx.runner.calls[-1]
