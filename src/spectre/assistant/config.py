@@ -46,11 +46,11 @@ AGENT_DEPARTMENTS = {
     "opus": "Direction",
     "sonnet": "Exécution",
     "haiku": "Vérification",
-    "chatgpt": "Multimédia",
-    "mistral": "Cybersécurité",
-    "cursor": "Juridique",
+    "chatgpt": "Multimédia, production, pub et communication",
+    "mistral": "Cybersécurité et pentests",
+    "cursor": "Juridique et contrats",
     "antigravity": "Finances et assurances",
-    "simon": "Expertise comptable",
+    "simon": "Expertise comptable et trading",
     "shelby": "Animalier",
     "ysyss": "Sciences et savoirs",
     "lexy": "Jeux, paris et investissements",
@@ -70,18 +70,23 @@ AGENT_ROLES = {
     "rapports.",
     "sonnet": "Agent d'exécution par défaut : il mène les étapes des missions.",
     "haiku": "Le vérificateur : il contrôle chaque étape des missions ; rapide.",
-    "chatgpt": "Images, vidéo et multimédia (via Codex, sur ton compte ChatGPT) ; elle crée "
-    "les images et les vidéos sur ce PC avec ComfyUI.",
-    "mistral": "Cybersécurité et tests d'intrusion, sur un périmètre autorisé uniquement "
-    "(via Vibe, sur ton compte Le Chat).",
+    "chatgpt": "Images, vidéo et multimédia, publicité et communication (via Codex, sur ton "
+    "compte ChatGPT) ; productrice et réalisatrice de clips, séries et films ; elle crée les "
+    "images et les vidéos sur ce PC avec ComfyUI et les décline pour chaque réseau.",
+    "mistral": "Cybersécurité et expert de tous les types de tests d'intrusion (web, réseau, "
+    "AD, cloud, mobile, red team), sur un périmètre autorisé uniquement (via Vibe, sur ton "
+    "compte Le Chat).",
     "cursor": "Juridique : statuts, contrats, CGV et CGU, RGPD, propriété intellectuelle, "
-    "conformité (via Cursor, sur ton compte Cursor).",
+    "conformité ; experte de tous les contrats en droit français, européen et international "
+    "(via Cursor, sur ton compte Cursor).",
     "antigravity": "Finances et assurances : trésorerie, budget, prévisionnel, financement, "
     "levée de fonds, contrats d'assurance (via Antigravity, sur ton compte Google).",
     "simon": "Expert-comptable : comptabilité, TVA, liasses et bilans, charges sociales, "
-    "fiscalité de l'entreprise (sur DeepSeek, avec ta clé).",
+    "fiscalité de l'entreprise ; expert et formateur en trading, données de marché en temps "
+    "réel (sur DeepSeek, avec ta clé).",
     "shelby": "Animalière : culture animale, comportement et éducation, biologie, santé et "
-    "soins, toilettage de toutes les espèces.",
+    "soins, toilettage de toutes les espèces ; experte de la nature, de la biodiversité et des "
+    "impacts du climat (air, terre, mer), données ouvertes en temps réel.",
     "ysyss": "Sciences et être humain : physique, chimie, maths, biologie, astronomie, "
     "santé, psychologie, langues et dialectes, sports, arts et cultures.",
     "lexy": "Jeux d'argent, paris sportifs, investissement et bourse, blockchain, NFT et "

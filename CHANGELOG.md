@@ -7,6 +7,51 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-16
+
+### Added
+- **Kyra, experte pub et communication** : compétence `spectre-pub-communication` (brief,
+  plateforme de marque, AIDA/PAS/BAB/4U/FAB/StoryBrand, déclinaison par réseau, KPI et UTM,
+  droit français de la publicité) et outils libres dans `toolkit`, réservés à Kyra :
+  `video_info` (ffprobe), `video_format`/`image_format` (FFmpeg/ImageMagick : story, fil,
+  carre, paysage), `sous_titres` (Whisper), `incruster` (sous-titres gravés), `detourage`
+  (rembg), `voix_off` (Kokoro, voix française), `agrandir` (Real-ESRGAN). Chaque outil crée un
+  nouveau fichier à côté de la source et échoue si rien n'a été produit.
+- **Kyra, productrice et réalisatrice** (clips, séries, films) : compétence
+  `spectre-production-audiovisuelle` (chaîne de production, bible, découpage, storyboard,
+  grammaire des plans, montage, son, étalonnage, livraison, droit) et outils `scenario_pdf`
+  (Screenplain), `plans` (PySceneDetect), `derushage` (auto-editor), `loudness` (EBU R128).
+- Compétences `spectre-post-production-libre` (étalonnage sans DaVinci, storyboard et
+  animatique, DCP-o-matic, vidéo IA sur GPU loué, Penpot) et `spectre-diffusion-marketing`
+  (Postiz, listmonk, Mautic, Umami : méthode manuelle maintenant, auto-hébergement plus tard).
+- **Simon, expert et formateur en trading** : compétence `spectre-trading` (histoire des marchés
+  de 1602 à 2026, fonctionnement, instruments, tous les styles, analyse, risque, psychologie,
+  backtest, prop firms, régulation et fiscalité 2026, cursus du débutant à l'expert) et outils
+  `marche` (prix en temps réel des cryptos via Kraken, cours et indicateurs via Yahoo, carnet
+  d'ordres ; toujours datés et sourcés) et `trading` (taille de position, espérance,
+  gain/risque, drawdown), réservés à Simon et Lexy.
+- **Shelby, experte de la nature et du climat** : compétence `spectre-nature-climat`
+  (biodiversité, cinq pressions, état 2026, impacts du climat dans les airs, sur terre, en eau
+  douce et en mer, accords, sciences participatives) et outil `nature` (module `nature.py` :
+  GBIF et UICN, OBIS, Open-Meteo et ERA5 — espèce, observations, vie marine, météo, écart
+  climatique ; datés et sourcés), réservé à Shelby et Ysyss.
+- **Octavya, experte de tous les contrats** : compétences `spectre-contrats` (méthode,
+  droit commun réformé, commercial, consommation, travail, immobilier, sociétés, SaaS, PI,
+  sûretés, jurisprudence 2026) et `spectre-contrats-europe-international` (Rome I, Bruxelles I
+  bis, consommateurs et bouton de rétractation, RGPD, Data Act, AI Act, DORA, CVIM, UNIDROIT,
+  Incoterms 2020, arbitrage, common law), outil `contrat` (module `contracts.py` : analyser un
+  contrat .docx/.txt/.md, comparer deux versions en HTML), réservé à Octavya.
+- **Spectre, directeur** : compétence `spectre-management` (diriger selon la taille de
+  l'entreprise, attentes réciproques directeur-équipe, entretiens individuels, délégation,
+  feedback, recrutement, OKR, EOS, 4DX, RACI, conduite du changement, droit du travail du
+  manager, direction de sa propre équipe d'agents), chargée d'office par le cerveau.
+- **Syfer, expert de tous les types de pentests** : compétence `spectre-pentest` (méthodologie
+  PTES, OWASP WSTG/MASTG, MITRE ATT&CK v19 ; web, API, réseau, Active Directory, cloud, mobile,
+  sans-fil, ingénierie sociale, IoT, LLM, red team ; phases, CVSS, rapport, formation ; cadre
+  légal strict — cible autorisée, impact minimal, confidentialité) et nouveaux outils `toolkit`
+  réservés à Syfer : trufflehog (secrets, local=lecture), nmap, subfinder, httpx (cible
+  autorisée, distant=validation).
+
 ## [0.17.0] - 2026-10-15
 
 ### Added

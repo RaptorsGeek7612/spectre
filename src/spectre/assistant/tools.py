@@ -119,7 +119,8 @@ def _create_agent(
 def _list_agents(ctx: ActionContext) -> str:
     builtin = (
         "Spectre (opus, toi), Gétro (sonnet), Kaïto (haiku, vérificateur), Kyra (chatgpt, "
-        "Codex, multimédia), Syfer (mistral, Vibe, cybersécurité), Octavya (cursor, juridique), "
+        "Codex, multimédia, pub et communication), Syfer (mistral, Vibe, cybersécurité), "
+        "Octavya (cursor, juridique), "
         "Clarke (antigravity, finances et assurances), Simon (DeepSeek, expert-comptable), "
         "Shelby (animalier), Ysyss (sciences et humain), Lexy (jeux, paris, bourse, crypto) ; "
         "rédaction : Scout, Scribe, Warden"
@@ -517,6 +518,41 @@ def _toolkit_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]
 
     kit = toolkit.KITS.get(str(args.get("name", "")))
     return (kit.level, kit.category) if kit else (Level.READ, "read")
+
+
+def _trading(ctx: ActionContext, operation: str, values: list[float]) -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.trading(operation, list(values))
+
+
+def _market(ctx: ActionContext, operation: str, symbol: str, options: str = "") -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.market(operation, symbol, options)
+
+
+def _nature(ctx: ActionContext, operation: str, subject: str, options: str = "") -> str:
+    from spectre.assistant import nature
+
+    return nature.nature(operation, subject, options)
+
+
+def _contract(ctx: ActionContext, operation: str, target: str, options: str = "") -> str:
+    from spectre.assistant import contracts
+
+    try:
+        return contracts.contract(ctx, operation, target, options)
+    except ActionError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise ActionError(str(exc)) from exc
+
+
+def _contract_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
+    if str(args.get("operation", "")).strip().lower() == "comparer":
+        return Level.WRITE, "convert"  # writes the HTML comparison next to the contract
+    return Level.READ, "read"
 
 
 def _finance(ctx: ActionContext, operation: str, values: list[float]) -> str:
@@ -1006,7 +1042,8 @@ TOOLS: dict[str, Tool] = {
             "Lancer une mission longue en arrière-plan (plan, étapes vérifiées, "
             "rapport). kind=redaction pour un texte soigné rédigé par Scout, Scribe et Warden. "
             "agent : qui exécute les étapes, par son nom ou son modèle. Kyra (chatgpt) pour les "
-            "images, vidéos et le multimédia ; Syfer (mistral) pour la cybersécurité et les tests "
+            "images, vidéos, le multimédia, la publicité et la communication ; Syfer "
+            "(mistral) pour la cybersécurité et les tests "
             "d'intrusion autorisés ; Octavya (cursor) pour le juridique ; Clarke (antigravity) "
             "pour les finances et les assurances ; Simon (simon, sur DeepSeek) pour la "
             "comptabilité, la TVA et la fiscalité ; Gétro (sonnet) ou Kaïto (haiku, rapide) "
@@ -1222,12 +1259,23 @@ TOOLS: dict[str, Tool] = {
         Tool(
             "toolkit",
             "Outils libres installés sur ce PC, chacun pour son métier. name : gitleaks (fuite "
-            "de secrets), trivy (vulnérabilités), semgrep (analyse de code), nuclei (scan d'une "
-            "adresse — autorisée, demande ta validation), vale et languagetool (style et "
+            "de secrets), trivy (vulnérabilités), semgrep (analyse de code), trufflehog "
+            "(secrets dans un dossier) ; sécu réseau/web sur cible AUTORISÉE, demande ta "
+            "validation : nuclei (scan de vulnérabilités d'une adresse), nmap (ports et "
+            "services), subfinder (sous-domaines d'un domaine), httpx (sonde HTTP). vale et "
+            "languagetool (style et "
             "grammaire d'un texte ; options = langue, fr par défaut), pandoc (conversion : "
-            "options = fichier de sortie), ocr (texte d'une image ; options = langue). target : "
-            "le fichier, le dossier ou l'adresse. Chaque agent ne voit que les outils de son "
-            "domaine.",
+            "options = fichier de sortie), ocr (texte d'une image ; options = langue). Pub et "
+            "multimédia (Kyra) : video_info (infos d'une vidéo), video_format et image_format "
+            "(recadrage pour un réseau ; options = story, fil, carre ou paysage), sous_titres "
+            "(fichier .srt ; options = langue), incruster (sous-titres gravés ; options = le "
+            ".srt, sinon celui de même nom), detourage (fond transparent), voix_off (voix "
+            "française d'un fichier .txt ; options = vitesse), agrandir (image ×4). Production "
+            "(Kyra) : scenario_pdf (scénario .fountain en PDF), plans (liste des plans d'une "
+            "vidéo), derushage (retire les silences d'un rush), loudness (son de diffusion ; "
+            "options = web ou tv). Ils créent "
+            "un nouveau fichier à côté de la source. target : le fichier, le dossier ou "
+            "l'adresse. Chaque agent ne voit que les outils de son domaine.",
             Level.READ,
             "scan",
             _toolkit,
@@ -1264,6 +1312,56 @@ TOOLS: dict[str, Tool] = {
             "read",
             _betting,
             agents=("lexy",),
+        ),
+        Tool(
+            "trading",
+            "Calculs de trading (Simon, Lexy). operation : taille_position (capital, risque en % "
+            "du capital, entrée, stop), esperance (taux de réussite, gain moyen, perte moyenne), "
+            "gain_risque (entrée, stop, objectif), drawdown (la suite des valeurs du capital). "
+            "values : les nombres. Un calcul, jamais un conseil ni un signal.",
+            Level.READ,
+            "read",
+            _trading,
+            agents=("simon", "lexy"),
+        ),
+        Tool(
+            "marche",
+            "Données de marché en lecture seule (Simon, Lexy). operation : prix (dernier prix ; "
+            "crypto en temps réel « BTC/EUR », action, indice ou forex « AAPL », « ^FCHI », "
+            "« EURUSD=X » parfois avec 15 min de retard), analyse (performance, volatilité, "
+            "drawdown, moyennes mobiles, RSI, ATR ; options = 1mo, 3mo, 6mo, 1y, 2y, 5y), carnet "
+            "(carnet d'ordres d'une crypto). symbol : le symbole. Cite toujours l'heure et la "
+            "source ; jamais un signal d'achat ou de vente.",
+            Level.READ,
+            "read",
+            _market,
+            agents=("simon", "lexy"),
+        ),
+        Tool(
+            "nature",
+            "Données ouvertes sur la nature et le climat (Shelby, Ysyss). operation : espece "
+            "(classification, noms français, statut UICN, observations), observations (par "
+            "année sur 10 ans ; options = code pays, FR par défaut), marin (vie marine, OBIS), "
+            "meteo (météo actuelle et mer d'un point), climat (écart des 30 derniers jours à "
+            "la normale 1991-2020). subject : l'espèce (nom latin de préférence) ou le point "
+            "« lat,lon ». Cite toujours la source et la date.",
+            Level.READ,
+            "read",
+            _nature,
+            agents=("shelby", "ysyss"),
+        ),
+        Tool(
+            "contrat",
+            "Outils de contrat (Octavya). operation : analyser (repère les clauses présentes "
+            "et absentes, dates, montants, délais et signaux d'alerte d'un contrat .docx, .txt "
+            "ou .md — une première lecture, pas un avis juridique), comparer (compare deux "
+            "versions et écrit un comparatif HTML à côté ; options = la seconde version). "
+            "target : le fichier du contrat.",
+            Level.READ,
+            "read",
+            _contract,
+            _contract_risk,
+            agents=("cursor",),
         ),
         Tool(
             "generate_image",

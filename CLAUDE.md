@@ -25,8 +25,18 @@ avant toute initiative), `spectre-amitie`, `spectre-developpement-humain` (sans 
 `spectre-crypto` (**sujet prioritaire** : jamais de clé/phrase, aucune transaction sans un oui, pas
 de promesse de gain), `spectre-langage` / `spectre-langage-anglais` (comprendre tout, employer peu),
 `spectre-entrepreneur` (parler en chef d'entreprise), `spectre-animaux` (vers vétérinaire pour la
-santé), `spectre-jeux-argent` (risques, jeu responsable, crypto). Skills **labo** (Docker à
-`C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
+santé), `spectre-jeux-argent` (risques, jeu responsable, crypto),
+`spectre-pub-communication` (Kyra : brief, cadres de rédaction, formats réseaux, droit de la
+pub), `spectre-production-audiovisuelle` (Kyra : clips, séries, films, de l'idée à la livraison),
+`spectre-post-production-libre` et `spectre-diffusion-marketing` (Kyra : contournements libres
+de ce qui ne s'installe pas ici), `spectre-trading` (Simon : histoire, styles, risque,
+formation, fiscalité ; outils `marche` et `trading`), `spectre-nature-climat` (Shelby :
+biodiversité, climat air/terre/mer ; outil `nature`, module `nature.py`), `spectre-contrats`
+et `spectre-contrats-europe-international` (Octavya : tous les contrats, France, UE,
+international ; outil `contrat`, module `contracts.py`), `spectre-management` (Spectre :
+diriger une équipe en TPE, PME, ETI ou grand groupe, et sa propre équipe d'agents),
+`spectre-pentest` (Syfer : tous les types de tests d'intrusion, cadre légal strict ; outils
+toolkit nmap/subfinder/httpx/trufflehog). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
 charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
 
 ## Commandes (Windows : `uv run`, pas d'activation de venv)

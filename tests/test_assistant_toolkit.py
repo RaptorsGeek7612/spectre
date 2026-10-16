@@ -186,3 +186,215 @@ def test_remote_scan_waits_for_approval(ctx: Any) -> None:
     )
     assert answer.startswith("EN ATTENTE DE VALIDATION")
     assert ctx.runner.calls == []  # not run until the user approves
+
+
+# ---- Kyra: advertising and communication media ----------------------------------------------
+
+
+def test_media_tools_are_kyras(ctx: Any) -> None:
+    for name in ("video_format", "image_format", "sous_titres", "detourage", "voix_off"):
+        assert toolkit.KITS[name].agents == ("chatgpt",)
+        assert toolkit.KITS[name].level == Level.WRITE
+    ctx.agent = "lexy"
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "video_format", "leak.txt", "story")
+
+
+def test_video_format_crops_to_the_network_frame(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    (ctx.allowed_roots[0] / "spot.mp4").write_bytes(b"v")
+    calls: list[list[str]] = []
+    made = toolkit.KITS["video_format"].output(ctx, "spot.mp4", "story")  # type: ignore[misc]
+
+    def run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(cmd)
+        made.write_bytes(b"x")
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    ctx.runner = run
+    out = toolkit.run(ctx, "video_format", "spot.mp4", "story")
+    assert out.startswith("Fichier créé") and made.name == "spot-story.mp4"
+    assert "crop=1080:1920" in " ".join(calls[0]) and "-n" in calls[0]  # never overwrites
+    with pytest.raises(ActionError, match="format inconnu"):
+        toolkit.run(ctx, "video_format", "spot.mp4", "panorama")
+
+
+def test_media_tool_fails_without_its_file(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    (ctx.allowed_roots[0] / "pic.jpg").write_bytes(b"i")
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "", "")  # ran, but wrote nothing
+    with pytest.raises(ActionError, match="aucun fichier produit"):
+        toolkit.run(ctx, "detourage", "pic.jpg")
+    assert ctx.runner.calls[0][-1].endswith("pic-detoure.png")
+
+
+def test_subtitles_voice_and_burn_in_commands(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    home = ctx.allowed_roots[0]
+    for name in ("clip.mp4", "texte.txt"):
+        (home / name).write_bytes(b"x")
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "", "")
+    with pytest.raises(ActionError):  # the fake runner writes nothing
+        toolkit.run(ctx, "sous_titres", "clip.mp4", "en")
+    assert ctx.runner.calls[-1][ctx.runner.calls[-1].index("--language") + 1] == "en"
+    with pytest.raises(ActionError, match="deux lettres"):
+        toolkit.run(ctx, "sous_titres", "clip.mp4", "français")
+    (home / "clip.srt").write_bytes(b"1")
+    with pytest.raises(ActionError):
+        toolkit.run(ctx, "incruster", "clip.mp4")
+    burn = " ".join(ctx.runner.calls[-1])
+    assert "subtitles='" in burn and burn.endswith("clip-soustitree.mp4")
+    # the drive colon is escaped for ffmpeg's filter (checked on a path, OS-independent)
+    assert toolkit._subtitle_filter(Path("C:/v/clip.srt")) == r"subtitles='C\:/v/clip.srt'"
+    with pytest.raises(ActionError):
+        toolkit.run(ctx, "voix_off", "texte.txt", "3")
+    voice = ctx.runner.calls[-1]
+    assert voice[voice.index("--speed") + 1] == "2.0" and "fr-fr" in voice  # speed is bounded
+    with pytest.raises(ActionError, match="vitesse"):
+        toolkit.run(ctx, "voix_off", "texte.txt", "vite")
+
+
+def test_production_tools_commands(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    home = ctx.allowed_roots[0]
+    for name in ("film.fountain", "rush.mp4"):
+        (home / name).write_bytes(b"x")
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "", "")
+    for name, target, options, ends in (
+        ("scenario_pdf", "film.fountain", "", "film-scenario.pdf"),
+        ("derushage", "rush.mp4", "", "--no-open"),
+        ("loudness", "rush.mp4", "tv", "rush-23lufs.mp4"),
+        ("plans", "rush.mp4", "", "rush-plans.csv"),
+    ):
+        with pytest.raises(ActionError, match="aucun fichier produit"):
+            toolkit.run(ctx, name, target, options)
+        assert ctx.runner.calls[-1][-1].endswith(ends), name
+    assert "loudnorm=I=-23" in " ".join(ctx.runner.calls[2])
+    with pytest.raises(ActionError, match="web"):
+        toolkit.run(ctx, "loudness", "rush.mp4", "cinema")
+    ctx.agent = "scribe"  # writers may lay out a screenplay, not edit rushes
+    with pytest.raises(ActionError, match="aucun fichier produit"):
+        toolkit.run(ctx, "scenario_pdf", "film.fountain")
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "derushage", "rush.mp4")
+
+
+# ---- Simon: trading maths and market data ---------------------------------------------------
+
+
+def test_trading_operations() -> None:
+    size = toolkit.trading("taille_position", [10000, 1, 100, 95])
+    assert "20 unités" in size and "100.00" in size  # 1 % of 10 000 = 100 at risk, 5 per unit
+    assert "+0.20 R" in toolkit.trading("esperance", [40, 200, 100])  # 0.4*200 - 0.6*100 = 20
+    assert "33.3 %" in toolkit.trading("esperance", [0.5, 200, 100])  # breakeven win rate
+    assert "2.00 R" in toolkit.trading("gain_risque", [100, 95, 110])
+    assert "-50.0 %" in toolkit.trading("drawdown", [100, 200, 100, 150])
+    with pytest.raises(ActionError, match="opération inconnue"):
+        toolkit.trading("martingale", [1])
+    with pytest.raises(ActionError, match="calcul impossible"):
+        toolkit.trading("taille_position", [1000, 1, 100, 100])  # stop on the entry
+
+
+def _candles(closes: list[float]) -> list[list[float]]:
+    return [[i * 86_400_000.0, c, c * 1.01, c * 0.99, c, 1.0] for i, c in enumerate(closes)]
+
+
+def test_indicators_from_candles() -> None:
+    rising = toolkit.indicators(_candles([100 + i for i in range(60)]))
+    assert rising["rsi14"] == 100.0 and rising["sma50"] is not None and rising["sma200"] is None
+    assert rising["drawdown"] == 0.0 and (rising["performance"] or 0) > 0.5
+    falling = toolkit.indicators(_candles([100, 50, 75]))
+    assert falling["drawdown"] == pytest.approx(-0.5)
+    with pytest.raises(ActionError, match="pas assez"):
+        toolkit.indicators(_candles([1]))
+
+
+def test_market_is_dated_and_sourced(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        toolkit,
+        "_crypto_ticker",
+        lambda s: {"last": 70000, "bid": 69990, "ask": 70010, "percentage": 1.5, "timestamp": 0},
+    )
+    monkeypatch.setattr(
+        toolkit, "_crypto_book", lambda s: {"bids": [[69990, 1]], "asks": [[70010, 2]]}
+    )
+    monkeypatch.setattr(toolkit, "_yahoo_daily", lambda s, p: _candles([100.0] * 30 + [110.0]))
+    monkeypatch.setattr(toolkit, "_crypto_daily", lambda s, d: _candles([1.0, 2.0]))
+    price = toolkit.market("prix", "btc/eur")
+    assert "BTC/EUR : 70000" in price and "temps réel" in price and "UTC" in price
+    stock = toolkit.market("prix", "^FCHI")
+    assert "+10.00%" in stock and "retard" in stock
+    assert "écart 20" in toolkit.market("carnet", "BTC/EUR")
+    report = toolkit.market("analyse", "AAPL", "3mo")
+    assert "RSI14" in report and "pas un signal" in report
+    assert "performance +100.0%" in toolkit.market("analyse", "ETH/EUR", "")
+    with pytest.raises(ActionError, match="crypto"):
+        toolkit.market("carnet", "AAPL")
+    with pytest.raises(ActionError, match="période"):
+        toolkit.market("analyse", "AAPL", "10y")
+    with pytest.raises(ActionError, match="symbole"):
+        toolkit.market("prix", " ")
+
+    def down(symbol: str) -> dict[str, Any]:
+        raise OSError("réseau coupé")
+
+    monkeypatch.setattr(toolkit, "_crypto_ticker", down)
+    with pytest.raises(ActionError, match="injoignable"):
+        toolkit.market("prix", "BTC/EUR")
+
+
+def test_market_tools_are_simons_and_lexys(ctx: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(toolkit, "market", lambda op, sym, opt="": f"{op} {sym}")
+    gate = Gate(ctx.db)
+    ctx.agent = "simon"
+    assert tools_mod.execute(gate, ctx, "marche", {"operation": "prix", "symbol": "AAPL"}) == (
+        "prix AAPL"
+    )
+    assert "R" in tools_mod.execute(
+        gate, ctx, "trading", {"operation": "gain_risque", "values": [100, 95, 110]}
+    )
+    ctx.agent = "shelby"
+    refused = tools_mod.execute(gate, ctx, "marche", {"operation": "prix", "symbol": "AAPL"})
+    assert refused.startswith("REFUSÉ")
+
+
+# ---- Syfer: more pentest tools (authorized scans) -------------------------------------------
+
+
+def test_recon_tools_are_syfers_and_remote(ctx: Any) -> None:
+    for name in ("nmap", "subfinder", "httpx"):
+        assert toolkit.KITS[name].agents == ("mistral",)
+        assert toolkit.KITS[name].remote and toolkit.KITS[name].level == Level.EXTERNAL
+        assert tools_mod._toolkit_risk(ctx, {"name": name}) == (Level.EXTERNAL, "scan_remote")
+    assert not toolkit.KITS["trufflehog"].remote  # secrets in a local folder = a read
+    assert toolkit.KITS["trufflehog"].level == Level.READ
+
+
+def test_recon_commands(ctx: Any) -> None:
+    ctx.agent = "mistral"
+    toolkit.run(ctx, "nmap", "juice-shop")
+    cmd = ctx.runner.calls[-1]
+    assert "-sT" in cmd and "-sV" in cmd and cmd[-1] == "juice-shop"  # connect scan, target last
+    toolkit.run(ctx, "subfinder", "example.com")
+    assert ctx.runner.calls[-1][1:] == ["-d", "example.com", "-silent"]
+    toolkit.run(ctx, "httpx", "http://juice-shop:3000")
+    assert "-tech-detect" in ctx.runner.calls[-1]
+
+
+def test_trufflehog_scans_a_local_folder(ctx: Any) -> None:
+    ctx.agent = "mistral"
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "no secrets", "")
+    toolkit.run(ctx, "trufflehog", "leak.txt")
+    cmd = ctx.runner.calls[-1]
+    assert cmd[1] == "filesystem" and cmd[2].endswith("leak.txt")
+    ctx.agent = "shelby"  # not Syfer's domain
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "nmap", "juice-shop")
+
+
+def test_remote_recon_waits_for_approval(ctx: Any) -> None:
+    gate = Gate(ctx.db, auto_max_level=int(Level.WRITE))
+    ctx.agent = "mistral"
+    answer = tools_mod.execute(gate, ctx, "toolkit", {"name": "nmap", "target": "juice-shop"})
+    assert answer.startswith("EN ATTENTE DE VALIDATION")
+    assert ctx.runner.calls == []  # never runs a remote scan without the user's go
