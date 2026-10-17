@@ -7,6 +7,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-17
+
+### Changed
+- **Budget d'actions relevé et réglable** : 60 actions par minute et 3 000 par jour (au lieu
+  de 20 et 500), modifiables dans les Réglages (`actions_per_minute`, `actions_per_day`).
+
+### Fixed
+- Les actions refusées et les demandes de validation ne comptent plus dans le budget : une
+  fois le plafond atteint, chaque refus « budget dépassé » prolongeait le blocage.
+
 ## [0.20.0] - 2026-10-16
 
 ### Added
