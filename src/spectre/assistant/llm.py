@@ -84,7 +84,12 @@ def gate_caller(root: Path, config: AssistantConfig) -> ToolCall:
     from spectre.assistant.tools import execute, make_context
 
     db = Database(root / "spectre.db")
-    gate = Gate(db, auto_max_level=config.auto_max_level)
+    gate = Gate(
+        db,
+        auto_max_level=config.auto_max_level,
+        per_minute=config.actions_per_minute,
+        per_day=config.actions_per_day,
+    )
     ctx = make_context(db, root, config.allowed_roots)
 
     def call(name: str, args: dict[str, Any]) -> str:

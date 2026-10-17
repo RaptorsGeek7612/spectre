@@ -57,7 +57,12 @@ def main() -> None:  # pragma: no cover - launched by Claude Code over stdio
     root = assistant_dir()
     config = AssistantConfig.load(root)
     db = Database(root / "spectre.db")
-    gate = Gate(db, auto_max_level=config.auto_max_level)
+    gate = Gate(
+        db,
+        auto_max_level=config.auto_max_level,
+        per_minute=config.actions_per_minute,
+        per_day=config.actions_per_day,
+    )
     ctx = make_context(db, root, config.allowed_roots)
     ctx.agent = os.environ.get("SPECTRE_AGENT", "")
     mission = os.environ.get("SPECTRE_MISSION", "")

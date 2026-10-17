@@ -182,6 +182,10 @@ def test_gate_budgets(db: Database) -> None:
     daily = Gate(db, per_day=2)
     assert daily.decide(Level.READ, "read").verdict == "refused"
     assert len(db.all("SELECT * FROM audit")) == 2
+    # refusals and pending approvals do not eat the budget
+    daily.record("c", {}, Level.READ, "read", "refused", "budget")
+    daily.record("d", {}, Level.WRITE, "x", "approval", "demande #1")
+    assert Gate(db, per_day=3).decide(Level.READ, "read").verdict == "auto"
 
 
 # ---- actions ------------------------------------------------------------------------------

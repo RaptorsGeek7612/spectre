@@ -63,7 +63,12 @@ class AssistantService:
         self.config = config or AssistantConfig.load(root)
         self.db = Database(root / "spectre.db")
         self.memory = Memory(self.db)
-        self.gate = Gate(self.db, auto_max_level=self.config.auto_max_level)
+        self.gate = Gate(
+            self.db,
+            auto_max_level=self.config.auto_max_level,
+            per_minute=self.config.actions_per_minute,
+            per_day=self.config.actions_per_day,
+        )
         self.ctx = tools.make_context(self.db, root, self.config.allowed_roots)
         self.cli = cli or ClaudeCLI(self.config, root)
         self.brain = Brain(self.db, self.cli, self.config)
@@ -212,6 +217,8 @@ class AssistantService:
     def _apply_config(self) -> None:
         cfg = self.config
         self.gate.auto_max_level = cfg.auto_max_level
+        self.gate.per_minute = cfg.actions_per_minute
+        self.gate.per_day = cfg.actions_per_day
         self.missions.model = cfg.mission_model
         self.missions.lead_model = cfg.planner_model or cfg.brain_model
         self.missions.verifier_model = cfg.verifier_model
