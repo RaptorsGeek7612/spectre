@@ -79,8 +79,8 @@ class Gate:
         *,
         auto_max_level: int = int(Level.WRITE),
         policies: dict[str, Policy] | None = None,
-        per_minute: int = 20,
-        per_day: int = 500,
+        per_minute: int = 60,
+        per_day: int = 3000,
     ) -> None:
         self.db = db
         self.auto_max_level = auto_max_level
@@ -115,7 +115,11 @@ class Gate:
         if len(self._recent) >= self.per_minute:
             return False
         day = now_iso()[:10]
-        row = self.db.one("SELECT COUNT(*) AS n FROM audit WHERE substr(ts, 1, 10) = ?", (day,))
+        row = self.db.one(
+            "SELECT COUNT(*) AS n FROM audit WHERE substr(ts, 1, 10) = ? "
+            "AND decision NOT IN ('refused', 'approval')",
+            (day,),
+        )
         return not (row and row["n"] >= self.per_day)
 
     def record(
@@ -127,8 +131,9 @@ class Gate:
         decision: str,
         result: str,
     ) -> None:
-        """Append to the immutable audit log (and count towards the budget)."""
-        self._recent.append(time.monotonic())
+        """Append to the immutable audit log; only actions that ran count towards the budget."""
+        if decision not in ("refused", "approval"):
+            self._recent.append(time.monotonic())
         self.db.execute(
             "INSERT INTO audit(ts, tool, args, level, category, decision, result) "
             "VALUES(?, ?, ?, ?, ?, ?, ?)",
