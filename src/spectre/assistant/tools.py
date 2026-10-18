@@ -630,6 +630,39 @@ def _forget_lesson(ctx: ActionContext, lesson_id: int) -> str:
     return f"leçon #{row['id']} archivée"
 
 
+def _prepare_payment(
+    ctx: ActionContext,
+    beneficiary: str,
+    amount: str,
+    reference: str = "",
+    iban: str = "",
+    bic: str = "",
+    url: str = "",
+    purpose: str = "",
+) -> str:
+    from spectre.assistant import payments
+
+    return payments.prepare(ctx, beneficiary, amount, reference, iban, bic, url, purpose)
+
+
+def _payments(ctx: ActionContext, status: str = "") -> str:
+    from spectre.assistant import payments
+
+    return payments.listing(ctx, status)
+
+
+def _mark_paid(ctx: ActionContext, payment_id: int) -> str:
+    from spectre.assistant import payments
+
+    return payments.mark_paid(ctx, payment_id)
+
+
+def _cancel_payment(ctx: ActionContext, payment_id: int) -> str:
+    from spectre.assistant import payments
+
+    return payments.cancel(ctx, payment_id)
+
+
 def _tool_updates(ctx: ActionContext) -> str:
     from spectre.assistant import updates
 
@@ -1509,6 +1542,44 @@ TOOLS: dict[str, Tool] = {
             Level.WRITE,
             "memory",
             _forget_lesson,
+            lead_only=True,
+        ),
+        Tool(
+            "prepare_payment",
+            "Préparer un paiement que l'utilisateur fera lui-même : TOUJOURS avec sa "
+            "validation explicite, à chaque fois. beneficiary : le nom du bénéficiaire ; "
+            "amount : le montant en euros (ex. 49,90) ; reference : la référence (facture, "
+            "commande) ; iban (+ bic facultatif) pour un virement SEPA, ou url : la page de "
+            "paiement https du marchand ; purpose : pourquoi (une phrase). Après le oui, "
+            "Spectre donne un QR code de virement à scanner avec l'appli bancaire et/ou ouvre "
+            "la page du marchand : rien n'est débité sans la confirmation de l'utilisateur "
+            "dans sa banque. Jamais d'identifiant bancaire, de carte ni de clé.",
+            Level.EXTERNAL,
+            "payment",
+            _prepare_payment,
+        ),
+        Tool(
+            "payments",
+            "Le registre des paiements préparés : status = a_payer, paye ou annule (vide = tous).",
+            Level.READ,
+            "read",
+            _payments,
+        ),
+        Tool(
+            "mark_paid",
+            "Noter qu'un paiement préparé a été fait (quand l'utilisateur le confirme). "
+            "payment_id : son numéro.",
+            Level.WRITE,
+            "memory",
+            _mark_paid,
+            lead_only=True,
+        ),
+        Tool(
+            "cancel_payment",
+            "Annuler un paiement préparé et pas encore fait. payment_id : son numéro.",
+            Level.WRITE,
+            "memory",
+            _cancel_payment,
             lead_only=True,
         ),
         Tool(
