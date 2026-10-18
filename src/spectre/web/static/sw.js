@@ -1,6 +1,6 @@
 // Spectre service worker: caches the app shell so the UI opens instantly and installs as an app.
 // API calls (/api/...) are never cached: runs, history and settings always come from the server.
-const CACHE = "spectre-shell-v5";
+const CACHE = "spectre-shell-v6";
 const SHELL = [
   "./", "index.html", "app.css", "app.js", "demo.json", "favicon.svg", "logo.svg", "manifest.webmanifest",
   "fonts/fonts.css", "icons/icon-192.png",

@@ -7,6 +7,30 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Pièces jointes dans la conversation avec Spectre** : trombone, coller (Ctrl+V, captures
+  d'écran comprises) et glisser-déposer, jusqu'à 10 fichiers de 15 Mo par message. Les fichiers
+  sont gardés dans `workspace/pieces-jointes/` et Spectre les lit lui-même (images, PDF,
+  documents) avec l'outil `Read` de Claude Code, limité à ce dossier ; un court fichier texte
+  est aussi recopié dans le message pour les autres moteurs.
+- **Pièces jointes dans la Rédaction** : en plus du texte, Word (.docx), OpenDocument (.odt),
+  PDF et images (lecture par l'OCR Tesseract) ; coller et glisser-déposer. Le serveur extrait le
+  texte (`POST /api/attachments`, module `spectre/attachments.py`, dépendance `pypdf`).
+- **Spectre équipe ses sous-agents en outils** (fiches d'outils, module `agent_tools.py`) :
+  `agent_tool_save` écrit une fiche (programme, arguments avec `{cible}` et `{options}`,
+  agents, niveau lecture/écriture/distant) dans `~/.spectre/assistant/outils-agents/`, que
+  l'outil `toolkit` lance comme les outils intégrés ; `agent_tool_install` installe le
+  programme (winget ou uv tool) ; `agent_tool_delete` retire la fiche ; `installed_programs`
+  recense les logiciels déjà installés sur le PC ; `outils_agents` liste ceux de chaque agent.
+  Jamais de code Python modifié, jamais de shell ni d'interpréteur ; créer, retirer et
+  installer attendent toujours la validation de l'utilisateur.
+
+### Changed
+- Spectre peut parfois prendre seul une petite décision réversible et sans enjeu ; une
+  inscription ou un paiement exige toujours l'autorisation explicite de l'utilisateur, pour
+  lui comme pour ses sous-agents (prompt du cerveau, prompt WORKER, compétence
+  `spectre-personnalite`).
+
 ## [0.21.0] - 2026-10-17
 
 ### Changed

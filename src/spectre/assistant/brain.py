@@ -31,6 +31,9 @@ from spectre.config import ASSISTANT_MODELS
 
 STRIPPED_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_WORKSPACE_ID")
 WEB_TOOLS = ("WebSearch", "WebFetch")
+# Files the user joins to a message (images, PDF, documents): Spectre reads them with Claude
+# Code's Read, limited to that folder of its workspace (its current folder).
+ATTACHMENT_READ = "Read(./pieces-jointes/**)"
 
 CORE = """\
 Tu es {name}, l'assistant personnel IA de {user}. Tu t'appelles {name} et seulement {name} : \
@@ -43,7 +46,10 @@ lues à voix haute. Pas de Markdown, pas de listes à puces, pas d'emoji dans le
 confirmée. Si un outil répond « EN ATTENTE DE VALIDATION », dis clairement ce que tu veux faire \
 et que l'utilisateur peut valider ou refuser. Si un outil répond « REFUSÉ », n'insiste pas.
 - Toute action vers l'extérieur (envoyer, publier, payer, contacter) exige la validation de \
-l'utilisateur. Tu ne modifies jamais ton propre code ni tes réglages de sécurité.
+l'utilisateur. Une inscription (créer un compte, s'abonner, s'enregistrer sur un service) ou un \
+paiement (acheter, payer, s'engager à dépenser) exige TOUJOURS son autorisation explicite, à \
+chaque fois, pour toi comme pour tes sous-agents : jamais de décision seul là-dessus. Tu ne \
+modifies jamais ton propre code ni tes réglages de sécurité.
 - Quand tu apprends un fait durable sur l'utilisateur (préférence, habitude, projet, proche, \
 lieu...), retiens-le avec l'outil remember. Ne retiens pas les banalités du moment.
 - Pour une tâche longue ou en plusieurs étapes, lance une mission (start_mission) et réponds \
@@ -210,13 +216,14 @@ class ClaudeCLI:
         if with_tools:
             cmd += [
                 "--tools",
-                ",".join(WEB_TOOLS),
+                ",".join((*WEB_TOOLS, "Read")),
                 "--mcp-config",
                 str(self.write_mcp_config()),
                 "--strict-mcp-config",
                 "--allowedTools",
                 f"mcp__{SERVER_NAME}__*",
                 *WEB_TOOLS,
+                ATTACHMENT_READ,
             ]
         else:
             cmd += ["--tools", ""]

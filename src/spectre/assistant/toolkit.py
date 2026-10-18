@@ -939,7 +939,13 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
     """Run one toolkit program and return its output (truncated)."""
     kit = KITS.get(name)
     if kit is None:
-        raise ActionError(f"outil inconnu : {name} (au choix : {', '.join(KITS)})")
+        from spectre.assistant import agent_tools
+
+        if agent_tools.load(ctx.root, name) is not None:  # a tool Spectre gave its agents
+            return agent_tools.run(ctx, name, target, options)
+        raise ActionError(
+            f"outil inconnu : {name} (au choix : {', '.join(KITS)}, ou ceux de outils_agents)"
+        )
     if kit.agents and ctx.agent not in ("", "opus", *kit.agents):
         raise ActionError(f"{kit.label} n'est pas un outil de ton domaine")
     if _bin(kit.bins) is None or (name == "languagetool" and not LANGUAGETOOL.is_file()):

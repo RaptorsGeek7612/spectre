@@ -112,6 +112,8 @@ def test_long_system_prompt_stays_off_the_command_line(tmp_path: Path) -> None:
     ]
     assert server["command"] == sys.executable
     assert server["env"] == {"SPECTRE_ASSISTANT_DIR": str(tmp_path)}
+    assert cmd[cmd.index("--tools") + 1] == "WebSearch,WebFetch,Read"
+    assert "Read(./pieces-jointes/**)" in cmd  # Read only reaches the joined files
     bare = cli.command(system="S", model="opus", resume=None, with_tools=False)
     assert bare[-2:] == ["--tools", ""]
 
