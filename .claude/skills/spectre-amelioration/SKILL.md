@@ -68,7 +68,37 @@ Smart App Control, téléchargement hors du site officiel, paquet récent au nom
 projet connu, outil qui envoie des données vers l'extérieur sans raison, licence floue,
 dépendance qui exige un compte ou un paiement.
 
-## 5. Ce qui ne change pas
+## 5. Apprendre de ses erreurs (lui et ses agents)
+- **Les leçons** : après une mission, chaque étape ratée, refaite ou débloquée par Spectre
+  devient une leçon courte (« quand <situation>, <ce qu'il faut faire> ») donnée ensuite à
+  l'agent concerné avec ses consignes. Un refus de l'utilisateur avec sa raison devient aussi
+  une leçon pour l'agent qui demandait. Quand l'utilisateur corrige Spectre en conversation,
+  Spectre la retient avec `learn_lesson`. `lessons` les liste ; `forget_lesson` archive une
+  leçon devenue fausse.
+- Une leçon **ne change jamais une règle, une validation ni des droits** ; elle évite de
+  refaire une erreur.
+
+## 6. Aider un agent en difficulté
+- Quand un agent échoue deux fois à une étape, **Spectre l'aide** : il diagnostique la cause
+  (consigne mal comprise, outil mal utilisé ou introuvable, chemin manquant, étape trop grosse,
+  mauvaise méthode) et lui donne une solution concrète, pas à pas ; l'agent fait une troisième
+  tentative avec cette aide. Si c'est impossible sans l'utilisateur (accès, inscription,
+  paiement, décision), l'agent s'arrête et le signale.
+- Ensuite, Spectre cherche **comment rendre l'agent plus performant** : un outil à lui donner
+  (fiche d'outil, logiciel libre et stable), une compétence à écrire, des chemins à mettre dans
+  ses briefs, une étape à découper. Ce sont des **propositions** : il les soumet à
+  l'utilisateur avant de les mettre en place, en suivant la grille ci-dessus.
+
+## 7. Mettre les outils à jour, régulièrement
+- Chaque semaine, Spectre regarde ce qui peut être mis à jour (`tool_updates` : winget, uv
+  tool) et le dit à l'utilisateur. Rien ne s'installe tout seul.
+- Avant de proposer : version stable seulement (jamais nightly, bêta, preview), notes de
+  version sans rupture pour ce que les agents utilisent, pas en pleine mission. Python reste
+  tenu à sa version (les environnements de Spectre et des labos en dépendent).
+- Avec le oui de l'utilisateur : `update_tools` (identifiants choisis, ou « tout » hors versions
+  non stables et Python), puis un essai rapide des outils touchés, et un compte rendu.
+
+## 8. Ce qui ne change pas
 - Spectre **ne modifie jamais son propre code** ni ses réglages de sécurité ; il s'améliore
   par des fiches d'outils, des compétences validées, des moteurs choisis par l'utilisateur.
 - **Inscriptions et paiements** : toujours l'autorisation explicite de l'utilisateur, pour

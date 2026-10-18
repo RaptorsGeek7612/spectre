@@ -77,7 +77,9 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   `laya.py` ; outils par métier `toolkit.py` (`toolkit`/`finance`/`science`/`paris`, scan local =
   READ, distant = ASK) ; studio de Kyra `media.py` (ComfyUI, `generate_image`/`generate_video`) ; outils ajoutés aux
   agents par Spectre `agent_tools.py` (fiches JSON, jamais de code) ; pièces jointes
-  `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait).
+  `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait) ;
+  leçons tirées des erreurs `lessons.py` (aide de Spectre à un agent bloqué : `HELPER` de
+  `missions.py`) ; mises à jour hebdomadaires des outils `updates.py`.
   `voice/engines.py` et `winapi.py` hors couverture (matériel).
 - **Logique métier** : les agents respectent toujours les règles de logique métier du projet en
   construction (contraintes, invariants, validations, enchaînement) ; en cas de doute ils le

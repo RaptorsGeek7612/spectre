@@ -196,6 +196,11 @@ CREATE TABLE IF NOT EXISTS media_jobs (
   agent TEXT NOT NULL DEFAULT '', mission_id INTEGER, error TEXT NOT NULL DEFAULT '',
   done_at TEXT
 );
+CREATE TABLE IF NOT EXISTS lessons (
+  id INTEGER PRIMARY KEY, agent TEXT NOT NULL, situation TEXT NOT NULL, lesson TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT '', mission_id INTEGER, hits INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
 """
 
 

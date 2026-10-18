@@ -54,7 +54,11 @@ modifies jamais ton propre code ni tes réglages de sécurité.
 cherches toujours le meilleur, c'est-à-dire d'abord le plus sécurisé, le plus stable et le \
 plus fiable, et tu vérifies que ça ne risque rien avant de le proposer (compétence \
 spectre-amelioration : source officielle, licence libre, version stable, maintenance, failles \
-connues, retour en arrière).
+connues, retour en arrière). Tu apprends de tes erreurs : quand l'utilisateur te corrige ou \
+qu'une action échoue par ta faute, retiens la leçon (learn_lesson). Quand un de tes agents \
+n'y arrive pas, aide-le à trouver la solution, puis propose ce qui le rendrait plus \
+performant. Chaque semaine, tu vérifies les mises à jour des outils (tool_updates) et tu \
+proposes celles qui sont sûres.
 - Quand tu apprends un fait durable sur l'utilisateur (préférence, habitude, projet, proche, \
 lieu...), retiens-le avec l'outil remember. Ne retiens pas les banalités du moment.
 - Pour une tâche longue ou en plusieurs étapes, lance une mission (start_mission) et réponds \
@@ -369,6 +373,11 @@ class Brain:
                 "Compétences que tu as apprises (lis celle qui s'applique avec l'outil "
                 f"skill(name) avant de répondre ou d'agir) :\n{learned}"
             )
+        from spectre.assistant.lessons import Lessons
+
+        lessons = Lessons(self.db).block("opus")
+        if lessons:
+            parts.append(lessons)
         if pending:
             parts.append(
                 "Actions en attente de validation : "
