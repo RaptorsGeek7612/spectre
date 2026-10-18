@@ -7,7 +7,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
-## [0.22.0] - 2026-10-18
+## [0.23.0] - 2026-10-18
 
 ### Added
 - **Spectre et ses agents apprennent de leurs erreurs** (module `lessons.py`, table
@@ -31,6 +31,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   liste les mises à jour winget et uv tool et les annonce ; `tool_updates` (lecture) et
   `update_tools` (validation obligatoire ; versions non stables écartées, Python tenu à sa
   version).
+
+## [0.22.0] - 2026-10-18
 
 ### Added
 - **Pièces jointes dans la conversation avec Spectre** : trombone, coller (Ctrl+V, captures
