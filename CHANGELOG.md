@@ -7,6 +7,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Paiements préparés par Spectre, faits par l'utilisateur** (module `payments.py`, table
+  `payments`) : `prepare_payment` (bénéficiaire, montant, référence, IBAN vérifié par sa clé ou
+  page https du marchand) attend toujours la validation ; après le oui, Spectre inscrit le
+  paiement au registre, produit un QR code de virement SEPA (norme EPC, lu par les applis
+  bancaires ; aussi servi sur `/api/assistant/payments/<id>/qr` pour le téléphone) et/ou ouvre
+  la page du marchand. Rien n'est débité sans la confirmation de l'utilisateur dans sa banque ;
+  Spectre ne détient aucun identifiant bancaire. `payments`, `mark_paid`, `cancel_payment` ;
+  plafond de 10 000 € par paiement.
+
 ### Changed
 - **Paiements : validation au lieu d'interdiction.** La catégorie `payment` passe de NEVER à
   ASK : un paiement n'est plus refusé d'office, il attend l'accord explicite de l'utilisateur,

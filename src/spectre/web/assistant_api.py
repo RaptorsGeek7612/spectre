@@ -64,6 +64,15 @@ def handle(
             handler._json(200, service.delete_agent(int(agent_id)))
         case "GET", ["team"]:
             handler._json(200, service.team())
+        case "GET", ["payments", payment_id, "qr"]:
+            from spectre.assistant import payments
+            from spectre.assistant.actions import ActionError
+
+            try:
+                svg = payments.qr(service.ctx, int(payment_id))
+            except ActionError as exc:
+                raise ValueError(str(exc)) from exc
+            handler._send(200, svg.encode("utf-8"), "image/svg+xml")
         case "GET", ["team", key, "portrait"]:
             found = team.portrait(service.root, unquote(key))
             if found is None:
