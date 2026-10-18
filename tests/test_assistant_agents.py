@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -22,8 +23,10 @@ from tests.test_assistant_brain import FakeCLI
 
 
 @pytest.fixture
-def db(tmp_path: Path) -> Database:
-    return Database(tmp_path / "spectre.db")
+def db(tmp_path: Path) -> Iterator[Database]:
+    database = Database(tmp_path / "spectre.db")
+    yield database
+    database.close()  # left open, the connection warns when collected (ResourceWarning)
 
 
 def _runner(returncode: int = 0, stdout: str = "", stderr: str = "") -> Any:

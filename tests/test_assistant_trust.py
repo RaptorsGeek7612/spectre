@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -32,8 +33,10 @@ NOW = datetime(2026, 10, 14, 12, 0, tzinfo=timezone(timedelta(hours=2)))
 
 
 @pytest.fixture
-def db(tmp_path: Path) -> Database:
-    return Database(tmp_path / "assistant" / "spectre.db")
+def db(tmp_path: Path) -> Iterator[Database]:
+    database = Database(tmp_path / "assistant" / "spectre.db")
+    yield database
+    database.close()
 
 
 def test_runctx() -> None:
