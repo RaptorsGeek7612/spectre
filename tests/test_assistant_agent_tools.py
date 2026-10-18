@@ -102,7 +102,7 @@ def test_card_refusals(ctx: Any) -> None:
     assert agent_tools.cards(ctx.root) == []
 
 
-def test_run_refusals(ctx: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_refusals(ctx: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _exiftool(ctx, agents="tous")
     for options in ("-o C:/Windows/x", "../secret", "a;b", "'unterminated"):
         with pytest.raises(ActionError, match="option"):
@@ -110,7 +110,7 @@ def test_run_refusals(ctx: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(ActionError, match="précise la cible"):
         agent_tools.run(ctx, "exiftool", "")
     with pytest.raises(ActionError, match="accès refusé"):
-        agent_tools.run(ctx, "exiftool", "C:/Windows/win.ini")
+        agent_tools.run(ctx, "exiftool", str(tmp_path / "ailleurs" / "x.txt"))
     with pytest.raises(ActionError, match="outil inconnu"):
         toolkit.run(ctx, "absent")
     monkeypatch.setattr(toolkit, "_bin", lambda names: None)
