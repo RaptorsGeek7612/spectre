@@ -242,7 +242,9 @@ def change(
     return changes
 
 
-def details(db: Database, config: AssistantConfig, key: str) -> dict[str, Any]:
+def details(
+    db: Database, config: AssistantConfig, key: str, root: Path | None = None
+) -> dict[str, Any]:
     """One agent in depth: its instructions, its recent activity (last 30 actions with their
     status, duration, command and result), its tool counts and its record."""
     from spectre.assistant.missions import SPECIALTIES
@@ -266,15 +268,19 @@ def details(db: Database, config: AssistantConfig, key: str) -> dict[str, Any]:
         "tools": counts,
         "dossier": Trust(db).dossier(key),
         "remote": bool(split_ref(config.agent_engines.get(key, ""))[0]),
-        "toolkit": agent_tools(config, key),
+        "toolkit": agent_tools(config, key, root),
     }
 
 
-def agent_tools(config: AssistantConfig, key: str) -> list[dict[str, Any]]:
+def agent_tools(
+    config: AssistantConfig, key: str, root: Path | None = None
+) -> list[dict[str, Any]]:
     """The open-source tools this agent may use, and whether each is installed on the PC."""
+    from spectre.assistant import agent_tools as added_tools
     from spectre.assistant import toolkit
 
-    found = [k for k in toolkit.describe(config) if not k["agents"] or key in k["agents"]]
+    added = added_tools.describe(root) if root is not None else []
+    found = [k for k in toolkit.describe(config) + added if not k["agents"] or key in k["agents"]]
     extras = {
         toolkit.FINANCE_AGENTS: ("finance", "Calculs financiers"),
         toolkit.SCIENCE_AGENTS: ("science", "Calcul scientifique (SymPy)"),

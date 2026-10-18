@@ -552,10 +552,57 @@ def _toolkit(ctx: ActionContext, name: str, target: str = "", options: str = "")
 
 
 def _toolkit_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
-    from spectre.assistant import toolkit
+    from spectre.assistant import agent_tools, toolkit
 
-    kit = toolkit.KITS.get(str(args.get("name", "")))
-    return (kit.level, kit.category) if kit else (Level.READ, "read")
+    name = str(args.get("name", ""))
+    kit = toolkit.KITS.get(name)
+    if kit:
+        return kit.level, kit.category
+    card = agent_tools.load(ctx.root, name)
+    return agent_tools.risk(card) if card else (Level.READ, "read")
+
+
+def _agent_tools(ctx: ActionContext) -> str:
+    from spectre.assistant import agent_tools
+
+    return agent_tools.listing(ctx)
+
+
+def _installed_programs(ctx: ActionContext, search: str = "") -> str:
+    from spectre.assistant import agent_tools
+
+    return agent_tools.installed(ctx, search)
+
+
+def _agent_tool_save(
+    ctx: ActionContext,
+    name: str,
+    label: str,
+    agents: str,
+    program: str,
+    args: list[str],
+    level: str = "lecture",
+    description: str = "",
+    timeout: int = 600,
+    install: str = "",
+) -> str:
+    from spectre.assistant import agent_tools
+
+    return agent_tools.save(
+        ctx, name, label, agents, program, args, level, description, timeout, install
+    )
+
+
+def _agent_tool_install(ctx: ActionContext, name: str, source: str = "") -> str:
+    from spectre.assistant import agent_tools
+
+    return agent_tools.install(ctx, name, source)
+
+
+def _agent_tool_delete(ctx: ActionContext, name: str) -> str:
+    from spectre.assistant import agent_tools
+
+    return agent_tools.delete(ctx, name)
 
 
 def _trading(ctx: ActionContext, operation: str, values: list[float]) -> str:
@@ -1340,11 +1387,70 @@ TOOLS: dict[str, Tool] = {
             "vidéo), derushage (retire les silences d'un rush), loudness (son de diffusion ; "
             "options = web ou tv). Ils créent "
             "un nouveau fichier à côté de la source. target : le fichier, le dossier ou "
-            "l'adresse. Chaque agent ne voit que les outils de son domaine.",
+            "l'adresse. Chaque agent ne voit que les outils de son domaine. Aussi les outils "
+            "ajoutés par Spectre (liste : outils_agents).",
             Level.READ,
             "scan",
             _toolkit,
             _toolkit_risk,
+        ),
+        Tool(
+            "outils_agents",
+            "Lister les outils que Spectre a ajoutés à ses agents (fiches d'outils) : ceux de "
+            "ton domaine, à lancer avec toolkit (name = le nom de l'outil).",
+            Level.READ,
+            "read",
+            _agent_tools,
+        ),
+        Tool(
+            "installed_programs",
+            "Recenser les logiciels installés sur ce PC (dossiers Apps, uv tools, Program "
+            "Files, winget list), pour choisir ceux à donner aux agents. search : un mot pour "
+            "filtrer (vide = tout). Ne change rien.",
+            Level.READ,
+            "read",
+            _installed_programs,
+            lead_only=True,
+        ),
+        Tool(
+            "agent_tool_save",
+            "Donner un outil à des agents (ou mettre à jour sa fiche) : un programme en ligne "
+            "de commande, installé ou à installer. name : nom court (minuscules) ; label : "
+            "son titre ; agents : leurs noms séparés par des virgules (Kyra, Syfer…) ou "
+            "« tous » ; program : le nom du programme (ex. exiftool) ou le chemin complet de "
+            "son .exe — jamais un shell, un interpréteur ou un installeur ; args : la liste "
+            "des arguments, avec {cible} (le fichier ou l'adresse, remplacé à l'appel) et "
+            "{options} (les options libres de l'agent, sans chemin) ; level : lecture (lit et "
+            "répond), ecriture (crée un fichier dans l'espace de travail) ou distant (la cible "
+            "est une adresse : chaque appel demande validation) ; description : quand s'en "
+            "servir ; install : winget:<Id> ou uv:<paquet> s'il faut l'installer. Tu ne "
+            "modifies jamais le code de Spectre : seulement ces fiches. Avant, vérifie que "
+            "c'est le choix le plus sûr, stable et fiable (compétence spectre-amelioration). "
+            "Demande validation.",
+            Level.WRITE,
+            "agent_tool",
+            _agent_tool_save,
+            lead_only=True,
+        ),
+        Tool(
+            "agent_tool_install",
+            "Installer le programme d'une fiche d'outil (winget ou uv tool) sur ce PC. name : "
+            "la fiche ; source : winget:<Id> ou uv:<paquet> (vide = celle de la fiche). "
+            "Source officielle et version stable uniquement (compétence "
+            "spectre-amelioration). Toujours avec la validation de l'utilisateur.",
+            Level.CRITICAL,
+            "install_agent_tool",
+            _agent_tool_install,
+            lead_only=True,
+        ),
+        Tool(
+            "agent_tool_delete",
+            "Retirer un outil ajouté aux agents (supprime sa fiche ; le programme reste "
+            "installé). name : la fiche.",
+            Level.DESTRUCTIVE,
+            "agent_tool",
+            _agent_tool_delete,
+            lead_only=True,
         ),
         Tool(
             "finance",

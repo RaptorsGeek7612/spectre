@@ -63,7 +63,13 @@ respectés). Respecte toujours les règles de la logique métier du projet en co
 construction : les \
 contraintes du domaine, les invariants, les validations et l'enchaînement attendu priment \
 sur une solution rapide ; en cas de doute, signale-le dans ton compte rendu plutôt que de \
-contourner la règle."""
+contourner la règle. Tu peux décider seul des petits choix de ton étape ; mais jamais \
+d'inscription (créer un compte, s'abonner, s'enregistrer sur un service) ni de paiement \
+(acheter, payer, s'engager à dépenser) sans l'autorisation explicite de l'utilisateur : \
+arrête-toi et demande-la dans ton compte rendu. Quand tu choisis un outil, une \
+bibliothèque ou une méthode, prends le plus sécurisé, le plus stable et le plus fiable \
+(source officielle, version stable, maintenu, sans faille connue) ; si une amélioration de \
+tes outils serait utile, propose-la dans ton compte rendu sans l'installer toi-même."""
 
 SPECIALTIES = {  # added to WORKER for the agent in charge of each field
     "chatgpt": """\

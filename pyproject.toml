@@ -1,6 +1,6 @@
 [project]
 name = "spectre"
-version = "0.21.0"
+version = "0.22.0"
 description = "Spectre: a multi-agent Claude pipeline (Scout, Scribe, Warden) orchestrated with LangGraph."
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -24,6 +24,7 @@ dependencies = [
     "mcp>=2.3",
     "numpy>=2.0",
     "cryptography>=43",
+    "pypdf>=5",  # text of attached PDFs (writing requests)
 ]
 
 [project.optional-dependencies]

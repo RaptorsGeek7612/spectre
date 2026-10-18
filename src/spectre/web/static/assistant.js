@@ -1238,12 +1238,68 @@ document.addEventListener("click", (e) => {
   const goto = e.target.closest("[data-goto]")?.dataset.goto;
   if (goto) show(goto);
 });
+/* ---- files joined to a message: paperclip, paste (Ctrl+V), drag and drop ---- */
+const MAX_JOIN = 15 * 1024 * 1024;
+const joined = []; // { file, id, url, state }
+function renderJoined() {
+  const list = $("#say-joined");
+  list.hidden = !joined.length;
+  list.replaceChildren(...joined.map((item) => h("li", { "data-state": item.state, title: item.file.name },
+    item.url ? h("img", { src: item.url, alt: "" }) : null,
+    h("span", {}, item.file.name || "image collée"),
+    h("button", { type: "button", "aria-label": `Retirer ${item.file.name}`, onclick: () => unjoin(item) }, "×"))));
+}
+function unjoin(item) {
+  const i = joined.indexOf(item);
+  if (i >= 0) joined.splice(i, 1);
+  if (item.url) URL.revokeObjectURL(item.url);
+  renderJoined();
+}
+async function upload(item) {
+  const name = item.file.name || `image-${Date.now()}.png`;
+  const res = await fetch(`/api/assistant/attachments?name=${encodeURIComponent(name)}`, { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/octet-stream" }, body: item.file });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`${name} : ${data.error || `HTTP ${res.status}`}`);
+  item.id = data.id;
+}
+function join(files) {
+  for (const file of files) {
+    if (!file) continue;
+    if (file.size > MAX_JOIN) { toast(`${file.name} : trop gros (15 Mo maximum).`, "error"); continue; }
+    if (joined.length >= 10) { toast("10 pièces jointes au plus par message.", "warn"); break; }
+    const item = { file, id: null, url: file.type.startsWith("image/") ? URL.createObjectURL(file) : null, state: "sending" };
+    joined.push(item);
+    item.sending = upload(item).then(() => { item.state = "ready"; renderJoined(); }).catch((err) => { toast(err.message, "error", 7000); unjoin(item); });
+  }
+  renderJoined();
+  $("#say").focus();
+}
+function clipboardFiles(e) { return [...(e.clipboardData?.items || [])].filter((i) => i.kind === "file").map((i) => i.getAsFile()).filter(Boolean); }
+$("#say-file").addEventListener("change", (e) => { join([...e.target.files]); e.target.value = ""; });
+$("#say").addEventListener("paste", (e) => { const files = clipboardFiles(e); if (files.length) { e.preventDefault(); join(files); } });
+document.addEventListener("click", (e) => { if (e.target.closest('[data-action="say-attach"]')) $("#say-file").click(); });
+{
+  const zone = $("#view-talk"); const form = $("#say-form");
+  zone.addEventListener("dragover", (e) => { if ([...e.dataTransfer.types].includes("Files")) { e.preventDefault(); form.classList.add("dropping"); } });
+  zone.addEventListener("dragleave", (e) => { if (!zone.contains(e.relatedTarget)) form.classList.remove("dropping"); });
+  zone.addEventListener("drop", (e) => { if (!e.dataTransfer.files.length) return; e.preventDefault(); form.classList.remove("dropping"); join([...e.dataTransfer.files]); });
+}
+
 $("#say-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const input = $("#say"); const text = input.value.trim();
-  if (!text) return;
-  input.value = ""; $("#send").disabled = true;
-  try { const { reply } = await api("POST", "chat", { text }); speakHere(reply); } catch (err) { toast(err.message, "error"); }
+  if (!text && !joined.length) return;
+  $("#send").disabled = true;
+  try {
+    await Promise.all(joined.map((item) => item.sending));
+    const attachments = joined.filter((item) => item.id).map((item) => item.id);
+    if (!text && !attachments.length) return;
+    input.value = "";
+    for (const item of joined.splice(0)) if (item.url) URL.revokeObjectURL(item.url);
+    renderJoined();
+    const { reply } = await api("POST", "chat", { text, attachments });
+    speakHere(reply);
+  } catch (err) { toast(err.message, "error"); }
   finally { $("#send").disabled = false; input.focus(); loadStatus(); }
 });
 $("#say").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) { e.preventDefault(); $("#say-form").requestSubmit(); } });

@@ -196,10 +196,20 @@ body[data-view="talk"] .presence { display: none; }
 .dock-mic[hidden] { display: grid; opacity: 0.35; pointer-events: none; }
 body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l486) 18%, transparent); }
 
-.orb-say { display: flex; align-items: center; gap: 6px; width: min(560px, 100%); border-bottom: 1px solid var(--hair-2); }
+.orb-say { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: min(560px, 100%); border-bottom: 1px solid var(--hair-2); }
 .orb-say input { flex: 1; min-height: 42px; padding: 0 8px; border: 0; background: none; color: var(--bone); font: inherit; }
 .orb-say input:focus { outline: none; }
 .orb-say:focus-within { border-bottom-color: var(--l486); }
+.orb-say.dropping { border-bottom-color: var(--l486); background: color-mix(in oklab, var(--l486) 10%, transparent); }
+/* files joined to the next message (paperclip, paste, drop) */
+.joined { display: flex; flex-wrap: wrap; flex-basis: 100%; gap: 6px; margin: 0; padding: 4px 0 0; list-style: none; }
+.joined li { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 2px 4px 2px 8px; border: 1px solid var(--hair-2); color: var(--ash); font-size: 0.82rem; }
+.joined li[data-state="sending"] { opacity: 0.6; }
+.joined li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 26ch; }
+.joined img { width: 28px; height: 28px; object-fit: cover; }
+.joined button { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; background: none; color: var(--ash); cursor: pointer; }
+.joined button:hover, .joined button:focus-visible { color: var(--bone); }
+.joined .ic { width: 14px; height: 14px; }
 
 /* conversation history, on demand */
 .history {

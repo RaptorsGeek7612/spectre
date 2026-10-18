@@ -307,6 +307,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(200, store.delete_preset(unquote(name)))
             case "POST", ["run"]:
                 self._run(self._body())
+            case "POST", ["attachments"]:
+                # a file joined to a writing request: the pipeline takes its text
+                from spectre import attachments
+
+                name = attachments.safe_name(query.get("name", ["fichier"])[0])
+                text = attachments.extract_text(name, self._raw_body(attachments.MAX_BYTES))
+                self._json(200, {"name": name, "text": text})
             case _:
                 raise KeyError(path)
 

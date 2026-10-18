@@ -21,6 +21,7 @@
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M14 7l5 5-5 5"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24"><path d="M20 11.5 12 19.5a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4L15 7"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></symbol>
     <symbol id="mark" viewBox="24 20 380 400"><g fill="none" stroke-linecap="butt"><path class="mk-l mk-405" d="M92.3 162.8 A132 132 0 0 1 113.4 128.5" stroke="#a084ff" style="stroke-width:46"/><path class="mk-l mk-436" d="M115.8 125.8 A132 132 0 0 1 147.0 100.3" stroke="#7d86ff" style="stroke-width:46"/><path class="mk-l mk-486 agent-scout" d="M150.2 98.5 A132 132 0 0 1 188.0 84.6" stroke="#4fc3f7" style="stroke-width:46"/><path class="mk-l mk-546 agent-scribe" d="M191.6 83.9 A132 132 0 0 1 231.8 83.2" stroke="#8bd450" style="stroke-width:46"/><path class="mk-l mk-589 agent-warden" d="M235.5 83.8 A132 132 0 0 1 273.8 96.3" stroke="#ffd23f" style="stroke-width:46"/><path class="mk-l mk-615" d="M277.0 98.0 A132 132 0 0 1 309.0 122.4" stroke="#ff9f43" style="stroke-width:46"/><path class="mk-l mk-656" d="M311.6 125.1 A132 132 0 0 1 333.8 158.6" stroke="#ef5f6f" style="stroke-width:46"/></g><defs>
@@ -140,7 +141,10 @@
         <button class="dock-btn" type="button" data-goto="settings" aria-label="Réglages"><svg class="ic"><use href="#i-gear"/></svg></button>
       </nav>
       <form class="orb-say" id="say-form" autocomplete="off">
-        <input type="text" id="say" placeholder="Écrire à Spectre…" aria-label="Message à Spectre">
+        <ul class="joined" id="say-joined" aria-label="Pièces jointes" hidden></ul>
+        <input id="say-file" type="file" multiple hidden>
+        <button class="icon-btn" type="button" data-action="say-attach" aria-label="Joindre un fichier, une photo ou un document (ou colle-le, ou glisse-le ici)"><svg class="ic"><use href="#i-clip"/></svg></button>
+        <input type="text" id="say" placeholder="Écrire à Spectre… (colle ou glisse un fichier)" aria-label="Message à Spectre">
         <button class="icon-btn" type="submit" id="send" aria-label="Envoyer"><svg class="ic"><use href="#i-arrow"/></svg></button>
       </form>
       <aside class="history" id="history" hidden aria-label="Historique de la conversation">

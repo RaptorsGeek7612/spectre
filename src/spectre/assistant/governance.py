@@ -56,6 +56,8 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "external_send": "ASK",
     "system_power": "ASK",
     "powershell": "ASK",  # PowerShell qui modifie le PC (la lecture seule passe en "read")
+    "agent_tool": "ASK",  # a tool card Spectre writes for its agents: you approve it
+    "install_agent_tool": "ASK",  # installing that tool's program (winget, uv tool)
     "install": "NEVER",
     "modify_core": "NEVER",
     "payment": "NEVER",
