@@ -36,7 +36,7 @@ voice = [
     "faster-whisper>=1.2",
     "piper-tts>=1.8",
 ]
-vision = ["numpy>=2.0", "opencv-python-headless>=4.10", "onnxruntime>=1.20"]
+vision = ["numpy>=2.0", "opencv-python-headless>=4.10", "onnxruntime>=1.31.0"]
 finance = ["numpy-financial>=1.0"]  # Clarke and Simon: bounded financial maths
 science = ["sympy>=1.12", "astropy>=6.0", "skyfield>=1.49"]  # Ysyss: maths and astronomy
 markets = ["ccxt>=4.0", "yfinance>=0.2"]  # Lexy: read-only crypto and stock data
