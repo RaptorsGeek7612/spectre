@@ -62,7 +62,7 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "install_agent_tool": "ASK",  # installing that tool's program (winget, uv tool)
     "install": "NEVER",
     "modify_core": "NEVER",
-    "payment": "NEVER",
+    "payment": "ASK",  # a payment only on your explicit go, each time (agents included)
 }
 ALWAYS_ASK_LEVELS: Final = {Level.EXTERNAL, Level.CRITICAL}
 RELAXED: Final = ("delete_file", "overwrite_file")  # what an expert agent may do alone

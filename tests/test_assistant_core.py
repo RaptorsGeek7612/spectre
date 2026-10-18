@@ -171,6 +171,10 @@ def test_gate_axes(db: Database) -> None:
     bold = Gate(db, auto_max_level=5)
     assert "catégorie" in bold.decide(Level.DESTRUCTIVE, "delete_file").reason
     assert bold.decide(Level.CRITICAL, "read").verdict == "approval"
+    # a payment: always on the user's explicit go, never refused outright, never automatic
+    for level in Level:
+        for trust in ("", "expert"):
+            assert bold.decide(level, "payment", trust).verdict == "approval"
 
 
 def test_gate_budgets(db: Database) -> None:

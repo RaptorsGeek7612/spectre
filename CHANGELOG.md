@@ -7,6 +7,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Changed
+- **Paiements : validation au lieu d'interdiction.** La catégorie `payment` passe de NEVER à
+  ASK : un paiement n'est plus refusé d'office, il attend l'accord explicite de l'utilisateur,
+  à chaque fois, pour Spectre comme pour ses agents (même un agent « expert » ou un réglage
+  d'autonomie maximal ne le rend jamais automatique).
+
 ### Added
 - **Spectre et ses agents apprennent de leurs erreurs** (module `lessons.py`, table
   `lessons`) : après une mission, les étapes ratées, refaites ou débloquées deviennent des
