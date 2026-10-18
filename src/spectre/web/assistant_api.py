@@ -33,7 +33,13 @@ def handle(
             handler._json(200, service.history())
         case "POST", ["chat"]:
             data = body()
-            handler._json(200, {"reply": service.chat(str(data.get("text", "")), "text")})
+            joined = [str(a) for a in data.get("attachments") or []]
+            handler._json(200, {"reply": service.chat(str(data.get("text", "")), "text", joined)})
+        case "POST", ["attachments"]:
+            from spectre.attachments import MAX_BYTES
+
+            name = query.get("name", ["fichier"])[0]
+            handler._json(200, service.attach(name, handler._raw_body(MAX_BYTES)))
         case "POST", ["voice"]:
             handler._json(200, service.remote_voice(handler._raw_body()))
         case "POST", ["speak"]:

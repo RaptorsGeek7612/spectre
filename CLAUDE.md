@@ -74,7 +74,9 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   `meeting.py` ; dev `devteam.py` (`open_pr` = EXTERNAL) ; notifications `webpush.py` ; briefing
   `brief.py` ; équipe `team.py` ; visio `call.py` (+ `activity`) ; sessions `sessions.py` ; Laya
   `laya.py` ; outils par métier `toolkit.py` (`toolkit`/`finance`/`science`/`paris`, scan local =
-  READ, distant = ASK) ; studio de Kyra `media.py` (ComfyUI, `generate_image`/`generate_video`).
+  READ, distant = ASK) ; studio de Kyra `media.py` (ComfyUI, `generate_image`/`generate_video`) ; outils ajoutés aux
+  agents par Spectre `agent_tools.py` (fiches JSON, jamais de code) ; pièces jointes
+  `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait).
   `voice/engines.py` et `winapi.py` hors couverture (matériel).
 - **Logique métier** : les agents respectent toujours les règles de logique métier du projet en
   construction (contraintes, invariants, validations, enchaînement) ; en cas de doute ils le

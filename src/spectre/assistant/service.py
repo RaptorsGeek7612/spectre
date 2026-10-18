@@ -46,6 +46,9 @@ from spectre.config import DEFAULT_SPECS, model_label
 
 Event = dict[str, Any]
 LEVEL_EVERY_S = 0.05
+ATTACHMENTS = "pieces-jointes"  # in the brain's workspace: files joined to messages
+MAX_ATTACHMENTS = 10
+INLINE_TEXT = 20_000  # bytes: a short text file also goes into the message
 
 
 class AssistantService:
@@ -270,9 +273,46 @@ class AssistantService:
             self.voice_state = state
         self.publish({"type": "state", "state": state, "detail": detail})
 
-    def chat(self, text: str, channel: str = "text") -> str:
+    def attach(self, name: str, data: bytes) -> Event:
+        """Keep a file the user joins to a message (paperclip, paste, drop) in the workspace,
+        where Spectre reads it whole when the message is sent."""
+        from spectre import attachments
+
+        path = attachments.store(self.cli.workspace / ATTACHMENTS, name, data)
+        return {
+            "id": path.name,
+            "name": attachments.safe_name(name),
+            "kind": attachments.kind(path.name),
+            "size": len(data),
+        }
+
+    def joined(self, ids: list[str]) -> str:
+        """What a message says of its attached files: where Spectre reads each one, and the
+        text of the short text ones (an engine without file reading still sees it)."""
+        from spectre import attachments
+
+        folder = self.cli.workspace / ATTACHMENTS
+        lines = []
+        for raw in ids[:MAX_ATTACHMENTS]:
+            path = folder / Path(raw).name
+            if not path.is_file():
+                raise ValueError(f"pièce jointe introuvable : {raw}")
+            name = path.name.split("-", 1)[-1]
+            kind = attachments.kind(path.name)
+            line = (
+                f"[Pièce jointe : {name} ({kind}, {path.stat().st_size // 1024 + 1} Ko) — "
+                f"lis-la avec l'outil Read : {ATTACHMENTS}/{path.name}]"
+            )
+            if kind == "texte" and path.stat().st_size <= INLINE_TEXT:
+                line += f"\n--- {name} ---\n{attachments.decode(path.read_bytes()).strip()}"
+            lines.append(line)
+        return "\n".join(lines)
+
+    def chat(self, text: str, channel: str = "text", attached: list[str] | None = None) -> str:
         """One turn with the brain (serialised: Spectre answers one thing at a time)."""
         text = text.strip()
+        if attached:
+            text = f"{text or 'Regarde ce que je te joins.'}\n\n{self.joined(attached)}"
         if not text:
             raise ValueError("message vide")
         self.publish({"type": "message", "role": "user", "text": text, "channel": channel})
@@ -1012,7 +1052,7 @@ class AssistantService:
         return {"key": key, "models": cli_agents.models(key, self.config)}
 
     def team_details(self, key: str) -> Event:
-        return team.details(self.db, self.config, key)
+        return team.details(self.db, self.config, key, self.root)
 
     def call_state(self, since: int, since_event: int) -> Event:
         state = call.snapshot(self.db, since, since_event)

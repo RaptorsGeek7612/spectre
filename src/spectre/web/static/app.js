@@ -777,19 +777,34 @@ function setupVoice() {
     rec.start();
   });
 }
-function attachFile(file) {
-  if (!file) return;
-  if (file.size > 400_000) { toast("Fichier trop gros (400 Ko maximum).", "error"); return; }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const input = $("#composer-input");
-    input.value = `${input.value ? `${input.value.trimEnd()}\n\n` : ""}--- ${file.name} ---\n${reader.result}`;
-    autosize(); input.focus();
-    toast(`${file.name} ajouté à la demande.`);
-  };
-  reader.onerror = () => toast("Lecture du fichier impossible.", "error");
-  reader.readAsText(file);
+const PLAIN_TEXT = /\.(txt|md|markdown|csv|json|fountain|srt)$/i;
+function addToRequest(name, text) {
+  const input = $("#composer-input");
+  input.value = `${input.value ? `${input.value.trimEnd()}\n\n` : ""}--- ${name} ---\n${text}`;
+  autosize(); input.focus();
+  toast(`${name} ajouté à la demande.`);
 }
+async function attachFile(file) {
+  // A text file is read here; Word, OpenDocument, PDF and images (OCR) by the server.
+  if (!file) return;
+  const name = file.name || `image-${Date.now()}.png`;
+  const plain = (file.type.startsWith("text/") || PLAIN_TEXT.test(name)) && !file.type.startsWith("image/");
+  if (plain || state.backend.kind !== "http") {
+    if (!plain) { toast("Hors ligne, seuls les fichiers texte sont lus.", "warn"); return; }
+    if (file.size > 400_000) { toast("Fichier trop gros (400 Ko maximum).", "error"); return; }
+    try { addToRequest(name, await file.text()); } catch { toast("Lecture du fichier impossible.", "error"); }
+    return;
+  }
+  if (file.size > 15 * 1024 * 1024) { toast("Fichier trop gros (15 Mo maximum).", "error"); return; }
+  toast(`Lecture de ${name}…`, "ok", 2500);
+  try {
+    const res = await fetch(`/api/attachments?name=${encodeURIComponent(name)}`, { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/octet-stream" }, body: file });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    addToRequest(data.name, data.text);
+  } catch (err) { toast(`${name} : ${err.message}`, "error", 7000); }
+}
+function attachFiles(files) { for (const file of files) attachFile(file); }
 
 /* ============================== menus ================================================= */
 function closeMenu() { const m = $("#menu"); m.hidden = true; m.replaceChildren(); }
@@ -1029,7 +1044,16 @@ function wire() {
     if (state.settings.send_key === "enter" && !e.shiftKey && !touch) { e.preventDefault(); send(); }
   });
   $("#slash-menu").addEventListener("mousedown", (e) => { const li = e.target.closest("li"); if (li) { e.preventDefault(); pickSlash(li.dataset.cmd); } });
-  $("#file-input").addEventListener("change", (e) => { attachFile(e.target.files[0]); e.target.value = ""; });
+  $("#file-input").addEventListener("change", (e) => { attachFiles([...e.target.files]); e.target.value = ""; });
+  // paste (Ctrl+V) a file or a screenshot, or drop files on the request
+  $("#composer-input").addEventListener("paste", (e) => {
+    const files = [...(e.clipboardData?.items || [])].filter((i) => i.kind === "file").map((i) => i.getAsFile()).filter(Boolean);
+    if (files.length) { e.preventDefault(); attachFiles(files); }
+  });
+  const composer = $("#composer");
+  composer.addEventListener("dragover", (e) => { if ([...e.dataTransfer.types].includes("Files")) { e.preventDefault(); composer.classList.add("dropping"); } });
+  composer.addEventListener("dragleave", (e) => { if (!composer.contains(e.relatedTarget)) composer.classList.remove("dropping"); });
+  composer.addEventListener("drop", (e) => { if (!e.dataTransfer.files.length) return; e.preventDefault(); composer.classList.remove("dropping"); attachFiles([...e.dataTransfer.files]); });
   $("#import-input").addEventListener("change", async (e) => {
     const file = e.target.files[0]; e.target.value = "";
     if (!file) return;

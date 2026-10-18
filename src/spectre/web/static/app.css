@@ -488,6 +488,7 @@ select:focus-visible, input:focus-visible, textarea:focus-visible { outline: non
 
 /* ---------- Composer ------------------------------------------------------------------- */
 .composer { padding: 16px clamp(16px, 3vw, 36px) 14px; border-bottom: 1px solid var(--hair); background: var(--ground); }
+.composer.dropping { outline: 1px dashed var(--l486); outline-offset: -6px; }
 .composer-field { position: relative; }
 .composer textarea {
   display: block;
