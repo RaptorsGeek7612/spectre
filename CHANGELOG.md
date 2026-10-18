@@ -7,6 +7,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-18
+
 ### Added
 - **Pièces jointes dans la conversation avec Spectre** : trombone, coller (Ctrl+V, captures
   d'écran comprises) et glisser-déposer, jusqu'à 10 fichiers de 15 Mo par message. Les fichiers
@@ -26,10 +28,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   installer attendent toujours la validation de l'utilisateur.
 
 ### Changed
-- Spectre peut parfois prendre seul une petite décision réversible et sans enjeu ; une
-  inscription ou un paiement exige toujours l'autorisation explicite de l'utilisateur, pour
-  lui comme pour ses sous-agents (prompt du cerveau, prompt WORKER, compétence
-  `spectre-personnalite`).
+- Une inscription ou un paiement exige toujours l'autorisation explicite de l'utilisateur,
+  pour Spectre comme pour ses sous-agents (prompt du cerveau, prompt WORKER) ; un sous-agent
+  décide seul des petits choix de son étape.
 - Spectre cherche toujours le meilleur pour s'améliorer, lui et ses sous-agents, d'abord le
   plus sécurisé, le plus stable et le plus fiable, vérifié avant de proposer : nouvelle
   compétence `spectre-amelioration` (critères, grille de vérification, protocole, signaux
