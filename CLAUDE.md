@@ -25,7 +25,8 @@ avant toute initiative), `spectre-amitie`, `spectre-developpement-humain` (sans 
 `spectre-crypto` (**sujet prioritaire** : jamais de clé/phrase, aucune transaction sans un oui, pas
 de promesse de gain), `spectre-langage` / `spectre-langage-anglais` (comprendre tout, employer peu),
 `spectre-entrepreneur` (parler en chef d'entreprise), `spectre-animaux` (vers vétérinaire pour la
-santé), `spectre-jeux-argent` (risques, jeu responsable, crypto),
+santé), `spectre-jeux-argent` (risques, jeu responsable, crypto ; experte Lexy :
+`spectre-strategies-casino`, `spectre-strategies-paris`, `spectre-strategies-financieres`),
 `spectre-pub-communication` (Kyra : brief, cadres de rédaction, formats réseaux, droit de la
 pub), `spectre-production-audiovisuelle` (Kyra : clips, séries, films, de l'idée à la livraison),
 `spectre-post-production-libre` et `spectre-diffusion-marketing` (Kyra : contournements libres
@@ -77,7 +78,9 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   `laya.py` ; outils par métier `toolkit.py` (`toolkit`/`finance`/`science`/`paris`, scan local =
   READ, distant = ASK) ; studio de Kyra `media.py` (ComfyUI, `generate_image`/`generate_video`) ; outils ajoutés aux
   agents par Spectre `agent_tools.py` (fiches JSON, jamais de code) ; pièces jointes
-  `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait).
+  `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait) ;
+  leçons tirées des erreurs `lessons.py` (aide de Spectre à un agent bloqué : `HELPER` de
+  `missions.py`) ; mises à jour hebdomadaires des outils `updates.py`.
   `voice/engines.py` et `winapi.py` hors couverture (matériel).
 - **Logique métier** : les agents respectent toujours les règles de logique métier du projet en
   construction (contraintes, invariants, validations, enchaînement) ; en cas de doute ils le

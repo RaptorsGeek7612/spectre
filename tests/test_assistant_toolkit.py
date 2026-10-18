@@ -82,6 +82,27 @@ def test_betting_operations() -> None:
         toolkit.betting("kelly", [2.0])
 
 
+def test_betting_expectancy_margin_martingale_edge() -> None:
+    value = toolkit.betting("esperance", [2.1, 0.5])
+    assert "+0.050 €" in value and "cote juste 2.00" in value and "rare" in value
+    assert "fait perdre" in toolkit.betting("esperance", [1.9, 0.5])
+    margin = toolkit.betting("marge", [1.9, 1.9])
+    assert "5.3 %" in margin and "1.9 → 2.00 (50.0 %)" in margin
+    ruin = toolkit.betting("martingale", [1, 100, 18 / 37])
+    assert "6 pertes d'affilée" in ruin and "dernière mise 32 €" in ruin and "1.83%" in ruin
+    assert "ne change pas l'espérance" in ruin
+    assert "2.70%" in toolkit.betting("avantage_maison", [1 / 37, 35])  # plein, roulette à un zéro
+    assert "1.41%" in toolkit.betting("avantage_maison", [244 / 495, 1])  # craps, ligne Pass
+    for op, values in [
+        ("esperance", [0.9, 0.5]),
+        ("marge", [2.0]),
+        ("martingale", [10, 5, 0.5]),
+        ("avantage_maison", [1.5, 1]),
+    ]:
+        with pytest.raises(ActionError, match="calcul impossible"):
+            toolkit.betting(op, values)
+
+
 def test_science_and_betting_are_restricted(ctx: Any) -> None:
     gate = Gate(ctx.db)
     ctx.agent = "ysyss"
