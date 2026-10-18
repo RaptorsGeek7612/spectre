@@ -1459,7 +1459,9 @@ TOOLS: dict[str, Tool] = {
             "répond), ecriture (crée un fichier dans l'espace de travail) ou distant (la cible "
             "est une adresse : chaque appel demande validation) ; description : quand s'en "
             "servir ; install : winget:<Id> ou uv:<paquet> s'il faut l'installer. Tu ne "
-            "modifies jamais le code de Spectre : seulement ces fiches. Demande validation.",
+            "modifies jamais le code de Spectre : seulement ces fiches. Avant, vérifie que "
+            "c'est le choix le plus sûr, stable et fiable (compétence spectre-amelioration). "
+            "Demande validation.",
             Level.WRITE,
             "agent_tool",
             _agent_tool_save,
@@ -1469,7 +1471,8 @@ TOOLS: dict[str, Tool] = {
             "agent_tool_install",
             "Installer le programme d'une fiche d'outil (winget ou uv tool) sur ce PC. name : "
             "la fiche ; source : winget:<Id> ou uv:<paquet> (vide = celle de la fiche). "
-            "Toujours avec la validation de l'utilisateur.",
+            "Source officielle et version stable uniquement (compétence "
+            "spectre-amelioration). Toujours avec la validation de l'utilisateur.",
             Level.CRITICAL,
             "install_agent_tool",
             _agent_tool_install,

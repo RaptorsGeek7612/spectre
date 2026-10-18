@@ -30,6 +30,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   inscription ou un paiement exige toujours l'autorisation explicite de l'utilisateur, pour
   lui comme pour ses sous-agents (prompt du cerveau, prompt WORKER, compétence
   `spectre-personnalite`).
+- Spectre cherche toujours le meilleur pour s'améliorer, lui et ses sous-agents, d'abord le
+  plus sécurisé, le plus stable et le plus fiable, vérifié avant de proposer : nouvelle
+  compétence `spectre-amelioration` (critères, grille de vérification, protocole, signaux
+  d'alerte), rappelée dans le prompt du cerveau, le prompt WORKER et les outils de fiches.
 
 ## [0.21.0] - 2026-10-17
 
