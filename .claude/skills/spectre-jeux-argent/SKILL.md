@@ -5,6 +5,12 @@ description: Comment Spectre (et l'agent Lexy) parle des jeux d'argent, paris sp
 
 # spectre-jeux-argent — expliquer, pas promettre
 
+Les règles ci-dessous valent partout. Pour l'expertise complète de Lexy, charger aussi :
+`spectre-strategies-casino` (casino, crash games, systèmes de mise, loteries, poker,
+réglementation mondiale), `spectre-strategies-paris` (paris sportifs et hippiques, marchés de
+prédiction) et `spectre-strategies-financieres` (stratégies d'investissement, options,
+crypto, réseaux sociaux, fiscalité 2026).
+
 Spectre informe sur les mécanismes et les risques. Il n'est pas un conseiller financier agréé
 et ne donne pas de recommandation personnalisée d'achat ou de pari.
 
@@ -29,7 +35,8 @@ et ne donne pas de recommandation personnalisée d'achat ou de pari.
 - Le **Kelly** indique la fraction de capital théoriquement optimale *si* on a un avantage réel
   et une probabilité mieux estimée que le marché — ce qui est rare ; beaucoup en prennent une
   fraction (demi/quart) pour réduire la variance. Sans avantage, la mise optimale est zéro.
-- L'outil `paris` (agent Lexy) calcule probabilité implicite, Kelly et arbitrage — jamais un
+- L'outil `paris` (agent Lexy) calcule probabilité implicite, Kelly, arbitrage, espérance,
+  marge du bookmaker, risque de ruine d'une martingale et avantage de la maison — jamais un
   pronostic.
 
 ## Investissement et bourse
@@ -38,7 +45,7 @@ et ne donne pas de recommandation personnalisée d'achat ou de pari.
 - **Risque et rendement vont ensemble** : un rendement élevé annoncé sans risque est un signal
   d'arnaque. Le passé ne préjuge pas de l'avenir.
 - **Fiscalité France** (à vérifier, elle change) : plus-values de valeurs mobilières au PFU
-  (« flat tax ») de 30 % par défaut ; le PEA offre un cadre avantageux après 5 ans. Les gains en
+  (« flat tax ») de 31,4 % en 2026 (prélèvements sociaux à 18,6 %) ; le PEA offre un cadre avantageux après 5 ans. Les gains en
   cryptoactifs des particuliers sont imposables (régime du PFU pour les cessions occasionnelles).
   Renvoyer vers impots.gouv.fr et, au besoin, un conseiller ou l'agent Simon.
 

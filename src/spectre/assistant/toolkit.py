@@ -634,6 +634,10 @@ BETTING_OPS = {
     "probabilite": "probabilité implicite d'une cote décimale (ex. 2.5)",
     "kelly": "mise optimale de Kelly — cote décimale, puis ta probabilité estimée (0 à 1)",
     "arbitrage": "garantie de gain ? les cotes décimales des issues (ex. 2.1 2.0)",
+    "esperance": "espérance d'un pari pour 1 € misé — cote décimale, puis la probabilité (0 à 1)",
+    "marge": "marge du bookmaker et cotes « justes » — les cotes décimales de toutes les issues",
+    "martingale": "risque de ruine — mise de départ, capital, probabilité de gain d'un coup",
+    "avantage_maison": "avantage de la maison — probabilité de gain, gain net pour 1 € (ex. 35)",
 }
 
 
@@ -664,6 +668,59 @@ def betting(operation: str, values: list[float]) -> str:
             return (
                 f"Somme des probabilités implicites : {total * 100:.1f} % → "
                 f"{verdict} (marge {marge:.1f} %)"
+            )
+        if op == "esperance":
+            cote, prob = nums[:2]
+            if not 0 <= prob <= 1 or cote <= 1:
+                raise ValueError("cote > 1 et probabilité entre 0 et 1")
+            ev = prob * cote - 1
+            juste = 1 / prob if prob else float("inf")
+            return (
+                f"Espérance : {ev:+.3f} € par euro misé ({ev:+.1%}) ; cote juste {juste:.2f}. "
+                + (
+                    "Positive seulement si ta probabilité est vraiment meilleure que celle du "
+                    "marché — c'est rare et ça se vérifie sur des centaines de paris."
+                    if ev > 0
+                    else "Négative : sur la durée, ce pari fait perdre."
+                )
+            )
+        if op == "marge":
+            odds = [c for c in nums if c > 1]
+            if len(odds) < 2:
+                raise ValueError("au moins deux cotes décimales > 1")
+            total = sum(1 / c for c in odds)
+            fair = ", ".join(f"{c} → {c * total:.2f} ({100 / (c * total):.1f} %)" for c in odds)
+            return (
+                f"Marge du bookmaker : {(total - 1) * 100:.1f} % (retour au joueur "
+                f"{100 / total:.1f} %). Cotes justes (marge retirée, répartie au prorata) : {fair}"
+            )
+        if op == "martingale":
+            mise, capital, prob = nums[:3]
+            if mise <= 0 or capital < mise or not 0 < prob < 1:
+                raise ValueError("mise > 0, capital ≥ mise, probabilité entre 0 et 1")
+            pertes, engage = 0, mise
+            while engage + mise * 2**pertes * 2 <= capital:
+                pertes += 1
+                engage += mise * 2**pertes
+            pertes += 1  # coups perdus d'affilée que le capital absorbe
+            ruine = (1 - prob) ** pertes
+            series = 1 - (1 - ruine) ** 100
+            return (
+                f"Avec {capital:g} € et une mise de départ de {mise:g} €, tu tiens {pertes} pertes "
+                f"d'affilée (dernière mise {mise * 2 ** (pertes - 1):g} €). Risque de tout perdre "
+                f"sur une série : {ruine:.2%} ; sur 100 séries : {series:.0%}. Chaque série "
+                f"gagnée rapporte seulement {mise:g} €. La martingale ne change pas l'espérance "
+                "(négative au casino) : elle échange beaucoup de petits gains contre une grosse "
+                "perte rare, et les plafonds de table la bloquent avant."
+            )
+        if op == "avantage_maison":
+            prob, gain = nums[:2]
+            if not 0 < prob < 1 or gain <= 0:
+                raise ValueError("probabilité entre 0 et 1, gain net > 0")
+            edge = 1 - prob * (gain + 1)
+            return (
+                f"Avantage de la maison : {edge:.2%} (retour au joueur {1 - edge:.2%}). "
+                "Ex. : plein à la roulette européenne = probabilité 1/37, gain 35 → 2,70 %."
             )
     except (ValueError, ZeroDivisionError, IndexError) as exc:
         raise ActionError(f"calcul impossible : {exc}") from exc
