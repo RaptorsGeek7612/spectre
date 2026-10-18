@@ -534,7 +534,7 @@ class MissionEngine:
         plan = json.loads(row["plan"] or "{}")
         steps_plan: list[str] = (plan.get("steps") if isinstance(plan, dict) else None) or []
         if not steps_plan:
-            context = Memory(self.db).context_block(20)
+            context = Memory(self.db).context_block(40, 12_000)
             reply = self._call(
                 self.lead_model, f"Mission : {row['goal']}\n\nContexte :\n{context}", PLANNER
             )

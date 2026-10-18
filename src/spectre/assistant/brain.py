@@ -389,7 +389,7 @@ class Brain:
             f"{'voix (réponse parlée, très courte)' if channel == 'voice' else 'texte'}.",
             greetings.greeting_rule(self.db, moment) + " " + VARIETY,
             "Ce que tu sais de l'utilisateur (mémoire, la plus fiable d'abord) :\n"
-            + self.memory.context_block(),
+            + self.memory.context_block(self.config.memory_facts, self.config.memory_chars),
         ]
         learned = self._learned()
         if learned:
@@ -535,7 +535,8 @@ class Brain:
 
     def _memory_mark(self) -> str:
         """A fingerprint of the memory shown in the system prompt."""
-        return hashlib.sha256(self.memory.context_block().encode()).hexdigest()[:16]
+        block = self.memory.context_block(self.config.memory_facts, self.config.memory_chars)
+        return hashlib.sha256(block.encode()).hexdigest()[:16]
 
     def _recap(
         self, turns: int = 8, head: str = "[Ta mémoire a changé : nouvelle conversation."

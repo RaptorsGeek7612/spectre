@@ -923,6 +923,8 @@ const FIELDS = [
   ["auto_max_level", "Autonomie (0 à 2)", "number", "Au-dessus de ce niveau de risque, Spectre demande ta validation. Supprimer, envoyer ou toucher au système demande toujours ton accord."],
   ["actions_per_minute", "Budget d'actions par minute", "number", "Garde-fou contre les boucles : au-delà, Spectre s'arrête un instant. Seules les actions réellement faites comptent."],
   ["actions_per_day", "Budget d'actions par jour", "number", "Plafond quotidien des actions de Spectre et de ses agents (remis à zéro à minuit)."],
+  ["memory_facts", "Mémoire : souvenirs par conversation", "number", "Combien de faits sur toi Spectre a en tête à chaque échange (les plus fiables d'abord ; 400 au plus). Les autres restent en mémoire, il les retrouve quand le sujet vient."],
+  ["memory_chars", "Mémoire : taille maximale", "number", "Plafond en caractères de ces souvenirs dans ses consignes (45 000 ≈ 11 000 tokens ; 120 000 au plus), pour garder des réponses rapides et un coût raisonnable."],
   ["stt_model", "Compréhension de ta voix", ["small", "medium", "large-v3-turbo"], "small : rapide (environ 2 s par phrase sur ce PC) ; medium et large-v3-turbo : un peu plus précis mais 3 à 4 fois plus lents, et 1,5 Go à télécharger au premier lancement. Au prochain lancement."],
   ["tts_voice", "Voix", ["fr_FR-upmc-medium", "fr_FR-gilles-low", "fr_FR-tom-medium"], "Voix d'homme ; pour fr_FR-upmc-medium, mets le locuteur « pierre »."],
   ["tts_speaker", "Locuteur", "text", ""],

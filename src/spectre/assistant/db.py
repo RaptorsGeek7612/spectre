@@ -241,6 +241,17 @@ class Database:
         with self._lock:
             self._conn.close()
 
+    def backup(self, target: Path) -> Path:
+        """A consistent copy of the whole database (SQLite online backup)."""
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with self._lock:
+            copy = sqlite3.connect(target)
+            try:
+                self._conn.backup(copy)
+            finally:
+                copy.close()
+        return target
+
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:
         """A transaction (commit on success, rollback on error)."""

@@ -81,7 +81,9 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait) ;
   leçons tirées des erreurs `lessons.py` (aide de Spectre à un agent bloqué : `HELPER` de
   `missions.py`) ; mises à jour hebdomadaires des outils `updates.py` ; paiements préparés
-  `payments.py` (QR SEPA ou page marchand, l'utilisateur paie ; catégorie `payment` = ASK).
+  `payments.py` (QR SEPA ou page marchand, l'utilisateur paie ; catégorie `payment` = ASK) ;
+  mémoire `memory.py` (150 faits / 45 000 car. dans le prompt, `compact` la nuit : sauvegarde,
+  fusions vérifiées, rien d'effacé, règles et confidences verrouillées, `restore`).
   `voice/engines.py` et `winapi.py` hors couverture (matériel).
 - **Logique métier** : les agents respectent toujours les règles de logique métier du projet en
   construction (contraintes, invariants, validations, enchaînement) ; en cas de doute ils le

@@ -85,6 +85,11 @@ def _forget(ctx: ActionContext, fact_id: int) -> str:
     return f"oublié : #{fact['id']} {fact['subject']} {fact['predicate']} {fact['value']}"
 
 
+def _restore_fact(ctx: ActionContext, fact_id: int) -> str:
+    fact = Memory(ctx.db).restore(int(fact_id))
+    return f"restauré : #{fact['id']} {fact['subject']} {fact['predicate']} {fact['value']}"
+
+
 def _start_mission(ctx: ActionContext, goal: str, kind: str = "mission", agent: str = "") -> str:
     if not goal.strip():
         raise ActionError("objectif de mission vide")
@@ -1159,6 +1164,15 @@ TOOLS: dict[str, Tool] = {
         ),
         Tool(
             "forget", "Oublier un fait mémorisé (par son numéro).", Level.WRITE, "memory", _forget
+        ),
+        Tool(
+            "restore_fact",
+            "Restaurer un souvenir archivé ou fusionné (le rangement de la nuit n'efface "
+            "jamais rien). fact_id : son numéro.",
+            Level.WRITE,
+            "memory",
+            _restore_fact,
+            lead_only=True,
         ),
         Tool(
             "open_url",

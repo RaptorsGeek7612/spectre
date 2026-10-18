@@ -147,6 +147,15 @@ def test_memory_context_and_mirror(db: Database, tmp_path: Path) -> None:
     mem.remember("Barth", "ville", "Lyon", category="lieu")
     mem.remember("Spectre", "ton", "tutoiement", category="persona")
     assert mem.context_block().startswith("- [persona]")
+    for i in range(30):
+        mem.remember("Olivier", f"souvenir {i}", "x" * 200, category="lieu")
+    full = mem.context_block(150, 45_000)
+    assert full.count("\n- [") == 31 and "autre(s) souvenir" not in full  # 32 facts, all in
+    capped = mem.context_block(5)  # a fact budget: the rest is announced, for recall
+    assert capped.count("- [") == 5 and "+ 27 autre(s) souvenir(s)" in capped and "recall" in capped
+    small = mem.context_block(150, 2_000)  # a character budget (2 000 at least)
+    assert len(small) < 2_300 and "autre(s) souvenir" in small
+    assert mem.context_block(10_000, 10**9).count("- [") == 32  # bounds keep it reasonable
     folder = tmp_path / "memoire"
     (folder).mkdir()
     (folder / "projet.md").write_text("old", encoding="utf-8")

@@ -217,6 +217,8 @@ class AssistantConfig:
     auto_max_level: int = 2  # actions above this level need your approval
     actions_per_minute: int = 60  # action budget against runaway loops
     actions_per_day: int = 3000
+    memory_facts: int = 150  # facts about you given to Spectre with each conversation
+    memory_chars: int = 45_000  # and at most this many characters of them (the rest: recall)
     allowed_roots: list[str] = field(default_factory=lambda: [str(Path.home())])
     wake_word: str = "spectre"
     mic_device: str = ""  # part of the microphone's name; empty = pick a real microphone

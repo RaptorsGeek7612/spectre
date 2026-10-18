@@ -7,6 +7,21 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Une mémoire bien plus grande, mais raisonnable** : Spectre a en tête jusqu'à 150 faits
+  sur l'utilisateur à chaque échange (au lieu de 40), dans une enveloppe de 45 000 caractères
+  (≈ 11 000 tokens) ; les plus fiables d'abord, les autres restent en mémoire et sont retrouvés
+  avec `recall`. Réglages `memory_facts` et `memory_chars` (400 faits et 120 000 caractères au
+  plus) dans la page Réglages. Le planificateur des missions en reçoit 40 (au lieu de 20).
+- **Rangement de la mémoire chaque nuit, sans rien effacer** (`Memory.compact`, après la
+  consolidation de 3 h) : sauvegarde de la base d'abord (`sauvegardes/memoire-<date>.db`, les
+  7 dernières gardées), puis une relecture (Sonnet) propose de fusionner les doublons et
+  d'archiver ce qui est dépassé ; chaque fusion est vérifiée (même catégorie, aucun chiffre ni
+  date perdu, texte pas raccourci), 15 fusions et 5 archivages par nuit au plus, rien
+  d'archivé qui a été vu dans la semaine. Les règles de l'utilisateur et ses confidences ne
+  sont jamais touchées. Les faits fusionnés ou archivés restent en base, restaurables
+  (`restore_fact`) ; un compte rendu arrive le matin.
+
 ### Fixed
 - Connexions SQLite laissées ouvertes : celle du portail des moteurs hébergés (Simon, Shelby,
   Ysyss, Lexy) se ferme désormais avec le moteur ; les tests ferment chaque base qu'ils
