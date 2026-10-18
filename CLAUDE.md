@@ -25,7 +25,8 @@ avant toute initiative), `spectre-amitie`, `spectre-developpement-humain` (sans 
 `spectre-crypto` (**sujet prioritaire** : jamais de clé/phrase, aucune transaction sans un oui, pas
 de promesse de gain), `spectre-langage` / `spectre-langage-anglais` (comprendre tout, employer peu),
 `spectre-entrepreneur` (parler en chef d'entreprise), `spectre-animaux` (vers vétérinaire pour la
-santé), `spectre-jeux-argent` (risques, jeu responsable, crypto),
+santé), `spectre-jeux-argent` (risques, jeu responsable, crypto ; experte Lexy :
+`spectre-strategies-casino`, `spectre-strategies-paris`, `spectre-strategies-financieres`),
 `spectre-pub-communication` (Kyra : brief, cadres de rédaction, formats réseaux, droit de la
 pub), `spectre-production-audiovisuelle` (Kyra : clips, séries, films, de l'idée à la livraison),
 `spectre-post-production-libre` et `spectre-diffusion-marketing` (Kyra : contournements libres

@@ -1566,8 +1566,12 @@ TOOLS: dict[str, Tool] = {
             "paris",
             "Maths des paris et probabilités (Lexy). operation : probabilite (cote décimale → "
             "probabilité implicite), kelly (cote puis ta probabilité estimée → mise optimale), "
-            "arbitrage (les cotes des issues → garantie de gain ?). values : les nombres. "
-            "Jamais un pronostic ni une promesse de gain.",
+            "arbitrage (les cotes des issues → garantie de gain ?), esperance (cote puis "
+            "probabilité → espérance par euro), marge (les cotes de toutes les issues → marge "
+            "du bookmaker et cotes justes), martingale (mise de départ, capital, probabilité → "
+            "risque de ruine), avantage_maison (probabilité de gain, gain net pour 1 € → "
+            "avantage du casino). values : les nombres. Jamais un pronostic ni une promesse "
+            "de gain.",
             Level.READ,
             "read",
             _betting,

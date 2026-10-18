@@ -19,6 +19,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 - **Spectre aide un agent en difficulté** : après deux tentatives refusées, il diagnostique et
   donne une solution pas à pas pour une troisième tentative ; en fin de mission, il propose ce
   qui rendrait l'agent plus performant (outil, compétence, brief), soumis à l'utilisateur.
+- **Lexy, experte de toutes les stratégies de jeux, de paris et de finance** (recherches
+  web et réseaux sociaux du 18/10/2026) : compétences `spectre-strategies-casino` (avantage
+  de la maison de chaque jeu, blackjack, systèmes de mise, crash games, loteries, poker,
+  réglementation mondiale, fiscalité), `spectre-strategies-paris` (value, CLV, Kelly,
+  arbitrage, matched betting, TRJ 85 %, marchés de prédiction, arnaques aux pronostiqueurs)
+  et `spectre-strategies-financieres` (allocations, facteurs, options, crypto, FIRE,
+  finfluenceurs, PFU 31,4 %) ; l'outil `paris` calcule aussi l'espérance, la marge et les
+  cotes justes, le risque de ruine d'une martingale et l'avantage de la maison.
 - **Mises à jour régulières des outils** (module `updates.py`) : chaque semaine, Spectre
   liste les mises à jour winget et uv tool et les annonce ; `tool_updates` (lecture) et
   `update_tools` (validation obligatoire ; versions non stables écartées, Python tenu à sa
