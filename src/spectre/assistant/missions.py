@@ -32,6 +32,7 @@ from spectre.assistant.db import Database, now_iso
 from spectre.assistant.engines import EXTERNAL as EXTERNAL  # re-exported for tests
 from spectre.assistant.engines import Engines
 from spectre.assistant.learning import Learning, mark_mission
+from spectre.assistant.lessons import Lessons
 from spectre.assistant.memory import Memory
 from spectre.assistant.providers import split_ref
 from spectre.assistant.trust import Trust
@@ -69,7 +70,20 @@ d'inscription (créer un compte, s'abonner, s'enregistrer sur un service) ni de 
 arrête-toi et demande-la dans ton compte rendu. Quand tu choisis un outil, une \
 bibliothèque ou une méthode, prends le plus sécurisé, le plus stable et le plus fiable \
 (source officielle, version stable, maintenu, sans faille connue) ; si une amélioration de \
-tes outils serait utile, propose-la dans ton compte rendu sans l'installer toi-même."""
+tes outils serait utile, propose-la dans ton compte rendu sans l'installer toi-même. \
+Si tu bloques, dis précisément ce qui coince (outil, chemin, accès, information manquante) : \
+Spectre t'aidera. Quand tu comprends une erreur que tu as faite, retiens-la avec \
+learn_lesson."""
+
+HELPER = """\
+Tu es Spectre, le directeur de l'équipe. Un de tes agents ({name}) n'arrive pas à faire une \
+étape : deux tentatives ont été refusées par la vérification. Aide-le à réussir. Diagnostique \
+la cause probable (consigne mal comprise, outil mal utilisé ou introuvable, chemin ou \
+information manquante, étape trop grosse, mauvaise méthode) et donne-lui une solution \
+concrète, pas à pas : quel outil, quel chemin complet, quelle méthode, quoi vérifier. Si \
+l'étape est impossible sans l'utilisateur (accès, inscription, paiement, décision), dis-le \
+clairement : l'agent devra s'arrêter et le signaler. Jamais de solution qui contourne une \
+règle ou une validation. Réponds en quelques lignes, directement à l'agent."""
 
 SPECIALTIES = {  # added to WORKER for the agent in charge of each field
     "chatgpt": """\
@@ -558,8 +572,33 @@ class MissionEngine:
             status="fail" if missed else "ok",
         )
         self._finish(row, report, "Mission terminée", body, ok=not missed)
+        if self.learn:
+            self._lessons(row, done)
         if not missed and self.learn:
             self._learn(row, report)
+
+    def _lessons(self, row: dict[str, Any], done: list[dict[str, Any]]) -> None:
+        """Learn from the steps that failed their check or had to be done again."""
+        ref = self.learning_model or self.verifier_model
+        try:
+            with runctx.scope(role="apprentissage"):
+                found = Lessons(self.db).review(row, done, lambda p, s: self._call(ref, p, s))
+        except Exception:  # noqa: BLE001 - learning must never break a finished mission
+            return
+        new = [x for x in found["lessons"] if x["outcome"] == "created"]
+        if new:
+            self.notify(
+                "apprentissage",
+                f"{len(new)} leçon(s) tirée(s) de la mission #{row['id']}",
+                " ; ".join(f"{agent_name(x['agent'])} : {x['lesson']}" for x in new),
+            )
+        if found["improvements"]:  # proposals only: Spectre asks the user before acting
+            self.notify(
+                "amelioration",
+                f"Rendre l'équipe plus performante (mission #{row['id']})",
+                " ; ".join(f"{agent_name(i['agent'])} : {i['idea']}" for i in found["improvements"])
+                + " — à te proposer avant toute mise en place.",
+            )
 
     def _learn(self, row: dict[str, Any], report: str) -> None:
         """Ask the review engine whether this mission taught a reusable method."""
@@ -624,8 +663,11 @@ class MissionEngine:
             system += f"\n\n{SPECIALTIES[model]}"
         if brief:
             system += f"\n\n{brief}"
-        note, ok, result = "", False, ""
         key = f"{PREFIX}{created['id']}" if created else model  # whose record this step feeds
+        lessons = Lessons(self.db).block(key)
+        if lessons:
+            system += f"\n\n{lessons}"
+        note, ok, result, first_note = "", False, "", ""
         activity.record(self.db, "step_start", agent=key, title=step, detail=name)
         step_started = time.perf_counter()
         for attempt in range(2):
@@ -651,6 +693,34 @@ class MissionEngine:
                 ok, note = False, "vérification illisible"
             if ok:
                 break
+            first_note = first_note or note
+        advice = ""
+        if not ok:  # stuck twice: Spectre, the director, helps the agent find the way
+            help_reply = self._call(
+                self.lead_model,
+                f"Mission : {goal}\nÉtape : {step}\n\nDernier compte rendu de l'agent :\n"
+                f"{result[:3000]}\n\nVérification : {first_note} / {note}",
+                HELPER.format(name=name),
+            )
+            advice = "" if failed(help_reply) else help_reply.text.strip()[:3000]
+        if advice:
+            start = time.perf_counter()
+            helped = (
+                f"{prompt}\n\nAide de Spectre (ton directeur), après deux tentatives "
+                f"insuffisantes :\n{advice}"
+            )
+            with runctx.scope(agent=key, role="exécution"):
+                answer = worker.ask(helped, system=system, model=wanted, with_tools=True)
+                spend.record(self.db, answer, time.perf_counter() - start, engine=engine)
+            result = answer.text
+            check = self._call(
+                self.verifier_model, f"Étape : {step}\n\nCompte rendu :\n{result}", VERIFIER
+            )
+            try:
+                verdict = extract_json(check.text)
+                ok, note = bool(verdict.get("ok")), str(verdict.get("note", ""))
+            except ValueError:
+                ok, note = False, "vérification illisible"
         Trust(self.db).record(key, "step_ok" if ok else "step_fail")
         activity.record(
             self.db,
@@ -669,6 +739,9 @@ class MissionEngine:
             "agent": model,
             "name": name,
             "key": key,
+            "retried": bool(first_note),
+            "first_note": first_note,
+            "advice": advice,
         }
 
     # ---- persistence -----------------------------------------------------------------------

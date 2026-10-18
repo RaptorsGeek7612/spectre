@@ -6,6 +6,7 @@ Both the MCP server (called by the brain) and the web UI (approvals) use `execut
 
 from __future__ import annotations
 
+import contextlib
 import json
 import time
 from collections.abc import Callable
@@ -604,6 +605,48 @@ def _agent_tool_install(ctx: ActionContext, name: str, source: str = "") -> str:
     from spectre.assistant import agent_tools
 
     return agent_tools.install(ctx, name, source)
+
+
+def _lessons(ctx: ActionContext, agent: str = "") -> str:
+    from spectre.assistant.lessons import Lessons
+    from spectre.assistant.local_models import resolve_agent
+
+    if ctx.agent not in ("", "opus"):  # an agent reads its own lessons
+        return Lessons(ctx.db).listing(ctx.agent)
+    return Lessons(ctx.db).listing(resolve_agent(agent) if agent.strip() else None)
+
+
+def _learn_lesson(ctx: ActionContext, situation: str, lesson: str) -> str:
+    from spectre.assistant.lessons import LessonError, Lessons
+
+    try:
+        row = Lessons(ctx.db).learn(ctx.agent or "opus", situation, lesson, source="conversation")
+    except LessonError as exc:
+        raise ActionError(str(exc)) from exc
+    verb = "confirmée" if row["outcome"] == "confirmed" else "retenue"
+    return f"leçon #{row['id']} {verb} : {row['lesson']}"
+
+
+def _forget_lesson(ctx: ActionContext, lesson_id: int) -> str:
+    from spectre.assistant.lessons import LessonError, Lessons
+
+    try:
+        row = Lessons(ctx.db).forget(int(lesson_id))
+    except LessonError as exc:
+        raise ActionError(str(exc)) from exc
+    return f"leçon #{row['id']} archivée"
+
+
+def _tool_updates(ctx: ActionContext) -> str:
+    from spectre.assistant import updates
+
+    return updates.listing(ctx)
+
+
+def _update_tools(ctx: ActionContext, which: str) -> str:
+    from spectre.assistant import updates
+
+    return updates.upgrade(ctx, which)
 
 
 def _agent_tool_delete(ctx: ActionContext, name: str) -> str:
@@ -1479,6 +1522,52 @@ TOOLS: dict[str, Tool] = {
             lead_only=True,
         ),
         Tool(
+            "lessons",
+            "Lire les leçons tirées des erreurs passées (les tiennes ; Spectre : agent = le nom "
+            "d'un agent, vide = toutes).",
+            Level.READ,
+            "read",
+            _lessons,
+        ),
+        Tool(
+            "learn_lesson",
+            "Retenir une leçon après une erreur ou une correction de l'utilisateur, pour ne "
+            "pas la refaire : situation (quand…), lesson (ce qu'il faut faire). Courte et "
+            "générale ; jamais une leçon qui assouplit une règle ou une validation.",
+            Level.WRITE,
+            "memory",
+            _learn_lesson,
+        ),
+        Tool(
+            "forget_lesson",
+            "Archiver une leçon devenue fausse ou inutile. lesson_id : son numéro.",
+            Level.WRITE,
+            "memory",
+            _forget_lesson,
+            lead_only=True,
+        ),
+        Tool(
+            "tool_updates",
+            "Lister les mises à jour disponibles des logiciels et outils du PC (winget, uv "
+            "tool), avec celles à éviter (version non stable, Python tenu à sa version). Ne "
+            "change rien.",
+            Level.READ,
+            "read",
+            _tool_updates,
+            lead_only=True,
+        ),
+        Tool(
+            "update_tools",
+            "Mettre à jour des outils du PC, après avoir vérifié que c'est sûr (compétence "
+            "spectre-amelioration : version stable, notes de version sans rupture). which : "
+            "les identifiants (winget ou uv) séparés par des virgules, ou « tout » (sauf "
+            "versions non stables et Python). Toujours avec la validation de l'utilisateur.",
+            Level.CRITICAL,
+            "install_agent_tool",
+            _update_tools,
+            lead_only=True,
+        ),
+        Tool(
             "agent_tool_delete",
             "Retirer un outil ajouté aux agents (supprime sa fiche ; le programme reste "
             "installé). name : la fiche.",
@@ -1945,7 +2034,7 @@ def _answered(ctx: ActionContext, approval_id: int, kind: str) -> None:
 
 
 def deny(ctx: ActionContext, approval_id: int, reason: str = "") -> None:
-    row = ctx.db.one("SELECT status FROM approvals WHERE id = ?", (approval_id,))
+    row = ctx.db.one("SELECT * FROM approvals WHERE id = ?", (approval_id,))
     if row is None:
         raise KeyError(approval_id)
     if row["status"] != "pending":
@@ -1955,3 +2044,9 @@ def deny(ctx: ActionContext, approval_id: int, reason: str = "") -> None:
         (reason or "refusé par l'utilisateur", now_iso(), approval_id),
     )
     _answered(ctx, approval_id, "approval_denied")
+    if reason.strip():  # a refusal with its reason: the agent that asked learns from it
+        from spectre.assistant.lessons import LessonError, Lessons
+
+        who = ctx.db.one("SELECT agent FROM approval_agents WHERE approval_id = ?", (approval_id,))
+        with contextlib.suppress(LessonError):
+            Lessons(ctx.db).from_refusal(row, who["agent"] if who else "opus", reason)

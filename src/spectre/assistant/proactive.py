@@ -171,6 +171,32 @@ class Proactive:
         self.media()
         self.decisions(now)
         self.trust()
+        self.tool_updates(now)
+
+    def tool_updates(self, now: datetime, *, background: bool = True) -> None:
+        """Once a week, look for tool updates and tell the user (nothing is installed)."""
+        from spectre.assistant import updates
+
+        if getattr(self.cli, "root", None) is None and background:
+            return  # not the real service (tests): never run the package managers
+        if not updates.due(self.db.get_kv(updates.CHECK_KV), now):
+            return
+        self.db.set_kv(updates.CHECK_KV, now.isoformat())
+
+        def check() -> None:
+            items = updates.available()
+            if items:
+                self.add_initiative(
+                    "mises_a_jour",
+                    f"{len(items)} mise(s) à jour d'outils disponible(s)",
+                    updates.summary(items)
+                    + "\nJe vérifie lesquelles sont sûres et je te propose de les faire.",
+                )
+
+        if background:  # pragma: no cover - winget is slow: off the proactive thread
+            threading.Thread(target=check, daemon=True).start()
+        else:
+            check()
 
     def routines(self, now: datetime, *, background: bool = True) -> list[int]:
         """Run the routines that are due."""

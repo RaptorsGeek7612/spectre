@@ -8,6 +8,21 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Spectre et ses agents apprennent de leurs erreurs** (module `lessons.py`, table
+  `lessons`) : après une mission, les étapes ratées, refaites ou débloquées deviennent des
+  leçons courtes pour l'agent concerné, données ensuite avec ses consignes (les plus
+  confirmées d'abord) ; un refus avec sa raison devient une leçon pour l'agent qui demandait ;
+  outils `lessons`, `learn_lesson`, `forget_lesson`. Une leçon ne peut jamais assouplir une
+  règle ni toucher aux secrets.
+- **Spectre aide un agent en difficulté** : après deux tentatives refusées, il diagnostique et
+  donne une solution pas à pas pour une troisième tentative ; en fin de mission, il propose ce
+  qui rendrait l'agent plus performant (outil, compétence, brief), soumis à l'utilisateur.
+- **Mises à jour régulières des outils** (module `updates.py`) : chaque semaine, Spectre
+  liste les mises à jour winget et uv tool et les annonce ; `tool_updates` (lecture) et
+  `update_tools` (validation obligatoire ; versions non stables écartées, Python tenu à sa
+  version).
+
+### Added
 - **Pièces jointes dans la conversation avec Spectre** : trombone, coller (Ctrl+V, captures
   d'écran comprises) et glisser-déposer, jusqu'à 10 fichiers de 15 Mo par message. Les fichiers
   sont gardés dans `workspace/pieces-jointes/` et Spectre les lit lui-même (images, PDF,

@@ -252,6 +252,9 @@ def test_mission_plan_steps_verify_retry_report(db: Database, tmp_path: Path) ->
         "illisible",
         "toujours rien",
         '{"ok": false, "note": "pas de fichier"}',
+        "Écris le fichier avec write_file et son chemin complet.",  # Spectre helps the agent
+        "encore rien",
+        '{"ok": false, "note": "pas de fichier"}',
         "# Rapport",
     )
     engine, notes = _engine(db, cli)
@@ -265,7 +268,12 @@ def test_mission_plan_steps_verify_retry_report(db: Database, tmp_path: Path) ->
     assert json.loads(row["plan"])["steps"] == ["chercher", "écrire"]
     assert "Tentative précédente insuffisante : vérification illisible" in cli.calls[5]["prompt"]
     assert cli.calls[1]["tools"] is True and cli.calls[2]["model"] == "haiku"
-    assert cli.calls[0]["model"] == "opus" and cli.calls[-1]["model"] == "opus"  # Spectre leads
+    help_call = cli.calls[7]  # stuck twice: Spectre, the director, looks into it
+    assert help_call["model"] == "opus" and "n'arrive pas" in help_call["system"]
+    assert "pas de fichier" in help_call["prompt"]
+    assert "Aide de Spectre" in cli.calls[8]["prompt"] and "write_file" in cli.calls[8]["prompt"]
+    assert steps[1]["advice"].startswith("Écris le fichier") and steps[1]["retried"]
+    assert cli.calls[0]["model"] == "opus" and cli.calls[10]["model"] == "opus"  # Spectre leads
     assert cli.calls[1]["model"] == "haiku"  # execution agents (model set by _engine)
     assert (cli.workspace / "missions" / f"mission-{mid:04d}.md").read_text(
         encoding="utf-8"
