@@ -8,6 +8,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Couleurs de la vue « Conversation »** : les quatre relevés HUD prennent chacun une raie du
+  spectre (Mémoire cyan, Validations violet, Missions bleu, **Cerveau ambre** — écho de l'état
+  « réflexion » de l'Orbe), la barre de signal passe en dégradé cyan→violet→rouge et les repères
+  d'angle sont teintés — l'UI reprend la palette colorée de l'Orbe sans surcharge.
 - **Vue « Conversation » mieux structurée autour de l'Orbe** : la scène est encadrée par de
   fins repères d'angle (dans l'esprit du réticule de l'Orbe), les quatre relevés HUD forment un
   cadre régulier (ceux du bas descendus au tiers inférieur) et le champ de saisie partage la
