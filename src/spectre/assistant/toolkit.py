@@ -49,6 +49,7 @@ class Kit:
     remote: bool = False  # the target is a URL or host (probing it reaches outside)
     output: Callable[[ActionContext, str, str], Path] | None = None  # the file it creates
     timeout: float = TIMEOUT_S
+    report: Callable[[ActionContext, str, str], Path] | None = None  # where long stdout is kept
 
 
 def _bin(names: tuple[str, ...]) -> str | None:
@@ -166,6 +167,49 @@ def _vector(options: str) -> str:
     if kind not in ("pdf", "png"):
         raise ActionError("options = pdf (vectoriel, pour l'impression) ou png")
     return kind
+
+
+# Syfer's reverse engineering: REA (github.com/morluto/rea, MIT), static inspections only —
+# they read the file without running it. Runtime capture, debuggers, Frida and adb are left out.
+REA_COMMANDS = {
+    "inspect-artifact": "vue d'ensemble d'un fichier (format, archive, membres, pistes suivantes)",
+    "inspect-pe-resources": "ressources d'un .exe/.dll Windows (icônes, versions, manifestes)",
+    "inspect-managed-artifact": "assembly .NET : identité, métadonnées, dépendances",
+    "inspect-managed-members": "assembly .NET : types, méthodes, signatures, chaînes",
+    "inspect-managed-native-boundaries": "assembly .NET : appels natifs (P/Invoke)",
+    "inspect-go-binary": "binaire Go : version du compilateur, modules, réglages de build",
+    "inspect-rust-binary": "binaire Rust : dépendances embarquées (cargo-auditable)",
+    "inspect-electron-fuses": "appli Electron : fusibles de sécurité de l'exécutable",
+    "analyze-javascript-application": "appli JavaScript/Electron (dossier ou .asar) : modules, IPC",
+    "inspect-sqlite-database": "base SQLite : schéma et tables",
+    "identify-flutter-build": "APK Flutter : version de Dart et du moteur",
+}
+REA_JS = (
+    Path.home()
+    / "AppData"
+    / "Roaming"
+    / "npm"
+    / "node_modules"
+    / "rea-agents"
+    / "scripts"
+    / "rea.mjs"
+)
+
+
+def _rea_command(options: str) -> str:
+    command = options.strip().lower() or "inspect-artifact"
+    if command not in REA_COMMANDS:
+        raise ActionError(
+            f"commande REA inconnue : {command} (au choix : {', '.join(REA_COMMANDS)})"
+        )
+    return command
+
+
+def _rea_report(ctx: ActionContext, target: str, options: str) -> Path:
+    """REA's full Evidence JSON, kept in the workspace: it can run to hundreds of thousands
+    of characters, far more than one answer holds."""
+    name = resolve_path(ctx, target).name
+    return ctx.workspace / "retro" / f"{name}-{_rea_command(options)}.json"
 
 
 LOUDNESS = {"web": -14, "tv": -23}  # LUFS: streaming platforms; French TV (EBU R128)
@@ -636,6 +680,22 @@ KITS: dict[str, Kit] = {
         ("inkscape",),
         output=lambda ctx, t, o: _beside(ctx, t, "export", "." + _vector(o)),
     ),
+    # ---- Syfer: reverse engineering of a local file, statically (REA, never runs the target)
+    "retro": Kit(
+        "REA (rétro-ingénierie statique d'un fichier : exe, dll, .NET, Go, Rust, Electron…)",
+        ("mistral",),
+        Level.READ,
+        "scan",
+        lambda ctx, t, o: [
+            _bin(("node",)) or "node",  # node, not rea.cmd: cmd.exe would re-parse the path
+            str(REA_JS),
+            _rea_command(o),
+            _local(ctx, t),
+            "--json",
+        ],
+        ("node",),
+        report=_rea_report,
+    ),
 }
 
 # Pure financial maths (numpy-financial), for Clarke and Simon: no subprocess, no files.
@@ -1081,7 +1141,10 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
         )
     if kit.agents and ctx.agent not in ("", "opus", *kit.agents):
         raise ActionError(f"{kit.label} n'est pas un outil de ton domaine")
-    if _bin(kit.bins) is None or (name == "languagetool" and not LANGUAGETOOL.is_file()):
+    missing = (name == "languagetool" and not LANGUAGETOOL.is_file()) or (
+        name == "retro" and not REA_JS.is_file()
+    )
+    if _bin(kit.bins) is None or missing:
         raise ActionError(f"{kit.label} n'est pas installé sur ce PC")
     if kit.needs_target and not target.strip():
         raise ActionError("précise la cible (un fichier, un dossier ou une adresse)")
@@ -1115,6 +1178,19 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
             detail = (err or out or "aucun fichier produit")[:400]
             raise ActionError(f"{kit.label} (code {proc.returncode}) : {detail}")
         return f"Fichier créé : {made}"
+    if kit.report is not None and out:
+        if proc.returncode != 0:  # REA answers its errors in JSON on stdout
+            raise ActionError(f"{kit.label} (code {proc.returncode}) : {out[:400]}")
+        kept = kit.report(ctx, target, options)
+        kept.parent.mkdir(parents=True, exist_ok=True)
+        kept.write_text(out, encoding="utf-8")
+        preview = 4000
+        more = (
+            f"\n[… {len(out) - preview} caractères de plus dans le rapport]"
+            if len(out) > preview
+            else ""
+        )
+        return f"Rapport complet : {kept}\n{out[:preview]}{more}"
     body = out or err or "(aucune sortie : rien à signaler)"
     if err and out:
         body += f"\n[détails] {err[:400]}"

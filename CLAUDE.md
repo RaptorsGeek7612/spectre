@@ -42,7 +42,10 @@ diriger une équipe en TPE, PME, ETI ou grand groupe, et sa propre équipe d'age
 les administrations, France, UE, international ; outil `administration`, module
 `administration.py`),
 `spectre-pentest` (Syfer : tous les types de tests d'intrusion, cadre légal strict ; outils
-toolkit nmap/subfinder/httpx/trufflehog), `spectre-amelioration` (s'améliorer, lui et ses
+toolkit nmap/subfinder/httpx/trufflehog), `spectre-retro-ingenierie` (Syfer : rétro-ingénierie
+sur la méthode REA, github.com/morluto/rea ; outil toolkit `retro` = inspections statiques de
+REA 6.7.0, installé par `npm install -g rea-agents@6.7.0 --ignore-scripts`, lancé par `node`
+et jamais par `rea.cmd`), `spectre-amelioration` (s'améliorer, lui et ses
 agents : toujours le plus sûr, stable et fiable, vérifié avant de proposer). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
 charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
 

@@ -330,6 +330,39 @@ def test_design_tools_commands(ctx: Any) -> None:
         toolkit.run(ctx, "maquette_png", "deck.html")
 
 
+def test_retro_runs_rea_statically_and_keeps_the_report(ctx: Any, monkeypatch: Any) -> None:
+    rea = ctx.allowed_roots[0] / "rea.mjs"
+    rea.write_text("// REA")
+    monkeypatch.setattr(toolkit, "REA_JS", rea)
+    (ctx.allowed_roots[0] / "app.exe").write_bytes(b"MZ")
+    ctx.agent = "mistral"
+    evidence = '{"evidence_id": "ev_1", "x": "' + "a" * 5000 + '"}'
+    ctx.runner.result = subprocess.CompletedProcess([], 0, evidence, "")
+    out = toolkit.run(ctx, "retro", "app.exe")
+    command = ctx.runner.calls[-1]
+    assert command[1:3] == [str(rea), "inspect-artifact"] and command[-1] == "--json"
+    assert not command[0].lower().endswith(".cmd")  # node itself: cmd.exe never parses the path
+    kept = ctx.workspace / "retro" / "app.exe-inspect-artifact.json"
+    assert kept.read_text(encoding="utf-8") == evidence  # the full report, not the preview
+    assert out.startswith(f"Rapport complet : {kept}") and "caractères de plus" in out
+    toolkit.run(ctx, "retro", "app.exe", "inspect-go-binary")
+    assert ctx.runner.calls[-1][2] == "inspect-go-binary"
+    for command_name in ("debug-with-gdb", "instrument-with-frida", "capture-process"):
+        with pytest.raises(ActionError, match="commande REA inconnue"):
+            toolkit.run(ctx, "retro", "app.exe", command_name)  # nothing that runs the target
+    ctx.runner.result = subprocess.CompletedProcess([], 1, '{"code": "invalid_request"}', "")
+    with pytest.raises(ActionError, match="invalid_request"):
+        toolkit.run(ctx, "retro", "app.exe", "inspect-sqlite-database")
+    assert toolkit.KITS["retro"].level == Level.READ
+    ctx.agent = "chatgpt"
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "retro", "app.exe")
+    monkeypatch.setattr(toolkit, "REA_JS", ctx.allowed_roots[0] / "absent.mjs")
+    ctx.agent = "mistral"
+    with pytest.raises(ActionError, match="pas installé"):
+        toolkit.run(ctx, "retro", "app.exe")
+
+
 # ---- Simon: trading maths and market data ---------------------------------------------------
 
 

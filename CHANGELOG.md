@@ -8,6 +8,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Syfer, expert en rétro-ingénierie** sur la méthode de REA « Reverse Engineer Anything »
+  (github.com/morluto/rea, MIT) : compétence `spectre-retro-ingenierie` — base légale vérifiée
+  d'abord (interopérabilité L122-6-1 CPI et directive 2009/24/CE, sécurité, jamais de
+  contournement de protection), routage de la cible, du résumé au détail, registre des
+  constats, observé / déduit / inconnu, reconstruction originale d'une fonctionnalité,
+  analyse de malware isolée. Outil `toolkit` `retro` réservé à Syfer : les inspections
+  **statiques** de REA (format et archive, ressources d'un .exe, assemblies .NET, binaires Go
+  et Rust, fusibles Electron, applis JavaScript/.asar, SQLite, Flutter) ; le fichier n'est
+  jamais exécuté, le rapport complet est gardé dans `workspace/retro/` et la réponse en
+  donne un aperçu. Débogueurs, Frida, capture d'exécution et adb ne sont pas branchés.
 - **Kyra devient designer, sur le modèle de Claude Design** (Anthropic Labs) : compétence
   `spectre-design` — cadrage (chercher le contexte existant, questions en une fois), système
   de design posé d'abord (`DESIGN.md`, variables CSS : couleurs à rôle, typo, espacements,

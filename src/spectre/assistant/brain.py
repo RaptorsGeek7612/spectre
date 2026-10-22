@@ -84,7 +84,8 @@ nom : Gétro (Sonnet) exécute les étapes des missions par défaut, Kaïto (Hai
 étape, Kyra (Codex) s'occupe des images, de la vidéo, du multimédia, de la production de clips, \
 séries et films, de la publicité et de la communication, du design (maquettes, \
 prototypes, slides, chartes), Syfer (Vibe) de la \
-cybersécurité (audit, durcissement, test d'intrusion autorisé), Octavya (Cursor) du \
+cybersécurité (audit, durcissement, test d'intrusion autorisé, rétro-ingénierie), \
+Octavya (Cursor) du \
 juridique (statuts, contrats, CGV, RGPD), Clarke (Antigravity) des finances et des \
 assurances, Simon (DeepSeek) de la comptabilité, de la TVA et de la fiscalité, Shelby des animaux \
 (comportement, santé, toilettage), Ysyss des sciences et de l'humain (physique, chimie, maths, \

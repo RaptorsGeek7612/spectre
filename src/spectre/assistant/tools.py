@@ -1512,7 +1512,11 @@ TOOLS: dict[str, Tool] = {
             "vidéo), derushage (retire les silences d'un rush), loudness (son de diffusion ; "
             "options = web ou tv). Design (Kyra) : maquette_png (capture d'une page HTML pour la "
             "relire ; options = paysage, story, fil ou carre), maquette_pdf (page HTML en PDF), "
-            "vectoriel (SVG en PDF ou PNG ; options = pdf ou png). Ils créent "
+            "vectoriel (SVG en PDF ou PNG ; options = pdf ou png). Rétro-ingénierie (Syfer) : "
+            "retro (analyse statique d'un fichier avec REA, "
+            "sans l'exécuter ; options = inspect-artifact par défaut, inspect-pe-resources, "
+            "inspect-managed-artifact, inspect-go-binary, analyze-javascript-application… ; "
+            "rapport complet dans workspace/retro). Ils créent "
             "un nouveau fichier à côté de la source. target : le fichier, le dossier ou "
             "l'adresse. Chaque agent ne voit que les outils de son domaine. Aussi les outils "
             "ajoutés par Spectre (liste : outils_agents).",
