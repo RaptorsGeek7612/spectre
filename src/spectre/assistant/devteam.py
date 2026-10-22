@@ -167,6 +167,7 @@ class DevTeam:
 
     def coder_command(self, engine: str, system: str, tests: str, config: Any) -> list[str]:
         """The coding agent's command line: Claude Code with a narrow tool set, or Codex."""
+        from spectre.assistant.brain import effort_flag
         from spectre.config import ASSISTANT_MODELS
 
         if engine == "chatgpt":
@@ -196,6 +197,7 @@ class DevTeam:
             "json",
             "--model",
             ASSISTANT_MODELS[model],
+            *effort_flag(config, model),
             "--system-prompt",
             system,
             "--permission-mode",

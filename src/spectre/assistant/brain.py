@@ -34,6 +34,18 @@ WEB_TOOLS = ("WebSearch", "WebFetch")
 # Files the user joins to a message (images, PDF, documents): Spectre reads them with Claude
 # Code's Read, limited to that folder of its workspace (its current folder).
 ATTACHMENT_READ = "Read(./pieces-jointes/**)"
+EFFORT_LEVELS = frozenset({"low", "medium", "high", "xhigh", "max"})
+
+
+def effort_flag(config: Any, model: str) -> list[str]:
+    """`--effort` for a Claude model that takes one. Haiku 4.5 never does, and an empty, absent
+    or unknown level falls back to Claude Code's default (no flag). `model` is the short name
+    (opus/sonnet/haiku), read before it is mapped to an exact id."""
+    level = config.model_effort.get(model, "")
+    if model == "haiku" or level not in EFFORT_LEVELS:
+        return []
+    return ["--effort", level]
+
 
 CORE = """\
 Tu es {name}, l'assistant personnel IA de {user}. Tu t'appelles {name} et seulement {name} : \
@@ -238,6 +250,7 @@ class ClaudeCLI:
             "json",
             "--model",
             ASSISTANT_MODELS.get(model, model),
+            *effort_flag(self.config, model),
             "--system-prompt-file",  # in a file: Windows caps a command line at 32 767 chars
             str(self.write_system_prompt(system)),
             "--permission-mode",

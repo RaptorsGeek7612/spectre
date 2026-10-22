@@ -8,6 +8,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Chaque agent Claude réfléchit avec le bon effort** (nouveauté des agents de Claude Code :
+  le drapeau `--effort`). Spectre règle maintenant l'effort par modèle et l'applique à tous ses
+  agents sur un moteur Claude — cerveau, agents de mission, planificateur, équipe de dev :
+  Opus en `high`, Sonnet en `medium` par défaut, réglable par `model_effort` dans les réglages
+  (niveaux `low`, `medium`, `high`, `xhigh`, `max`). Haiku 4.5 ne prend pas d'effort : il n'en
+  reçoit jamais. Cela applique enfin la règle « régler l'effort, pas la température » sur le vrai
+  appel à Claude Code (`claude -p`), qui jusqu'ici laissait l'effort par défaut du CLI.
 - **Syfer, expert en rétro-ingénierie** sur la méthode de REA « Reverse Engineer Anything »
   (github.com/morluto/rea, MIT) : compétence `spectre-retro-ingenierie` — base légale vérifiée
   d'abord (interopérabilité L122-6-1 CPI et directive 2009/24/CE, sécurité, jamais de
