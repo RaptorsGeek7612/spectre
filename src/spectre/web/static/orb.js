@@ -15,12 +15,12 @@ const ORBITS = 3; // tilted electron orbits
 const WORD = "SPECTRE";
 
 const MOODS = {
-  //          wobble, level gain, scale, alpha, spin,  spectrum, sweep, tilt (3-D lean)
-  off:       { wobble: 0.002, gain: 0,     scale: 0.92, alpha: 0.32, spin: 0.05, spectrum: 0.0,  sweep: 0, tilt: 0.20 },
-  sleeping:  { wobble: 0.004, gain: 0,     scale: 0.96, alpha: 0.68, spin: 0.10, spectrum: 0.06, sweep: 0, tilt: 0.28 },
-  listening: { wobble: 0.006, gain: 0.03,  scale: 1.03, alpha: 0.92, spin: 0.28, spectrum: 0.6,  sweep: 0, tilt: 0.36 },
-  thinking:  { wobble: 0.012, gain: 0,     scale: 1.0,  alpha: 0.9,  spin: 1.1,  spectrum: 0.22, sweep: 1, tilt: 0.5 },
-  speaking:  { wobble: 0.006, gain: 0.04,  scale: 1.0,  alpha: 0.98, spin: 0.42, spectrum: 1.0,  sweep: 0, tilt: 0.4 },
+  //          wobble, level gain, scale, alpha, spin,  spectrum, sweep, tilt (3-D lean), glow
+  off:       { wobble: 0.002, gain: 0,     scale: 0.92, alpha: 0.45, spin: 0.05, spectrum: 0.0,  sweep: 0, tilt: 0.20, glow: 0.15 },
+  sleeping:  { wobble: 0.004, gain: 0,     scale: 0.96, alpha: 0.85, spin: 0.10, spectrum: 0.10, sweep: 0, tilt: 0.28, glow: 0.3 },
+  listening: { wobble: 0.007, gain: 0.07,  scale: 1.06, alpha: 1.0,  spin: 0.30, spectrum: 0.85, sweep: 0, tilt: 0.36, glow: 0.75 },
+  thinking:  { wobble: 0.014, gain: 0,     scale: 1.0,  alpha: 0.98, spin: 1.15, spectrum: 0.3,  sweep: 1, tilt: 0.5,  glow: 0.55 },
+  speaking:  { wobble: 0.008, gain: 0.09,  scale: 1.04, alpha: 1.0,  spin: 0.44, spectrum: 1.0,  sweep: 0, tilt: 0.4,  glow: 1.0 },
 };
 
 function cssVar(name, fallback) {
@@ -79,6 +79,7 @@ export class Orb {
       };
     });
     this.wave = new Array(WAVE).fill(0);
+    this.ripples = []; // expanding rings that burst out when the voice surges
     this.orbits = Array.from({ length: ORBITS }, (_, i) => ({
       tilt: 0.5 + i * 0.55, // radians, each orbit leans differently
       yaw: (i / ORBITS) * Math.PI,
@@ -145,7 +146,11 @@ export class Orb {
 
   setLevel(v) {
     const next = Math.max(0, Math.min(1, Number(v) || 0));
-    if (next > this.level + 0.12) this.beat = Math.min(1, this.beat + (next - this.level));
+    // a surge in loudness kicks the core and sends a ring rippling outward — you SEE the voice
+    if (next > this.level + 0.1 && (this.state === "speaking" || this.state === "listening")) {
+      this.beat = Math.min(1, this.beat + (next - this.level) * 1.4);
+      if (this.ripples.length < 6) this.ripples.push({ t: 0, power: 0.5 + next * 0.5 });
+    }
     this.level = next;
   }
 
@@ -165,6 +170,9 @@ export class Orb {
       // push a new sample into the oscilloscope ring buffer
       this.wave.push(this.smooth * (0.6 + Math.random() * 0.4));
       this.wave.shift();
+      // advance voice ripples and drop the finished ones
+      for (const rp of this.ripples) rp.t += dt;
+      this.ripples = this.ripples.filter((rp) => rp.t < 1.2);
       const wantSpell = now < this.spellUntil ? 1 : 0;
       this.spell += (wantSpell - this.spell) * Math.min(1, dt * 3.2);
       this.draw(now / 1000);
@@ -209,13 +217,28 @@ export class Orb {
     this.drawSphere(ctx, c, R, t, col, mood, energy);
     this.drawOrbits(ctx, c, R, t, col, acc, mood, energy);
     this.drawCore(ctx, c, R, t, col, mood, energy, pulse);
+    this.drawVoiceRipples(ctx, c, R, col);
     ctx.globalCompositeOperation = "source-over";
+  }
+
+  // Rings that burst out of the core on every voice surge — the clearest "it's alive" signal.
+  drawVoiceRipples(ctx, c, R, [r, g, b]) {
+    for (const rp of this.ripples) {
+      const f = rp.t / 1.2; // 0..1
+      const rad = R * (0.3 + f * 1.35);
+      const a = (1 - f) * 0.5 * rp.power;
+      ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
+      ctx.lineWidth = this.dpr * (2.5 * (1 - f) + 0.5);
+      ctx.beginPath();
+      ctx.arc(c, c, rad, 0, TAU);
+      ctx.stroke();
+    }
   }
 
   drawHalo(ctx, c, R, [r, g, b], mood, energy) {
     const glow = R * (1.9 + energy * 0.4);
     const grad = ctx.createRadialGradient(c, c, R * 0.3, c, c, glow);
-    const a = (0.10 + energy * 0.22) * mood.alpha;
+    const a = (0.12 + energy * 0.3 + (mood.glow || 0) * 0.14) * mood.alpha;
     grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
     grad.addColorStop(0.55, `rgba(${r},${g},${b},${a * 0.3})`);
     grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
@@ -252,13 +275,13 @@ export class Orb {
       const depth = d.depth;
       const p = d.p;
       const twinkle = 0.62 + 0.38 * Math.sin(t * 2 + p.phase * 3);
-      const front = ease + (1 - ease) * (0.18 + 0.82 * depth);
-      const alpha = Math.min(1, mood.alpha * front * twinkle);
-      // each point keeps its own hue: dim at the back, full colour mid-depth, near-white in front
+      const front = ease + (1 - ease) * (0.34 + 0.66 * depth); // livelier, back points stay visible
+      const alpha = Math.min(1, mood.alpha * front * twinkle * (0.85 + energy * 0.5));
+      // each point keeps its own vivid hue: colourful even at the back, only a touch of white in front
       const [pr0, pg0, pb0] = p.col;
       let cr, cg, cb;
-      if (depth < 0.5) { const k = 0.35 + depth * 1.3; cr = pr0 * k; cg = pg0 * k; cb = pb0 * k; }
-      else { const k = (depth - 0.5) * 2 * (0.45 + energy * 0.5); cr = pr0 + (255 - pr0) * k; cg = pg0 + (255 - pg0) * k; cb = pb0 + (255 - pb0) * k; }
+      if (depth < 0.5) { const k = 0.6 + depth * 0.8; cr = pr0 * k; cg = pg0 * k; cb = pb0 * k; }
+      else { const k = (depth - 0.5) * 2 * (0.25 + energy * 0.35); cr = pr0 + (255 - pr0) * k; cg = pg0 + (255 - pg0) * k; cb = pb0 + (255 - pb0) * k; }
       // while thinking, nudge the whole swarm a touch toward the warm accent
       if (warmBias > 0.01) { cr += (r - cr) * warmBias * 0.4; cg += (g - cg) * warmBias * 0.4; cb += (b - cb) * warmBias * 0.4; }
       ctx.fillStyle = `rgba(${cr | 0},${cg | 0},${cb | 0},${alpha})`;
