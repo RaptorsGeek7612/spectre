@@ -363,6 +363,36 @@ def test_retro_runs_rea_statically_and_keeps_the_report(ctx: Any, monkeypatch: A
         toolkit.run(ctx, "retro", "app.exe")
 
 
+def test_retro_native_commands_go_through_ghidra(ctx: Any, monkeypatch: Any) -> None:
+    rea = ctx.allowed_roots[0] / "rea.mjs"
+    rea.write_text("// REA")
+    monkeypatch.setattr(toolkit, "REA_JS", rea)
+    gh = ctx.allowed_roots[0] / "ghidra_12.1.4_PUBLIC"
+    jdk = ctx.allowed_roots[0] / "jdk-21"
+    (target := ctx.allowed_roots[0] / "app.exe").write_bytes(b"MZ")
+    # with Ghidra and a JDK found, a native command targets the Ghidra provider...
+    monkeypatch.setattr(toolkit, "ghidra_dir", lambda: gh)
+    monkeypatch.setattr(toolkit, "_jdk_dir", lambda: jdk)
+    argv = toolkit._rea_argv(ctx, str(target), "function main")
+    assert argv[2] == "function" and argv[-3:] == ["--provider", "ghidra", "--json"]
+    assert "main" in argv  # the extra positional (a function name) is passed through
+    env = toolkit._rea_env(ctx, str(target), "function main")
+    assert env["GHIDRA_INSTALL_DIR"] == str(gh) and env["JAVA_HOME"] == str(jdk)
+    assert "REA_GHIDRA_STARTUP_TIMEOUT_MS" in env  # a big binary gets time to import
+    # analyze needs no extra argument; a static command never gets the provider or the env
+    assert toolkit._rea_argv(ctx, str(target), "analyze")[2] == "analyze"
+    assert toolkit._rea_env(ctx, str(target), "inspect-artifact") == {}
+    assert "--provider" not in toolkit._rea_argv(ctx, str(target), "inspect-go-binary")
+    # a native command that needs an argument refuses without one
+    with pytest.raises(ActionError, match="attend un argument"):
+        toolkit._rea_argv(ctx, str(target), "decompile")
+    # without Ghidra installed, native analysis is refused with a clear reason
+    monkeypatch.setattr(toolkit, "ghidra_dir", lambda: None)
+    with pytest.raises(ActionError, match="Ghidra"):
+        toolkit._rea_argv(ctx, str(target), "analyze")
+    assert toolkit._rea_env(ctx, str(target), "analyze") == {}  # nothing to inject, no crash
+
+
 # ---- Simon: trading maths and market data ---------------------------------------------------
 
 

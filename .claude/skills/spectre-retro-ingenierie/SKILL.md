@@ -52,7 +52,7 @@ suivantes. Ensuite :
 | Appli JavaScript (dossier extrait ou .asar) | `analyze-javascript-application` (modules, imports, IPC, routes) |
 | Base SQLite (copie à l'arrêt) | `inspect-sqlite-database` |
 | APK Flutter | `identify-flutter-build` |
-| Binaire natif C/C++ (pseudo-code, appels) | hors `retro` : Ghidra (libre, NSA) — à installer avec l'accord de l'utilisateur ; le proposer |
+| Binaire natif C/C++ (pseudo-code, appels) | `retro` avec Ghidra (libre, NSA, installé sous `~/Apps/ghidra`) : `analyze` (vue d'ensemble), `search <terme>`, `function <nom>`, `decompile <adresse 0x…>`, `xrefs <adresse>`, `trace <terme>` — l'analyse importe puis décompile, compter 1 à quelques minutes (binaire volumineux = plus long, CPU seul) |
 | Comportement à l'exécution | hors `retro` : bac à sable du labo (`labs-securite`), avec validation |
 Le rapport complet (Evidence JSON) est écrit dans `workspace/retro/` ; la réponse n'en montre
 que le début : lire le fichier avec `read_file` pour aller plus loin. Toujours travailler sur

@@ -8,6 +8,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Ghidra branché pour Syfer (analyse native)** : l'outil `retro` sait maintenant décompiler
+  un binaire natif C/C++ via Ghidra (libre, NSA) — `analyze`, `search <terme>`,
+  `function <nom>`, `decompile <adresse 0x…>`, `xrefs <adresse>`, `trace <terme>`. Ghidra
+  12.1.4 (compatible REA 6.7.0) est installé sous `~/Apps/ghidra` avec un JDK 21 ; le kit
+  trouve les deux tout seul et les passe à REA par l'environnement du sous-processus
+  (`GHIDRA_INSTALL_DIR`, `JAVA_HOME`, délai de démarrage relevé), sans toucher à
+  l'environnement global. Si Ghidra manque, l'analyse native est refusée avec un message clair ;
+  les commandes statiques restent disponibles sans lui.
 - **Chaque agent Claude réfléchit avec le bon effort** (nouveauté des agents de Claude Code :
   le drapeau `--effort`). Spectre règle maintenant l'effort par modèle et l'applique à tous ses
   agents sur un moteur Claude — cerveau, agents de mission, planificateur, équipe de dev :
