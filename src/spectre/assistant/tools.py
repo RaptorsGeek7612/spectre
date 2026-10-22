@@ -1510,7 +1510,9 @@ TOOLS: dict[str, Tool] = {
             "française d'un fichier .txt ; options = vitesse), agrandir (image ×4). Production "
             "(Kyra) : scenario_pdf (scénario .fountain en PDF), plans (liste des plans d'une "
             "vidéo), derushage (retire les silences d'un rush), loudness (son de diffusion ; "
-            "options = web ou tv). Ils créent "
+            "options = web ou tv). Design (Kyra) : maquette_png (capture d'une page HTML pour la "
+            "relire ; options = paysage, story, fil ou carre), maquette_pdf (page HTML en PDF), "
+            "vectoriel (SVG en PDF ou PNG ; options = pdf ou png). Ils créent "
             "un nouveau fichier à côté de la source. target : le fichier, le dossier ou "
             "l'adresse. Chaque agent ne voit que les outils de son domaine. Aussi les outils "
             "ajoutés par Spectre (liste : outils_agents).",

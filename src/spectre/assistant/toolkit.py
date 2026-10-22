@@ -62,6 +62,12 @@ def _bin(names: tuple[str, ...]) -> str | None:
         Path.home() / "AppData" / "Roaming" / "uv" / "tools" / "semgrep" / "Scripts",
         Path.home() / ".local" / "bin",  # uv tools: rembg, whisper-ctranslate2, kokoro-tts
         Path.home() / "Apps" / "realesrgan",
+        Path("C:/Program Files/Inkscape/bin"),
+        # Chromium (open source) as installed by Playwright: Kyra renders her HTML designs
+        *sorted(
+            (Path.home() / "AppData" / "Local" / "ms-playwright").glob("chromium-*/chrome-win*"),
+            reverse=True,
+        ),
         *sorted(Path("C:/Program Files").glob("ImageMagick-*"), reverse=True),
         *sorted(Path("C:/Program Files/Eclipse Adoptium").glob("*/bin"), reverse=True),
     ]
@@ -134,6 +140,32 @@ def _subtitle_filter(path: Path) -> str:
     """ffmpeg's `subtitles=` filter wants its path escaped (the drive colon, quotes)."""
     escaped = path.as_posix().replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     return f"subtitles='{escaped}'"
+
+
+def _page(ctx: ActionContext, target: str, kinds: tuple[str, ...] = (".html", ".htm")) -> Path:
+    """The design file a renderer opens: a local HTML (or SVG) page the agent may read."""
+    page = resolve_path(ctx, target)
+    if page.suffix.lower() not in kinds:
+        raise ActionError(f"fichier attendu : {' ou '.join(kinds)} ({page.name})")
+    return page
+
+
+def _headless(*flags: str) -> list[str]:
+    """Headless Chromium, given time for fonts, images and entrance animations to settle."""
+    return [
+        _bin(("chrome",)) or "chrome",
+        "--headless",
+        "--disable-gpu",
+        "--virtual-time-budget=5000",
+        *flags,
+    ]
+
+
+def _vector(options: str) -> str:
+    kind = options.strip().lower() or "pdf"
+    if kind not in ("pdf", "png"):
+        raise ActionError("options = pdf (vectoriel, pour l'impression) ou png")
+    return kind
 
 
 LOUDNESS = {"web": -14, "tv": -23}  # LUFS: streaming platforms; French TV (EBU R128)
@@ -559,6 +591,50 @@ KITS: dict[str, Kit] = {
         ("ffmpeg",),
         output=lambda ctx, t, o: _beside(ctx, t, f"{-_loudness(o)}lufs"),
         timeout=1800.0,
+    ),
+    # ---- Kyra, designer: render an HTML design to print, capture it to check it, export vectors
+    "maquette_pdf": Kit(
+        "Chromium (maquette HTML en PDF : une page par slide ou par @page)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: _headless(
+            "--no-pdf-header-footer",
+            f"--print-to-pdf={_beside(ctx, t, 'maquette', '.pdf')}",
+            _page(ctx, t).as_uri(),
+        ),
+        ("chrome",),
+        output=lambda ctx, t, o: _beside(ctx, t, "maquette", ".pdf"),
+        timeout=300.0,
+    ),
+    "maquette_png": Kit(
+        "Chromium (capture PNG d'une maquette HTML, pour la relire)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: _headless(
+            "--hide-scrollbars",
+            "--window-size={1},{2}".format(*_format(o.strip() or "paysage")),
+            f"--screenshot={_beside(ctx, t, _format(o.strip() or 'paysage')[0], '.png')}",
+            _page(ctx, t).as_uri(),
+        ),
+        ("chrome",),
+        output=lambda ctx, t, o: _beside(ctx, t, _format(o.strip() or "paysage")[0], ".png"),
+        timeout=300.0,
+    ),
+    "vectoriel": Kit(
+        "Inkscape (export d'un SVG en PDF vectoriel ou en PNG)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("inkscape",)) or "inkscape",
+            str(_page(ctx, t, (".svg",))),
+            f"--export-type={_vector(o)}",
+            f"--export-filename={_beside(ctx, t, 'export', '.' + _vector(o))}",
+        ],
+        ("inkscape",),
+        output=lambda ctx, t, o: _beside(ctx, t, "export", "." + _vector(o)),
     ),
 }
 

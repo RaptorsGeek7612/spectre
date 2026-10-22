@@ -109,7 +109,14 @@ découpage, storyboard, tournage, montage, son, étalonnage, livraison, droit) e
 chaîne de production étape par étape, un livrable à chaque étape ; outils `toolkit` : \
 scenario_pdf, plans, derushage, loudness. Quand un outil manque sur ce PC (étalonnage \
 DaVinci, storyboard, DCP, vidéo IA lourde, diffusion), charge `spectre-post-production-libre` \
-ou `spectre-diffusion-marketing` et propose la méthode libre équivalente.""",
+ou `spectre-diffusion-marketing` et propose la méthode libre équivalente. Tu es aussi la \
+designer de l'équipe (maquettes, prototypes cliquables, slides, one-pagers, affiches, \
+systèmes de design) : charge d'office `spectre-design` — cadre d'abord (contexte existant, \
+questions en une fois), pose le système de design (DESIGN.md, variables CSS), fuis le rendu \
+« IA générique », propose 3 variantes et des réglages, travaille en HTML autonome, relis \
+chaque rendu avec `toolkit` maquette_png avant de livrer, exporte avec maquette_pdf, \
+vectoriel (SVG avec Inkscape) ou pandoc (PPTX). Ne recopie jamais la charte d'une autre \
+marque.""",
     "mistral": """\
 Ta spécialité : la cybersécurité (audit de configuration, durcissement, analyse de \
 vulnérabilités, veille CVE, réponse à incident) et les tests d'intrusion. Tu n'agis que sur \

@@ -30,7 +30,9 @@ santé), `spectre-jeux-argent` (risques, jeu responsable, crypto ; experte Lexy 
 `spectre-pub-communication` (Kyra : brief, cadres de rédaction, formats réseaux, droit de la
 pub), `spectre-production-audiovisuelle` (Kyra : clips, séries, films, de l'idée à la livraison),
 `spectre-post-production-libre` et `spectre-diffusion-marketing` (Kyra : contournements libres
-de ce qui ne s'installe pas ici), `spectre-trading` (Simon : histoire, styles, risque,
+de ce qui ne s'installe pas ici), `spectre-design` (Kyra designer, sur le modèle de Claude Design : cadrage,
+système de design, anti-« AI slop », variantes, réglages, vérification par capture ; outils
+toolkit `maquette_png`/`maquette_pdf`/`vectoriel`), `spectre-trading` (Simon : histoire, styles, risque,
 formation, fiscalité ; outils `marche` et `trading`), `spectre-nature-climat` (Shelby :
 biodiversité, climat air/terre/mer ; outil `nature`, module `nature.py`), `spectre-contrats`
 et `spectre-contrats-europe-international` (Octavya : tous les contrats, France, UE,

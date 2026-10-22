@@ -8,6 +8,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Kyra devient designer, sur le modèle de Claude Design** (Anthropic Labs) : compétence
+  `spectre-design` — cadrage (chercher le contexte existant, questions en une fois), système
+  de design posé d'abord (`DESIGN.md`, variables CSS : couleurs à rôle, typo, espacements,
+  composants, interdits), rendu « IA générique » à fuir, 3 variantes et réglages en direct,
+  maquettes, prototypes cliquables, slides 1920×1080 et one-pagers en HTML autonome,
+  vérification par capture avant de livrer, exports libres, passage au développement, droit
+  (jamais la charte d'une autre marque). Trois outils `toolkit` réservés à Kyra :
+  `maquette_png` (capture d'une page HTML par Chromium, aux formats paysage/story/fil/carre),
+  `maquette_pdf` (page HTML en PDF, une page par slide) et `vectoriel` (SVG en PDF ou PNG avec
+  Inkscape).
 - **Une mémoire bien plus grande, mais raisonnable** : Spectre a en tête jusqu'à 150 faits
   sur l'utilisateur à chaque échange (au lieu de 40), dans une enveloppe de 45 000 caractères
   (≈ 11 000 tokens) ; les plus fiables d'abord, les autres restent en mémoire et sont retrouvés

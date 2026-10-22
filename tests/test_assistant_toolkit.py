@@ -300,6 +300,36 @@ def test_production_tools_commands(ctx: Any) -> None:
         toolkit.run(ctx, "derushage", "rush.mp4")
 
 
+def test_design_tools_commands(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    home = ctx.allowed_roots[0]
+    for name in ("deck.html", "logo.svg", "note.txt"):
+        (home / name).write_bytes(b"x")
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "", "")
+    for name, target, options, flag in (
+        ("maquette_pdf", "deck.html", "", "--print-to-pdf="),
+        ("maquette_png", "deck.html", "story", "--screenshot="),
+        ("vectoriel", "logo.svg", "png", "--export-filename="),
+    ):
+        with pytest.raises(ActionError, match="aucun fichier produit"):
+            toolkit.run(ctx, name, target, options)
+        assert any(arg.startswith(flag) for arg in ctx.runner.calls[-1]), name
+    pdf, png, vector = (" ".join(call) for call in ctx.runner.calls)
+    assert "--headless" in pdf and "deck-maquette.pdf" in pdf and "file:" in pdf
+    assert "--window-size=1080,1920" in png and "deck-story.png" in png
+    assert "--export-type=png" in vector and "logo-export.png" in vector
+    assert "--window-size=1920,1080" in " ".join(  # a capture is 16:9 by default
+        toolkit.KITS["maquette_png"].argv(ctx, "deck.html", "")
+    )
+    with pytest.raises(ActionError, match=".html"):
+        toolkit.run(ctx, "maquette_pdf", "note.txt")
+    with pytest.raises(ActionError, match="pdf"):
+        toolkit.run(ctx, "vectoriel", "logo.svg", "eps")
+    ctx.agent = "lexy"
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "maquette_png", "deck.html")
+
+
 # ---- Simon: trading maths and market data ---------------------------------------------------
 
 
