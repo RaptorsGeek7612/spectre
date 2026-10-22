@@ -154,6 +154,14 @@ body[data-view="talk"] .presence { display: none; }
 #view-talk[hidden] { display: none; }
 .orb-stage { position: relative; width: 100%; height: 100%; min-height: 0; }
 .orb-stage canvas { position: absolute; inset: 0; margin: auto; display: block; }
+/* a faint instrument frame around the orb, echoing its own reticle, so the HUD, the stage and
+   the orb read as one panel */
+.orb-stage::before, .orb-stage::after {
+  content: ""; position: absolute; width: clamp(26px, 4vw, 42px); height: clamp(26px, 4vw, 42px);
+  border: 1px solid var(--hair-2); pointer-events: none;
+}
+.orb-stage::before { top: 2%; left: 3%; border-right: 0; border-bottom: 0; }
+.orb-stage::after { bottom: 2%; right: 3%; border-left: 0; border-top: 0; }
 
 .orb-caption { display: grid; justify-items: center; gap: 6px; max-width: 64ch; text-align: center; }
 .orb-state { margin: 0; font: 200 clamp(1.4rem, 3vw, 2rem)/1.1 var(--font-mark); letter-spacing: 0.24em; text-transform: uppercase; color: var(--bone); }
@@ -176,7 +184,7 @@ body[data-view="talk"] .presence { display: none; }
 .hud-read .unit { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
 .hud-read::before { content: ""; position: absolute; top: -8px; width: 22px; height: 1px; background: var(--l486); opacity: 0.6; }
 .hud-tl { top: 0; left: 0; } .hud-tr { top: 0; right: 0; text-align: right; justify-items: end; }
-.hud-bl { top: 44%; left: 0; } .hud-br { top: 44%; right: 0; text-align: right; justify-items: end; }
+.hud-bl { top: 62%; left: 0; } .hud-br { top: 62%; right: 0; text-align: right; justify-items: end; }
 .hud-tr::before, .hud-br::before { right: 0; }
 
 /* dock: microphone in the middle */
@@ -196,11 +204,12 @@ body[data-view="talk"] .presence { display: none; }
 .dock-mic[hidden] { display: grid; opacity: 0.35; pointer-events: none; }
 body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l486) 18%, transparent); }
 
-.orb-say { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: min(560px, 100%); border-bottom: 1px solid var(--hair-2); }
+/* the say field wears the same console skin as the dock, so the bottom controls read as one unit */
+.orb-say { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: min(560px, 100%); padding: 4px 10px; border: 1px solid var(--hair); background: color-mix(in oklab, var(--plate) 88%, transparent); }
 .orb-say input { flex: 1; min-height: 42px; padding: 0 8px; border: 0; background: none; color: var(--bone); font: inherit; }
 .orb-say input:focus { outline: none; }
-.orb-say:focus-within { border-bottom-color: var(--l486); }
-.orb-say.dropping { border-bottom-color: var(--l486); background: color-mix(in oklab, var(--l486) 10%, transparent); }
+.orb-say:focus-within { border-color: var(--l486); }
+.orb-say.dropping { border-color: var(--l486); background: color-mix(in oklab, var(--l486) 10%, transparent); }
 /* files joined to the next message (paperclip, paste, drop) */
 .joined { display: flex; flex-wrap: wrap; flex-basis: 100%; gap: 6px; margin: 0; padding: 4px 0 0; list-style: none; }
 .joined li { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 2px 4px 2px 8px; border: 1px solid var(--hair-2); color: var(--ash); font-size: 0.82rem; }

@@ -8,6 +8,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Vue « Conversation » mieux structurée autour de l'Orbe** : la scène est encadrée par de
+  fins repères d'angle (dans l'esprit du réticule de l'Orbe), les quatre relevés HUD forment un
+  cadre régulier (ceux du bas descendus au tiers inférieur) et le champ de saisie partage la
+  même « console » que le dock (même plaque, même filet) — l'ensemble HUD + Orbe + commandes se
+  lit comme un seul panneau, homogène sur ordinateur comme sur téléphone.
 - **Nouvelle Orbe de l'assistant, bien plus futuriste** (`web/static/orb.js`) : une sphère 3-D
   de particules colorées en rotation (le « cerveau »), triée en profondeur pour paraître pleine,
   des orbites inclinées avec électrons lumineux qui passent devant et derrière, un cœur plasma
