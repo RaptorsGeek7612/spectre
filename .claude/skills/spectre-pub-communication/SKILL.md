@@ -41,16 +41,41 @@ Règles : un message par création ; un appel à l'action clair ; des preuves pl
 superlatifs ; du concret (chiffres, exemples) ; relire avec LanguageTool (`toolkit` name
 `languagetool`). Proposer **2 ou 3 variantes** à tester (A/B), pas une seule.
 
-## 5. Déclinaison par réseau (formats courants — ils évoluent, vérifier avant d'imprimer)
-| Usage | Format | Pixels |
-|---|---|---|
-| Story, Reels, TikTok, Shorts | 9:16 | 1080×1920 |
-| Fil Instagram / Facebook | 4:5 | 1080×1350 |
-| Carré (LinkedIn, Facebook) | 1:1 | 1080×1080 |
-| YouTube, écran | 16:9 | 1920×1080 |
-Vidéo courte : l'accroche dans les **2 premières secondes**, sous-titres incrustés (la
-majorité regarde sans le son), logo et appel à l'action à la fin. En 9:16, garder textes et
-logo hors des **zones d'interface** (≈ 250 px en haut, ≈ 350 px en bas).
+## 5. Déclinaison par réseau (specs 2026 — **toujours revérifier la page officielle** avant de produire)
+Les chiffres ci-dessous viennent de guides spécialisés recoupés (octobre 2026) ; les durées et
+tailles de fichier changent souvent et varient entre l'appli, l'envoi web et l'API. Partir de
+**deux masters** : un vertical **9:16 1080×1920** (Reels, Stories, TikTok, Shorts, Pinterest,
+Threads) et un **16:9 1920×1080** (YouTube long, LinkedIn, X, fiche Google) ; le **1:1
+1080×1080** sert Facebook, LinkedIn et X. Export sûr partout : **MP4, H.264 + AAC, 30 ips**.
+
+| Réseau / format | Ratio | Pixels | Durée max | Poids | Notes |
+|---|---|---|---|---|---|
+| YouTube (long) | 16:9 | 1920×1080 (jusqu'à 4K) | 12 h (vérifié) | 256 Go | miniature 1280×720 (image), accroche dès la 1re s |
+| YouTube Shorts | 9:16 | 1080×1920 | 3 min | 256 Go | l'horizontal n'est pas promu en Short |
+| TikTok | 9:16 | 1080×1920 | 10 min in-app ; plus en envoi web (à confirmer) | web 4 Go ; iOS ≈ 288 Mo ; Android ≈ 72 Mo | 6–8 Mbps en 1080p30 |
+| Instagram Reels | 9:16 | 1080×1920 | 3 min in-app ; 15 min via API | 300 Mo–4 Go (sources divergentes) | accroche dans les 3 premières s ; 3,5–5 Mbps |
+| Instagram fil / carrousel | 4:5 ou 1:1 | 1080×1350 / 1080×1080 | — | — | le 4:5 prend le plus de hauteur dans le fil |
+| Instagram / Facebook Stories | 9:16 | 1080×1920 | 60 s / carte | 100 Mo–4 Go | **zones d'interface** : ≈ 250 px en haut, ≈ 340 px en bas sans texte ni logo |
+| Facebook fil | 16:9 à 9:16 (1:1, 4:5) | 1280×720 / 1080×1080 | 240 min | 4–10 Go | le carré 1:1 occupe plus de place et performe souvent mieux |
+| Facebook Reels | 9:16 | 1080×1920 | pas de limite stricte (maj Meta 2025) | 4 Go | texte au centre : haut et bas couverts par l'UI |
+| LinkedIn | 16:9, 1:1, 9:16 | 1920×1080 / 1080×1080 / 1080×1920 | 10–15 min | 5 Go | sweet spot < 60 s ; 8–12 Mbps |
+| X (Twitter) | 16:9, 1:1, 9:16 | 1280×720 | 2 min 20 (standard) ; + en Premium | 512 Mo (standard) ; jusqu'à 16 Go (Premium/API) | garder < 60 s pour la complétion |
+| Pinterest | 9:16 (aussi 2:3, 1:1) | 1080×1920 / 1000×1500 | 15 min (15–60 s conseillé) | 2 Go | **muet par défaut** : sous-titres ou texte à l'écran obligatoires |
+| Snapchat | 9:16 | 1080×1920 | 5–60 s (Spotlight) | 500 Mo | Spotlight : contenu original, **sans watermark** d'un autre réseau |
+| Threads | 9:16 (flexible) | 1080×1920 | 5 min | 1 Go | < 90 s pour la complétion |
+| Bluesky | 16:9 ou 9:16 | 1920×1080 | 3 min | 100 Mo | 1 vidéo/post, images et vidéo non mélangées |
+| Fiche Google (GBP) | 16:9 | 1280×720+ | 30 s (31 s = tout le post échoue) | 75 Mo | horizontal ; peut mettre 24–48 h à apparaître |
+
+**Règles transverses** (valables partout) :
+- **Accroche** dans les 2–3 premières secondes ; montrer l'essentiel avant toute intro.
+- **Sous-titres incrustés** : la majorité regarde sans le son (indispensable sur Pinterest et
+  Bluesky, muets d'office). Vérifier le rendu dans la zone visible, pas sous l'UI.
+- **Vertical d'abord** pour le social ; ne pas mettre du carré dans un emplacement vertical
+  (bandes noires ou recadrage).
+- **Son** normalisé à **−14 LUFS** pour les plateformes (`toolkit` loudness web).
+- **Miniatures et couvertures** suivent les specs d'**image**, pas de vidéo.
+- Les **formats publicitaires** ont souvent des durées plus courtes que l'organique (TikTok, X,
+  LinkedIn, Facebook) : vérifier la ligne « ads » de la plateforme.
 
 ## 6. Mesurer
 Un KPI par objectif : portée et mémorisation (notoriété), clics et temps passé

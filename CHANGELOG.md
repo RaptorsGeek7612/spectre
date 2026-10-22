@@ -8,6 +8,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Nouvelle Orbe de l'assistant, bien plus futuriste** (`web/static/orb.js`) : une sphère 3-D
+  de particules colorées en rotation (le « cerveau »), triée en profondeur pour paraître pleine,
+  des orbites inclinées avec électrons lumineux qui passent devant et derrière, un cœur plasma
+  qui irradie, des filaments d'énergie, un oscilloscope circulaire multicolore qui réagit à la
+  voix en direct et une surcouche HUD (biseau gradué, arcs, réticule). Palette cyan → turquoise
+  → bleu → violet → magenta ; vire vers l'ambre quand Spectre réfléchit. Même interface
+  (`setState`, `setLevel`, `spellWord`), le mot SPECTRE à l'éveil et le respect de
+  « prefers-reduced-motion » sont conservés.
+- **Specs réseaux sociaux 2026 pour Kyra** (`spectre-pub-communication`) : tableau par réseau
+  (YouTube long et Shorts, TikTok, Instagram Reels/fil/Stories, Facebook fil/Reels/Stories,
+  LinkedIn, X, Pinterest, Snapchat, Threads, Bluesky, fiche Google) — ratio, pixels, durée,
+  poids, notes — plus les règles transverses (accroche, sous-titres, vertical d'abord, −14 LUFS,
+  publicité vs organique). Chiffres de guides recoupés, à revérifier sur les pages officielles.
 - **Ghidra branché pour Syfer (analyse native)** : l'outil `retro` sait maintenant décompiler
   un binaire natif C/C++ via Ghidra (libre, NSA) — `analyze`, `search <terme>`,
   `function <nom>`, `decompile <adresse 0x…>`, `xrefs <adresse>`, `trace <terme>`. Ghidra
