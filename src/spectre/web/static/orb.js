@@ -11,7 +11,7 @@
 const TAU = Math.PI * 2;
 const COUNT = 1700; // points on the mind-sphere
 const WAVE = 180; // oscilloscope samples around the ring
-const ORBITS = 3; // tilted electron orbits
+const ORBITS = 2; // tilted electron orbits (kept few so the globe stays readable)
 const WORD = "SPECTRE";
 
 const MOODS = {
@@ -149,7 +149,7 @@ export class Orb {
     // a surge in loudness kicks the core and sends a ring rippling outward — you SEE the voice
     if (next > this.level + 0.1 && (this.state === "speaking" || this.state === "listening")) {
       this.beat = Math.min(1, this.beat + (next - this.level) * 1.4);
-      if (this.ripples.length < 6) this.ripples.push({ t: 0, power: 0.5 + next * 0.5 });
+      if (this.ripples.length < 3) this.ripples.push({ t: 0, power: 0.5 + next * 0.5 });
     }
     this.level = next;
   }
@@ -289,11 +289,11 @@ export class Orb {
       ctx.fillRect(d.x - s / 2, d.y - s / 2, s, s);
     }
     // energy filaments: a few bright arcs leaping from the core to the sphere's surface
-    if (ease < 0.4 && (energy > 0.12 || mood.sweep > 0.3)) this.drawFilaments(ctx, c, R, t, [r, g, b], mood, energy);
+    if (ease < 0.4 && energy > 0.22) this.drawFilaments(ctx, c, R, t, [r, g, b], mood, energy);
   }
 
   drawFilaments(ctx, c, R, t, [r, g, b], mood, energy) {
-    const n = 3;
+    const n = 2;
     ctx.lineCap = "round";
     for (let i = 0; i < n; i++) {
       const seed = Math.floor(t * 6) + i * 97; // re-roll a few times a second
@@ -412,53 +412,35 @@ export class Orb {
     ctx.restore();
   }
 
-  // HUD: rotating graduated bezel, segmented progress arcs and four corner brackets.
+  // HUD: one quiet bezel ring, a single slow progress arc, and four corner brackets.
+  // Deliberately spare — the light (halo, core, orbits) carries the orb, not the chrome.
   drawHud(ctx, c, R, t, [r, g, b], mood, energy) {
     const { dpr } = this;
     const bezel = R * 1.55;
-    // graduated bezel
+    // a single thin bezel ring (no graduations)
+    ctx.strokeStyle = `rgba(${r},${g},${b},${0.22 * mood.alpha})`;
+    ctx.lineWidth = dpr;
+    ctx.beginPath();
+    ctx.arc(c, c, bezel, 0, TAU);
+    ctx.stroke();
+
+    // one slow progress arc riding just outside the ring
     ctx.save();
     ctx.translate(c, c);
-    ctx.rotate(t * mood.spin * 0.2);
-    ctx.strokeStyle = `rgba(${r},${g},${b},${0.42 * mood.alpha})`;
-    ctx.lineWidth = dpr;
-    for (let i = 0; i < 72; i++) {
-      const a = (i / 72) * TAU;
-      const major = i % 6 === 0;
-      ctx.globalAlpha = major ? 1 : 0.45;
-      const r0 = bezel * (major ? 0.97 : 0.99);
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
-      ctx.lineTo(Math.cos(a) * bezel, Math.sin(a) * bezel);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
+    ctx.rotate(t * (0.4 + mood.spin * 0.5));
+    ctx.strokeStyle = `rgba(${r},${g},${b},${(0.4 + energy * 0.4) * mood.alpha})`;
+    ctx.lineWidth = dpr * 2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(0, 0, bezel * 1.1, 0, TAU * 0.28);
+    ctx.stroke();
     ctx.restore();
 
-    // two segmented progress arcs counter-rotating
-    for (let j = 0; j < 2; j++) {
-      ctx.save();
-      ctx.translate(c, c);
-      ctx.rotate(t * (j ? -0.5 : 0.7) * (0.5 + mood.spin));
-      ctx.strokeStyle = `rgba(${r},${g},${b},${(0.5 + energy * 0.4) * mood.alpha})`;
-      ctx.lineWidth = dpr * 2;
-      ctx.lineCap = "butt";
-      const rad = bezel * (j ? 1.08 : 1.14);
-      const segs = 5 + j * 3;
-      for (let i = 0; i < segs; i++) {
-        const a0 = (i / segs) * TAU + (i % 2 ? 0 : 0.1);
-        ctx.beginPath();
-        ctx.arc(0, 0, rad, a0, a0 + (TAU / segs) * 0.55);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    // corner brackets, framing the orb like a targeting reticle
+    // corner brackets, framing the orb like a targeting reticle (subtle)
     const m = R * 1.75;
-    const len = R * 0.22;
-    ctx.strokeStyle = `rgba(${r},${g},${b},${0.5 * mood.alpha})`;
-    ctx.lineWidth = dpr * 1.4;
+    const len = R * 0.2;
+    ctx.strokeStyle = `rgba(${r},${g},${b},${0.32 * mood.alpha})`;
+    ctx.lineWidth = dpr * 1.2;
     for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       const x = c + sx * m, y = c + sy * m;
       ctx.beginPath();
