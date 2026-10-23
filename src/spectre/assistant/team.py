@@ -328,6 +328,7 @@ def save_portrait(root: Path, key: str, data: bytes) -> None:
     for old in folder.glob(f"{_portrait_name(key)}.*"):
         old.unlink()
     (folder / f"{_portrait_name(key)}.{kind[0]}").write_bytes(data)
+    delete_clips(root, key)
 
 
 def portrait(root: Path, key: str) -> tuple[bytes, str] | None:
@@ -342,6 +343,42 @@ def portrait(root: Path, key: str) -> tuple[bytes, str] | None:
 def delete_portrait(root: Path, key: str) -> None:
     for path in (root / "portraits").glob(f"{_portrait_name(key)}.*"):
         path.unlink()
+    delete_clips(root, key)
+
+
+# ---- the portrait brought to life for the video call -------------------------------------------
+# Two short loops made from the picture on this PC (LivePortrait, tools/animate_portraits.cmd):
+# <key>-listen.webm and <key>-talk.webm. A new picture makes them stale: they go with it.
+
+CLIP_KINDS = ("listen", "talk")
+CLIP_MAX = 20 * 1024 * 1024
+
+
+def clip(root: Path, key: str, kind: str) -> bytes | None:
+    if kind not in CLIP_KINDS or not re.fullmatch(r"[\w:-]+", key):
+        return None
+    path = root / "portraits-anim" / f"{_portrait_name(key)}-{kind}.webm"
+    if not path.is_file() or path.stat().st_size > CLIP_MAX:
+        return None
+    data = path.read_bytes()
+    return data if data[:4] == b"\x1aE\xdf\xa3" else None  # WebM (Matroska) only
+
+
+def clips(root: Path) -> dict[str, list[str]]:
+    """The loops ready for each agent: {"opus": ["listen", "talk"], ...}."""
+    folder = root / "portraits-anim"
+    found: dict[str, list[str]] = {}
+    if folder.is_dir():
+        for path in sorted(folder.glob("*.webm")):
+            name, _, kind = path.stem.rpartition("-")
+            if kind in CLIP_KINDS:
+                found.setdefault(name, []).append(kind)
+    return found
+
+
+def delete_clips(root: Path, key: str) -> None:
+    for kind in CLIP_KINDS:
+        (root / "portraits-anim" / f"{_portrait_name(key)}-{kind}.webm").unlink(missing_ok=True)
 
 
 def portraits(root: Path) -> set[str]:

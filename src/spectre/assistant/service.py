@@ -1015,10 +1015,13 @@ class AssistantService:
     # ---- the team and its video call -------------------------------------------------------
 
     def team(self) -> Event:
-        mine = team.portraits(self.root)
+        mine, alive = team.portraits(self.root), team.clips(self.root)
         agents = team.members(self.db, self.config)
         for agent in agents:
             agent["portrait"] = agent["key"].replace(":", "-") in mine
+            agent["clips"] = (
+                alive.get(agent["key"].replace(":", "-"), []) if agent["portrait"] else []
+            )
         return {"agents": agents, "voices": team.VOICES}
 
     def generate_portrait(self, key: str) -> Event:
@@ -1056,12 +1059,15 @@ class AssistantService:
 
     def call_state(self, since: int, since_event: int) -> Event:
         state = call.snapshot(self.db, since, since_event)
-        mine = team.portraits(self.root)
+        mine, alive = team.portraits(self.root), team.clips(self.root)
         for agent in state["agents"]:  # the portrait the user chose: drawn look or picture
             look = self.config.agent_looks.get(agent["key"], {})
             agent["look"] = look
             agent["gender"] = look.get("g", agent["gender"])
             agent["portrait"] = agent["key"].replace(":", "-") in mine
+            agent["clips"] = (
+                alive.get(agent["key"].replace(":", "-"), []) if agent["portrait"] else []
+            )
         return state
 
     def call_standup(self) -> Event:

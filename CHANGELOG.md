@@ -8,6 +8,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Portraits de l'équipe animés pendant la visio** : à partir de la photo d'un agent, deux
+  courtes boucles sont fabriquées sur ce PC (LivePortrait via ComfyUI, `tools/animate_portraits.cmd`)
+  — une « parle » (lèvres qui bougent) et une « écoute » discrète (bouche fermée). Dans l'appel,
+  le portrait **ne s'anime que quand l'agent a la parole** (boucle « parle ») ; le reste du temps
+  il reste la photo fixe, pour que rien ne gigote sans raison. Boucles en fondu enchaîné (lecture
+  avant, sans saccade), mouvement volontairement doux pour ne pas déformer le visage. Hors ligne,
+  sans les boucles ou en mouvement réduit, la photo ne bouge pas. Une nouvelle photo
+  rend ses boucles caduques et les supprime. Les clips sont servis par
+  `GET /api/assistant/team/<clé>/clip/<écoute|parle>` (WebM vérifié, 20 Mo max).
 - **Couleurs de la vue « Conversation »** : les quatre relevés HUD prennent chacun une raie du
   spectre (Mémoire cyan, Validations violet, Missions bleu, **Cerveau ambre** — écho de l'état
   « réflexion » de l'Orbe), la barre de signal passe en dégradé cyan→violet→rouge et les repères

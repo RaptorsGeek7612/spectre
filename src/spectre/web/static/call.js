@@ -6,7 +6,7 @@
 // Nothing here calls a model: lines come from the records.
 
 import { $, api, clock, h, since, toast, tokens } from "./kit.js";
-import { createAvatar, createPhoto } from "./avatars.js";
+import { createAvatar, createLivePhoto } from "./avatars.js";
 import * as voice from "./voice.js";
 
 const STATUS = {
@@ -83,13 +83,19 @@ function faceFor(agent) {
     state.faces.set(agent.key, face);
   }
   if (!face) {
+    const base = `/api/assistant/team/${encodeURIComponent(agent.key)}`;
     face = agent.portrait
-      ? createPhoto(`/api/assistant/team/${encodeURIComponent(agent.key)}/portrait`, agent.name)
+      ? createLivePhoto(`${base}/portrait`, agent.clips && Object.fromEntries(agent.clips.map((k) => [k, `${base}/clip/${k}`])), agent.name)
       : createAvatar(agent.lookKey || agent.key, agent.gender, { title: agent.name, look: agent.look });
     state.faces.set(agent.key, face);
   }
   return face;
 }
+
+// On the call: Spectre while it runs; an agent from its mission until it reports back (as in
+// Agent Standup, it joins when given work and leaves when done). The others keep their picture.
+const ON_CALL = new Set(["working", "stalled", "needs_you", "waiting", "your_turn"]);
+function connected(a) { return a.key === "opus" || ON_CALL.has(a.status) || state.speaking?.agent === a.key; }
 
 function badges(a) {
   const out = [];
@@ -120,6 +126,7 @@ function renderTiles(agents) {
       grid.append(tile);
     }
     tile.dataset.status = a.status;
+    faceFor(a).online?.(connected(a));
     tile.querySelector(".cl-tag").textContent = a.activity ? (a.status === "working" || a.status === "stalled" ? a.activity : `${STATUS[a.status] || a.status} · ${a.activity}`) : STATUS[a.status] || a.status;
     tile.querySelector(".cl-badges").replaceChildren(...badges(a));
     const ticker = tile.querySelector(".cl-ticker");
@@ -173,6 +180,7 @@ async function next() {
   state.fillers = 0;
   const agent = state.agents.find((a) => a.key === line.agent);
   const face = agent ? faceFor(agent) : null;
+  face?.online?.(true);  // whoever speaks is on the call
   spotlight(line.agent);
   const tile = $(`#cl-grid [data-key="${CSS.escape(line.agent)}"]`);
   tile?.classList.add("talking");
@@ -191,6 +199,7 @@ async function next() {
   }
   tile?.classList.remove("talking");
   state.speaking = null;
+  if (agent) face?.online?.(connected(agent));
   setTimeout(() => { if (!state.speaking) sub.replaceChildren(); }, 2500);
   next();
 }

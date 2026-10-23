@@ -6,6 +6,12 @@
 .avatar .av-head { transform-origin: 100px 150px; animation: av-breathe 5.5s ease-in-out infinite; }
 .avatar .av-screen { animation: av-glow 3.2s ease-in-out infinite; }
 .avatar-photo { object-fit: cover; box-shadow: 0 0 0 calc(var(--talk, 0) * 6px) var(--l589); transition: box-shadow 0.08s linear; }
+/* the picture alive on the call: its loops laid over it, cross-faded */
+.live-photo { position: relative; overflow: hidden; }
+.live-photo > .avatar-photo, .live-clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.live-clip { opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+.live-clip.on { opacity: 1; }
+.live-photo.alive > .avatar-photo { box-shadow: none; }
 @keyframes av-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.9px) rotate(-0.25deg); } }
 @keyframes av-glow { 0%, 100% { opacity: 0.14; } 50% { opacity: 0.26; } }
 @media (prefers-reduced-motion: reduce) { .avatar .av-head, .avatar .av-screen { animation: none; } }

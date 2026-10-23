@@ -78,6 +78,11 @@ def handle(
             if found is None:
                 raise KeyError(key)
             handler._send(200, found[0], found[1])
+        case "GET", ["team", key, "clip", kind]:
+            data = team.clip(service.root, unquote(key), kind)
+            if data is None:
+                raise KeyError(key)
+            handler._send(200, data, "video/webm")
         case "POST", ["team", key, "portrait"]:
             handler._json(200, service.team_portrait(unquote(key), handler._raw_body()))
         case "POST", ["team", key, "portrait", "delete"]:
