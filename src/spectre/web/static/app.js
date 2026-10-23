@@ -389,7 +389,7 @@ function applySettings() {
   const dark = s.theme === "system" ? !matchMedia("(prefers-color-scheme: light)").matches : s.theme !== "light";
   document.documentElement.dataset.theme = dark ? "dark" : "light";
   document.documentElement.dataset.font = s.font_size;
-  $('meta[name="theme-color"]').content = dark ? "#121315" : "#e9e5da";
+  $('meta[name="theme-color"]').content = dark ? "#3f2a8c" : "#e9e5da";
   applyI18n();
   drawContinuum();
 }
