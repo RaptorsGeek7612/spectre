@@ -238,7 +238,7 @@ export class Orb {
   drawHalo(ctx, c, R, [r, g, b], mood, energy) {
     const glow = R * (1.9 + energy * 0.4);
     const grad = ctx.createRadialGradient(c, c, R * 0.3, c, c, glow);
-    const a = (0.12 + energy * 0.3 + (mood.glow || 0) * 0.14) * mood.alpha;
+    const a = (0.17 + energy * 0.34 + (mood.glow || 0) * 0.2) * mood.alpha;
     grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
     grad.addColorStop(0.55, `rgba(${r},${g},${b},${a * 0.3})`);
     grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
@@ -274,14 +274,15 @@ export class Orb {
     for (const d of drawn) {
       const depth = d.depth;
       const p = d.p;
-      const twinkle = 0.62 + 0.38 * Math.sin(t * 2 + p.phase * 3);
-      const front = ease + (1 - ease) * (0.34 + 0.66 * depth); // livelier, back points stay visible
-      const alpha = Math.min(1, mood.alpha * front * twinkle * (0.85 + energy * 0.5));
-      // each point keeps its own vivid hue: colourful even at the back, only a touch of white in front
+      const twinkle = 0.68 + 0.32 * Math.sin(t * 2 + p.phase * 3);
+      const front = ease + (1 - ease) * (0.46 + 0.6 * depth); // livelier, back points stay visible
+      const alpha = Math.min(1, mood.alpha * front * twinkle * (0.98 + energy * 0.6));
+      // each point keeps its own hue — same palette, just more intense: brighter at the back,
+      // and only a whisper of white in front so the colours stay saturated instead of washing out
       const [pr0, pg0, pb0] = p.col;
       let cr, cg, cb;
-      if (depth < 0.5) { const k = 0.6 + depth * 0.8; cr = pr0 * k; cg = pg0 * k; cb = pb0 * k; }
-      else { const k = (depth - 0.5) * 2 * (0.25 + energy * 0.35); cr = pr0 + (255 - pr0) * k; cg = pg0 + (255 - pg0) * k; cb = pb0 + (255 - pb0) * k; }
+      if (depth < 0.5) { const k = 0.78 + depth * 0.7; cr = pr0 * k; cg = pg0 * k; cb = pb0 * k; }
+      else { const k = (depth - 0.5) * 2 * (0.12 + energy * 0.2); cr = pr0 + (255 - pr0) * k; cg = pg0 + (255 - pg0) * k; cb = pb0 + (255 - pb0) * k; }
       // while thinking, nudge the whole swarm a touch toward the warm accent
       if (warmBias > 0.01) { cr += (r - cr) * warmBias * 0.4; cg += (g - cg) * warmBias * 0.4; cb += (b - cb) * warmBias * 0.4; }
       ctx.fillStyle = `rgba(${cr | 0},${cg | 0},${cb | 0},${alpha})`;
@@ -289,11 +290,11 @@ export class Orb {
       ctx.fillRect(d.x - s / 2, d.y - s / 2, s, s);
     }
     // energy filaments: a few bright arcs leaping from the core to the sphere's surface
-    if (ease < 0.4 && energy > 0.22) this.drawFilaments(ctx, c, R, t, [r, g, b], mood, energy);
+    if (ease < 0.4 && (energy > 0.14 || mood.sweep > 0.3)) this.drawFilaments(ctx, c, R, t, [r, g, b], mood, energy);
   }
 
   drawFilaments(ctx, c, R, t, [r, g, b], mood, energy) {
-    const n = 2;
+    const n = 3;
     ctx.lineCap = "round";
     for (let i = 0; i < n; i++) {
       const seed = Math.floor(t * 6) + i * 97; // re-roll a few times a second
@@ -301,8 +302,8 @@ export class Orb {
       const a = sr(seed) * TAU;
       const pr = this.project(Math.cos(a), sr(seed + 1) * 2 - 1, Math.sin(a), R, c);
       const steps = 6;
-      ctx.strokeStyle = `rgba(${r},${g},${b},${(0.12 + energy * 0.35) * mood.alpha})`;
-      ctx.lineWidth = this.dpr;
+      ctx.strokeStyle = `rgba(${r},${g},${b},${(0.18 + energy * 0.42) * mood.alpha})`;
+      ctx.lineWidth = this.dpr * 1.2;
       ctx.beginPath();
       ctx.moveTo(c, c);
       for (let k = 1; k <= steps; k++) {
@@ -363,8 +364,8 @@ export class Orb {
     const core = R * 0.3 * pulse;
     const flick = 0.8 + 0.2 * Math.sin(t * 7 + Math.sin(t * 3));
     const grad = ctx.createRadialGradient(c, c, 0, c, c, core);
-    grad.addColorStop(0, `rgba(255,255,255,${(0.5 + energy * 0.4) * mood.alpha * flick})`);
-    grad.addColorStop(0.4, `rgba(${r},${g},${b},${(0.4 + energy * 0.4) * mood.alpha})`);
+    grad.addColorStop(0, `rgba(255,255,255,${(0.6 + energy * 0.4) * mood.alpha * flick})`);
+    grad.addColorStop(0.35, `rgba(${r},${g},${b},${(0.55 + energy * 0.4) * mood.alpha})`);
     grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
     ctx.save();
     ctx.shadowColor = `rgba(${r},${g},${b},0.9)`;
