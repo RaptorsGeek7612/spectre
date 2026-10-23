@@ -39,9 +39,20 @@ const mix = (a, b, t) => [
   Math.round(a[2] + (b[2] - a[2]) * t),
 ];
 
-// a cool futuristic spread the sphere points are tinted across: cyan, teal, blue, violet, magenta
+// a cool futuristic spread the sphere points are tinted across, ordered low→high by height.
+// same family as before (cyan, teal, blue, violet, magenta) with extra neon stops woven in
+// (aqua, spring green, indigo, purple, rose) so the swarm carries more colours, same style.
 const PALETTE = [
-  [79, 195, 247], [45, 224, 192], [58, 134, 255], [138, 125, 255], [255, 106, 213],
+  [79, 195, 247],  // cyan
+  [54, 230, 255],  // aqua
+  [45, 224, 192],  // teal
+  [43, 240, 160],  // spring green
+  [58, 134, 255],  // blue
+  [106, 92, 255],  // indigo
+  [138, 125, 255], // violet
+  [199, 110, 255], // purple
+  [255, 106, 213], // magenta
+  [255, 120, 160], // rose
 ];
 
 export class Orb {
@@ -404,7 +415,7 @@ export class Orb {
     // a multi-hue gradient sweep so the waveform shimmers through the palette
     const a = (0.3 + energy * 0.55) * mood.alpha;
     const grad = ctx.createLinearGradient(c - base, c - base, c + base, c + base);
-    const stops = [PALETTE[0], PALETTE[1], PALETTE[3], PALETTE[4], PALETTE[0]];
+    const stops = [PALETTE[0], PALETTE[2], PALETTE[5], PALETTE[7], PALETTE[9]];
     stops.forEach((s, i) => grad.addColorStop(i / (stops.length - 1), `rgba(${s[0]},${s[1]},${s[2]},${a})`));
     ctx.shadowColor = `rgba(${r},${g},${b},0.7)`;
     ctx.shadowBlur = this.dpr * (3 + energy * 6);
