@@ -18,9 +18,11 @@ const MOODS = {
   //          wobble, level gain, scale, alpha, spin,  spectrum, sweep, tilt (3-D lean), glow
   off:       { wobble: 0.002, gain: 0,     scale: 0.92, alpha: 0.45, spin: 0.05, spectrum: 0.0,  sweep: 0, tilt: 0.20, glow: 0.15 },
   sleeping:  { wobble: 0.004, gain: 0,     scale: 0.96, alpha: 0.85, spin: 0.10, spectrum: 0.10, sweep: 0, tilt: 0.28, glow: 0.3 },
-  listening: { wobble: 0.007, gain: 0.07,  scale: 1.06, alpha: 1.0,  spin: 0.30, spectrum: 0.85, sweep: 0, tilt: 0.36, glow: 0.75 },
+  // listening = receptive: compact, calmer, cooler, rings collapse inward (absorbing the voice)
+  listening: { wobble: 0.006, gain: 0.05,  scale: 0.97, alpha: 0.95, spin: 0.18, spectrum: 0.5,  sweep: 0, tilt: 0.3,  glow: 0.45 },
   thinking:  { wobble: 0.014, gain: 0,     scale: 1.0,  alpha: 0.98, spin: 1.15, spectrum: 0.3,  sweep: 1, tilt: 0.5,  glow: 0.55 },
-  speaking:  { wobble: 0.008, gain: 0.09,  scale: 1.04, alpha: 1.0,  spin: 0.44, spectrum: 1.0,  sweep: 0, tilt: 0.4,  glow: 1.0 },
+  // speaking = emissive: bigger, brighter, faster, rings burst outward (projecting the voice)
+  speaking:  { wobble: 0.011, gain: 0.12,  scale: 1.1,  alpha: 1.0,  spin: 0.52, spectrum: 1.0,  sweep: 0, tilt: 0.42, glow: 1.1 },
 };
 
 function cssVar(name, fallback) {
@@ -160,7 +162,9 @@ export class Orb {
     // a surge in loudness kicks the core and sends a ring rippling outward — you SEE the voice
     if (next > this.level + 0.1 && (this.state === "speaking" || this.state === "listening")) {
       this.beat = Math.min(1, this.beat + (next - this.level) * 1.4);
-      if (this.ripples.length < 3) this.ripples.push({ t: 0, power: 0.5 + next * 0.5 });
+      // speaking projects rings outward; listening draws them inward (absorbing)
+      const dir = this.state === "listening" ? -1 : 1;
+      if (this.ripples.length < 3) this.ripples.push({ t: 0, power: 0.5 + next * 0.5, dir });
     }
     this.level = next;
   }
@@ -236,7 +240,9 @@ export class Orb {
   drawVoiceRipples(ctx, c, R, [r, g, b]) {
     for (const rp of this.ripples) {
       const f = rp.t / 1.2; // 0..1
-      const rad = R * (0.3 + f * 1.35);
+      // outward (speaking): small → wide. inward (listening): wide → small, absorbed at the core.
+      const grow = rp.dir < 0 ? 1 - f : f;
+      const rad = R * (0.3 + grow * 1.35);
       const a = (1 - f) * 0.5 * rp.power;
       ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
       ctx.lineWidth = this.dpr * (2.5 * (1 - f) + 0.5);
