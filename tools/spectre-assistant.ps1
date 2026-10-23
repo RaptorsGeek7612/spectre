@@ -10,15 +10,30 @@ function Test-Spectre {
     catch { return $false }
 }
 
+# The installed Spectre app (Chrome > Install page as app): its Start menu shortcut carries the
+# --app-id. Only an installed app takes the manifest's theme colour on its title bar.
+function Get-SpectreAppArgs {
+    $programs = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
+    $shell = New-Object -ComObject WScript.Shell
+    foreach ($lnk in Get-ChildItem $programs -Recurse -Filter "Spectre.lnk" -ErrorAction SilentlyContinue) {
+        $arguments = $shell.CreateShortcut($lnk.FullName).Arguments
+        if ($arguments -match "--app-id=\w+") { return "$arguments --app-launch-url-for-shortcuts-menu-item=$url" }
+    }
+    return $null
+}
+
 # Open the interface in Chrome as an app window (clean, no tabs/address bar) when Chrome is
-# installed; otherwise fall back to the default browser.
+# installed: the installed app if there is one, else a plain app window; otherwise fall back
+# to the default browser.
 function Open-Spectre {
     $chrome = @(
         "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
         "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
         "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-    if ($chrome) { Start-Process $chrome -ArgumentList "--app=$url" }
+    $app = Get-SpectreAppArgs
+    if ($chrome -and $app) { Start-Process $chrome -ArgumentList $app }
+    elseif ($chrome) { Start-Process $chrome -ArgumentList "--app=$url" }
     else { Start-Process $url }
 }
 
