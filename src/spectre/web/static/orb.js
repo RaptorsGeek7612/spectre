@@ -22,7 +22,7 @@ const MOODS = {
   listening: { wobble: 0.006, gain: 0.05,  scale: 0.97, alpha: 0.95, spin: 0.18, spectrum: 0.5,  sweep: 0, tilt: 0.3,  glow: 0.45 },
   thinking:  { wobble: 0.014, gain: 0,     scale: 1.0,  alpha: 0.98, spin: 1.15, spectrum: 0.3,  sweep: 1, tilt: 0.5,  glow: 0.55 },
   // speaking = emissive: bigger, brighter, faster, rings burst outward (projecting the voice)
-  speaking:  { wobble: 0.011, gain: 0.12,  scale: 1.1,  alpha: 1.0,  spin: 0.52, spectrum: 1.0,  sweep: 0, tilt: 0.42, glow: 1.1 },
+  speaking:  { wobble: 0.011, gain: 0.12,  scale: 1.06, alpha: 1.0,  spin: 0.52, spectrum: 1.0,  sweep: 0, tilt: 0.42, glow: 1.1 },
 };
 
 function cssVar(name, fallback) {
@@ -215,7 +215,9 @@ export class Orb {
     const c = (size * dpr) / 2;
     const energy = this.smooth;
     const pulse = 1 + this.beat * 0.07 + Math.sin(t * 2.2) * 0.012;
-    const R = c * 0.6 * mood.scale * pulse; // sphere radius
+    // 0.46 keeps the whole composition — sphere, HUD and the corner reticle at R*1.75 — inside
+    // the square canvas with a margin even at the largest (speaking) scale, so nothing is clipped.
+    const R = c * 0.46 * mood.scale * pulse; // sphere radius
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, c * 2, c * 2);
     const main = this.colors.main;
@@ -253,7 +255,9 @@ export class Orb {
   }
 
   drawHalo(ctx, c, R, [r, g, b], mood, energy) {
-    const glow = R * (1.9 + energy * 0.4);
+    // cap the glow at the canvas edge so the radial gradient fully fades to 0 inside the square —
+    // otherwise its outer (transparent) stop falls outside and the glow reads as a hard square.
+    const glow = Math.min(c * 0.98, R * (1.9 + energy * 0.4));
     const grad = ctx.createRadialGradient(c, c, R * 0.3, c, c, glow);
     const a = (0.17 + energy * 0.34 + (mood.glow || 0) * 0.2) * mood.alpha;
     grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
