@@ -30,7 +30,9 @@ santé), `spectre-jeux-argent` (risques, jeu responsable, crypto ; experte Lexy 
 `spectre-pub-communication` (Kyra : brief, cadres de rédaction, formats réseaux, droit de la
 pub), `spectre-production-audiovisuelle` (Kyra : clips, séries, films, de l'idée à la livraison),
 `spectre-post-production-libre` et `spectre-diffusion-marketing` (Kyra : contournements libres
-de ce qui ne s'installe pas ici), `spectre-trading` (Simon : histoire, styles, risque,
+de ce qui ne s'installe pas ici), `spectre-design` (Kyra designer, sur le modèle de Claude Design : cadrage,
+système de design, anti-« AI slop », variantes, réglages, vérification par capture ; outils
+toolkit `maquette_png`/`maquette_pdf`/`vectoriel`), `spectre-trading` (Simon : histoire, styles, risque,
 formation, fiscalité ; outils `marche` et `trading`), `spectre-nature-climat` (Shelby :
 biodiversité, climat air/terre/mer ; outil `nature`, module `nature.py`), `spectre-contrats`
 et `spectre-contrats-europe-international` (Octavya : tous les contrats, France, UE,
@@ -40,7 +42,10 @@ diriger une équipe en TPE, PME, ETI ou grand groupe, et sa propre équipe d'age
 les administrations, France, UE, international ; outil `administration`, module
 `administration.py`),
 `spectre-pentest` (Syfer : tous les types de tests d'intrusion, cadre légal strict ; outils
-toolkit nmap/subfinder/httpx/trufflehog), `spectre-amelioration` (s'améliorer, lui et ses
+toolkit nmap/subfinder/httpx/trufflehog), `spectre-retro-ingenierie` (Syfer : rétro-ingénierie
+sur la méthode REA, github.com/morluto/rea ; outil toolkit `retro` = inspections statiques de
+REA 6.7.0, installé par `npm install -g rea-agents@6.7.0 --ignore-scripts`, lancé par `node`
+et jamais par `rea.cmd`), `spectre-amelioration` (s'améliorer, lui et ses
 agents : toujours le plus sûr, stable et fiable, vérifié avant de proposer). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
 charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
 
@@ -81,7 +86,9 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait) ;
   leçons tirées des erreurs `lessons.py` (aide de Spectre à un agent bloqué : `HELPER` de
   `missions.py`) ; mises à jour hebdomadaires des outils `updates.py` ; paiements préparés
-  `payments.py` (QR SEPA ou page marchand, l'utilisateur paie ; catégorie `payment` = ASK).
+  `payments.py` (QR SEPA ou page marchand, l'utilisateur paie ; catégorie `payment` = ASK) ;
+  mémoire `memory.py` (150 faits / 45 000 car. dans le prompt, `compact` la nuit : sauvegarde,
+  fusions vérifiées, rien d'effacé, règles et confidences verrouillées, `restore`).
   `voice/engines.py` et `winapi.py` hors couverture (matériel).
 - **Logique métier** : les agents respectent toujours les règles de logique métier du projet en
   construction (contraintes, invariants, validations, enchaînement) ; en cas de doute ils le

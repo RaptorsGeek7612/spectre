@@ -1,18 +1,28 @@
-// Spectre's voice orb: a ring of particles around a hexagonal core that breathes, listens,
-// thinks and speaks. The ring deforms with the live loudness sent by the voice engine; on boot
-// and on every wake the particles leave the ring to spell SPECTRE, then fall back into place.
+// Spectre's voice orb: a rotating 3-D sphere of light points (its "mind"), wrapped in tilted
+// electron orbits, a plasma core, a circular oscilloscope that reacts to the live voice level,
+// and a HUD of rotating arcs and corner brackets. It breathes, listens, thinks and speaks; on
+// boot and on every wake the points peel off the sphere to spell SPECTRE, then stream back.
+//
+// Public API (unchanged): new Orb(canvas); orb.setState(state); orb.setLevel(0..1);
+// orb.spellWord(holdSeconds). States: off, sleeping, listening, thinking, speaking.
+// Honors prefers-reduced-motion (one calm frame) and the theme colors
+// --l486 (main) / --l589 (accent) / --font-mark.
 
 const TAU = Math.PI * 2;
-const COUNT = 1500;
+const COUNT = 1700; // points on the mind-sphere
+const WAVE = 180; // oscilloscope samples around the ring
+const ORBITS = 2; // tilted electron orbits (kept few so the globe stays readable)
 const WORD = "SPECTRE";
 
 const MOODS = {
-  //          slow wobble, level gain, ring scale, alpha, spin speed
-  off:       { wobble: 0.002, gain: 0,     scale: 0.96, alpha: 0.4,  spin: 0.02 },
-  sleeping:  { wobble: 0.004, gain: 0,     scale: 0.97, alpha: 0.75, spin: 0.05 },
-  listening: { wobble: 0.006, gain: 0.022, scale: 1.02, alpha: 0.9,  spin: 0.12 },
-  thinking:  { wobble: 0.01,  gain: 0,     scale: 1.0,  alpha: 0.85, spin: 0.6 },
-  speaking:  { wobble: 0.006, gain: 0.028, scale: 1.0,  alpha: 0.95, spin: 0.16 },
+  //          wobble, level gain, scale, alpha, spin,  spectrum, sweep, tilt (3-D lean), glow
+  off:       { wobble: 0.002, gain: 0,     scale: 0.92, alpha: 0.45, spin: 0.05, spectrum: 0.0,  sweep: 0, tilt: 0.20, glow: 0.15 },
+  sleeping:  { wobble: 0.004, gain: 0,     scale: 0.96, alpha: 0.85, spin: 0.10, spectrum: 0.10, sweep: 0, tilt: 0.28, glow: 0.3 },
+  // listening = receptive: compact, calmer, cooler, rings collapse inward (absorbing the voice)
+  listening: { wobble: 0.006, gain: 0.05,  scale: 0.97, alpha: 0.95, spin: 0.18, spectrum: 0.5,  sweep: 0, tilt: 0.3,  glow: 0.45 },
+  thinking:  { wobble: 0.014, gain: 0,     scale: 1.0,  alpha: 0.98, spin: 1.15, spectrum: 0.3,  sweep: 1, tilt: 0.5,  glow: 0.55 },
+  // speaking = emissive: bigger, brighter, faster, rings burst outward (projecting the voice)
+  speaking:  { wobble: 0.011, gain: 0.12,  scale: 1.1,  alpha: 1.0,  spin: 0.52, spectrum: 1.0,  sweep: 0, tilt: 0.42, glow: 1.1 },
 };
 
 function cssVar(name, fallback) {
@@ -25,34 +35,84 @@ function rgb(hex) {
   return m.map((x) => parseInt(x, 16));
 }
 
+const mix = (a, b, t) => [
+  Math.round(a[0] + (b[0] - a[0]) * t),
+  Math.round(a[1] + (b[1] - a[1]) * t),
+  Math.round(a[2] + (b[2] - a[2]) * t),
+];
+
+// a cool futuristic spread the sphere points are tinted across, ordered low→high by height.
+// same family as before (cyan, teal, blue, violet, magenta) with extra neon stops woven in
+// (aqua, spring green, indigo, purple, rose) so the swarm carries more colours, same style.
+const PALETTE = [
+  [79, 195, 247],  // cyan
+  [54, 230, 255],  // aqua
+  [45, 224, 192],  // teal
+  [43, 240, 160],  // spring green
+  [58, 134, 255],  // blue
+  [106, 92, 255],  // indigo
+  [138, 125, 255], // violet
+  [199, 110, 255], // purple
+  [255, 106, 213], // magenta
+  [255, 120, 160], // rose
+];
+
 export class Orb {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     this.state = "sleeping";
-    this.level = 0; // target loudness 0..1 from the server
-    this.smooth = 0; // eased loudness actually drawn
+    this.level = 0;
+    this.smooth = 0;
+    this.beat = 0; // decaying kick on every loudness surge
+    this.rot = 0; // accumulated sphere rotation (so spin speed changes stay smooth)
     this.mood = { ...MOODS.sleeping };
-    this.spell = 0; // 0 = ring, 1 = word fully formed
+    this.spell = 0;
     this.spellUntil = 0;
     this.reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    this.colors = { main: rgb(cssVar("--l486", "#4fc3f7")), think: rgb(cssVar("--l589", "#ffd23f")) };
+    this.readColors();
     let seed = 486;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    this.points = Array.from({ length: COUNT }, (_, i) => ({
-      a: (i / COUNT) * TAU + rnd() * 0.01,
-      band: Math.pow(rnd(), 1.8), // most particles hug the outer edge, like a rim of light
-      phase: rnd() * TAU,
-      size: 0.9 + rnd() * 1.3,
-      tx: 0, ty: 0, // target in the word (set by layoutWord)
+    this.rnd = rnd;
+    // evenly distributed points on a unit sphere (spiral), each with a shimmer phase and size
+    this.points = Array.from({ length: COUNT }, (_, i) => {
+      const y = 1 - (i / (COUNT - 1)) * 2; // -1..1
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const phi = i * 2.399963; // golden-angle spiral
+      // tint most points along the palette by their height; sprinkle a few vivid random ones
+      const base = PALETTE[Math.min(PALETTE.length - 1, Math.floor(((y + 1) / 2) * PALETTE.length))];
+      const col = rnd() < 0.18 ? PALETTE[Math.floor(rnd() * PALETTE.length)] : base;
+      return {
+        x: Math.cos(phi) * r, y, z: Math.sin(phi) * r,
+        phase: rnd() * TAU,
+        size: 0.8 + rnd() * 1.4,
+        band: rnd(),
+        col,
+        tx: 0, ty: 0, // home inside the wordmark
+      };
+    });
+    this.wave = new Array(WAVE).fill(0);
+    this.ripples = []; // expanding rings that burst out when the voice surges
+    this.orbits = Array.from({ length: ORBITS }, (_, i) => ({
+      tilt: 0.5 + i * 0.55, // radians, each orbit leans differently
+      yaw: (i / ORBITS) * Math.PI,
+      speed: (i % 2 ? -1 : 1) * (0.4 + i * 0.25),
+      rad: 1.02 + i * 0.14,
+      bead: rnd() * TAU, // the bright electron riding the orbit
     }));
-    this.harmonics = [2, 3, 5, 7, 11].map((k) => ({ k, phase: rnd() * TAU, speed: 0.3 + rnd() * 0.9 }));
     this.resize();
     new ResizeObserver(() => this.resize()).observe(canvas.parentElement);
     document.fonts?.ready.then(() => this.layoutWord());
     this.frame = this.frame.bind(this);
     this.last = performance.now();
     requestAnimationFrame(this.frame);
+  }
+
+  readColors() {
+    this.colors = {
+      main: rgb(cssVar("--l486", "#4fc3f7")),
+      accent: rgb(cssVar("--l589", "#ffd23f")),
+    };
   }
 
   resize() {
@@ -63,12 +123,12 @@ export class Orb {
     this.canvas.width = this.canvas.height = Math.round(size * dpr);
     this.size = size;
     this.dpr = dpr;
+    this.readColors();
     this.layoutWord();
     if (this.reduced) this.draw(performance.now() / 1000);
   }
 
   layoutWord() {
-    // Sample the wordmark's pixels and give every particle a home inside the letters.
     const w = 600, h = 160;
     const off = document.createElement("canvas");
     off.width = w; off.height = h;
@@ -82,7 +142,7 @@ export class Orb {
     const spots = [];
     for (let y = 0; y < h; y += 3) for (let x = 0; x < w; x += 3) if (data[(y * w + x) * 4 + 3] > 128) spots.push([x, y]);
     if (!spots.length) return;
-    const span = 0.62; // word width as a share of the orb
+    const span = 0.66;
     this.points.forEach((p, i) => {
       const [x, y] = spots[Math.floor((i / COUNT) * spots.length)];
       p.tx = ((x - w / 2) / w) * span;
@@ -98,7 +158,15 @@ export class Orb {
   }
 
   setLevel(v) {
-    this.level = Math.max(0, Math.min(1, Number(v) || 0));
+    const next = Math.max(0, Math.min(1, Number(v) || 0));
+    // a surge in loudness kicks the core and sends a ring rippling outward — you SEE the voice
+    if (next > this.level + 0.1 && (this.state === "speaking" || this.state === "listening")) {
+      this.beat = Math.min(1, this.beat + (next - this.level) * 1.4);
+      // speaking projects rings outward; listening draws them inward (absorbing)
+      const dir = this.state === "listening" ? -1 : 1;
+      if (this.ripples.length < 3) this.ripples.push({ t: 0, power: 0.5 + next * 0.5, dir });
+    }
+    this.level = next;
   }
 
   spellWord(hold = 1.6) {
@@ -112,6 +180,14 @@ export class Orb {
       const target = MOODS[this.state];
       for (const key of Object.keys(target)) this.mood[key] += (target[key] - this.mood[key]) * Math.min(1, dt * 4);
       this.smooth += (this.level - this.smooth) * Math.min(1, dt * (this.level > this.smooth ? 18 : 6));
+      this.beat += (0 - this.beat) * Math.min(1, dt * 3.5);
+      this.rot += dt * (this.mood.spin + this.smooth * 0.6);
+      // push a new sample into the oscilloscope ring buffer
+      this.wave.push(this.smooth * (0.6 + Math.random() * 0.4));
+      this.wave.shift();
+      // advance voice ripples and drop the finished ones
+      for (const rp of this.ripples) rp.t += dt;
+      this.ripples = this.ripples.filter((rp) => rp.t < 1.2);
       const wantSpell = now < this.spellUntil ? 1 : 0;
       this.spell += (wantSpell - this.spell) * Math.min(1, dt * 3.2);
       this.draw(now / 1000);
@@ -119,90 +195,292 @@ export class Orb {
     requestAnimationFrame(this.frame);
   }
 
+  // rotate a unit-sphere point by the current yaw/tilt and return screen x,y plus depth z (-1..1)
+  project(px, py, pz, R, c, extraYaw = 0) {
+    const yaw = this.rot + extraYaw;
+    const cy = Math.cos(yaw), sy = Math.sin(yaw);
+    let x = px * cy - pz * sy;
+    let z = px * sy + pz * cy;
+    const tilt = this.mood.tilt;
+    const ct = Math.cos(tilt), st = Math.sin(tilt);
+    let y = py * ct - z * st;
+    z = py * st + z * ct;
+    const fov = 3.2;
+    const proj = fov / (fov - z); // perspective
+    return { x: c + x * R * proj, y: c + y * R * proj, z, proj };
+  }
+
   draw(t) {
     const { ctx, size, dpr, mood } = this;
     const c = (size * dpr) / 2;
-    const R = c * 0.78 * mood.scale;
+    const energy = this.smooth;
+    const pulse = 1 + this.beat * 0.07 + Math.sin(t * 2.2) * 0.012;
+    const R = c * 0.6 * mood.scale * pulse; // sphere radius
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, c * 2, c * 2);
+    const main = this.colors.main;
+    const acc = this.colors.accent;
+    const warm = Math.min(1, (mood.spin - 0.2) / 0.8); // thinking leans amber
+    const col = mix(main, acc, warm * 0.8);
+
+    this.drawHalo(ctx, c, R, col, mood, energy);
+
     ctx.globalCompositeOperation = "lighter";
-    const [r, g, b] = this.colors.main;
+    this.drawHud(ctx, c, R, t, col, mood, energy);
+    this.drawOscilloscope(ctx, c, R, col, mood, energy, pulse);
+    if (this.state === "thinking" || mood.sweep > 0.3) this.drawSweep(ctx, c, R, t, acc, mood);
+    this.drawSphere(ctx, c, R, t, col, mood, energy);
+    this.drawOrbits(ctx, c, R, t, col, acc, mood, energy);
+    this.drawCore(ctx, c, R, t, col, mood, energy, pulse);
+    this.drawVoiceRipples(ctx, c, R, col);
+    ctx.globalCompositeOperation = "source-over";
+  }
 
-    // core: faint hexagonal mesh inside a thin circle
-    const core = R * 0.36;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(c, c, core, 0, TAU);
-    ctx.clip();
-    ctx.strokeStyle = `rgba(${r},${g},${b},${0.1 * mood.alpha})`;
-    ctx.lineWidth = dpr * 0.8;
-    const hex = core / 5;
-    for (let row = -6; row <= 6; row++) {
-      for (let col = -6; col <= 6; col++) {
-        const x = c + col * hex * 1.5;
-        const y = c + row * hex * Math.sqrt(3) + (col % 2 ? (hex * Math.sqrt(3)) / 2 : 0);
-        ctx.beginPath();
-        for (let k = 0; k < 6; k++) {
-          const ang = (k / 6) * TAU;
-          ctx.lineTo(x + Math.cos(ang) * hex * 0.92, y + Math.sin(ang) * hex * 0.92);
-        }
-        ctx.closePath();
-        ctx.stroke();
-      }
+  // Rings that burst out of the core on every voice surge — the clearest "it's alive" signal.
+  drawVoiceRipples(ctx, c, R, [r, g, b]) {
+    for (const rp of this.ripples) {
+      const f = rp.t / 1.2; // 0..1
+      // outward (speaking): small → wide. inward (listening): wide → small, absorbed at the core.
+      const grow = rp.dir < 0 ? 1 - f : f;
+      const rad = R * (0.3 + grow * 1.35);
+      const a = (1 - f) * 0.5 * rp.power;
+      ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
+      ctx.lineWidth = this.dpr * (2.5 * (1 - f) + 0.5);
+      ctx.beginPath();
+      ctx.arc(c, c, rad, 0, TAU);
+      ctx.stroke();
     }
-    ctx.restore();
-    ctx.strokeStyle = `rgba(${r},${g},${b},${0.35 * mood.alpha})`;
-    ctx.lineWidth = dpr;
+  }
+
+  drawHalo(ctx, c, R, [r, g, b], mood, energy) {
+    const glow = R * (1.9 + energy * 0.4);
+    const grad = ctx.createRadialGradient(c, c, R * 0.3, c, c, glow);
+    const a = (0.17 + energy * 0.34 + (mood.glow || 0) * 0.2) * mood.alpha;
+    grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+    grad.addColorStop(0.55, `rgba(${r},${g},${b},${a * 0.3})`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(c, c, core, 0, TAU);
-    ctx.stroke();
+    ctx.arc(c, c, glow, 0, TAU);
+    ctx.fill();
+  }
 
-    // inner dashed ring, slowly turning
-    ctx.save();
-    ctx.translate(c, c);
-    ctx.rotate(t * mood.spin * 0.5);
-    ctx.setLineDash([dpr * 2, dpr * 7]);
-    ctx.strokeStyle = `rgba(${r},${g},${b},${0.3 * mood.alpha})`;
-    ctx.beginPath();
-    ctx.arc(0, 0, R * 0.62, 0, TAU);
-    ctx.stroke();
-    ctx.restore();
-
-    // thinking: two amber arcs orbiting the core
-    if (this.state === "thinking" || mood.spin > 0.3) {
-      const [tr, tg, tb] = this.colors.think;
-      const k = Math.min(1, (mood.spin - 0.1) / 0.5);
-      ctx.lineWidth = dpr * 2;
-      ctx.lineCap = "round";
-      for (let i = 0; i < 2; i++) {
-        const start = t * 2.4 + i * Math.PI;
-        ctx.strokeStyle = `rgba(${tr},${tg},${tb},${0.75 * k})`;
-        ctx.beginPath();
-        ctx.arc(c, c, R * 0.5, start, start + 0.9);
-        ctx.stroke();
-      }
-    }
-
-    // the particle ring (or the word)
-    const amp = mood.wobble + this.smooth * mood.gain;
+  // The rotating mind-sphere: depth-sorted light points, drawn back-to-front so the globe reads
+  // as solid. Near points are bigger, brighter and tinted toward white; far points sink to a
+  // cool dim cyan. While spelling, every point streams toward its home in the SPECTRE wordmark.
+  drawSphere(ctx, c, R, t, [r, g, b], mood, energy) {
     const spell = this.spell;
     const ease = spell * spell * (3 - 2 * spell);
+    const amp = mood.wobble + energy * mood.gain;
+    const warmBias = Math.min(1, Math.max(0, (mood.spin - 0.2) / 0.8)); // thinking warms the swarm
+    const drawn = this._drawn || (this._drawn = []);
+    drawn.length = 0;
     for (const p of this.points) {
-      let wob = 0;
-      for (const h of this.harmonics) wob += Math.sin(h.k * p.a + h.phase + t * h.speed * (1 + this.smooth * 3)) / h.k;
-      const spray = Math.sin(p.phase * 53 + t * 23) * this.smooth * (mood.gain > 0 ? 0.045 : 0); // energetic fuzz
-      const radius = R * (0.9 + 0.1 * p.band) * (1 + amp * wob * 2.2 + spray * (0.4 + p.band)) + Math.sin(t * 1.3 + p.phase) * R * 0.004;
-      const angle = p.a + t * mood.spin * 0.08;
-      const rx = c + Math.cos(angle) * radius;
-      const ry = c + Math.sin(angle) * radius;
-      const x = rx + (c + p.tx * c * 2 - rx) * ease;
-      const y = ry + (c + p.ty * c * 2 - ry) * ease;
-      const twinkle = 0.55 + 0.45 * Math.sin(t * 2 + p.phase * 3);
-      const alpha = Math.min(1, (mood.alpha + ease * 0.5) * (0.35 + 0.65 * (1 - p.band)) * twinkle);
-      ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-      const s = p.size * dpr * (1 + this.smooth * 0.6);
-      ctx.fillRect(x - s / 2, y - s / 2, s, s);
+      const breathe = 1 + amp * Math.sin(p.phase + t * 1.6) * 3 + energy * 0.05 * Math.sin(p.phase * 40 + t * 20);
+      const pr = this.project(p.x, p.y, p.z, R * breathe, c);
+      const wx = c + p.tx * c * 2;
+      const wy = c + p.ty * c * 2;
+      drawn.push({
+        x: pr.x + (wx - pr.x) * ease,
+        y: pr.y + (wy - pr.y) * ease,
+        depth: (pr.z + 1) / 2, // 0 back .. 1 front
+        p,
+      });
     }
-    ctx.globalCompositeOperation = "source-over";
+    drawn.sort((a, b2) => a.depth - b2.depth); // painter's order: far first
+    for (const d of drawn) {
+      const depth = d.depth;
+      const p = d.p;
+      const twinkle = 0.68 + 0.32 * Math.sin(t * 2 + p.phase * 3);
+      const front = ease + (1 - ease) * (0.46 + 0.6 * depth); // livelier, back points stay visible
+      const alpha = Math.min(1, mood.alpha * front * twinkle * (0.98 + energy * 0.6));
+      // each point keeps its own hue — same palette, just more intense: brighter at the back,
+      // and only a whisper of white in front so the colours stay saturated instead of washing out
+      const [pr0, pg0, pb0] = p.col;
+      let cr, cg, cb;
+      if (depth < 0.5) { const k = 0.78 + depth * 0.7; cr = pr0 * k; cg = pg0 * k; cb = pb0 * k; }
+      else { const k = (depth - 0.5) * 2 * (0.12 + energy * 0.2); cr = pr0 + (255 - pr0) * k; cg = pg0 + (255 - pg0) * k; cb = pb0 + (255 - pb0) * k; }
+      // while thinking, nudge the whole swarm a touch toward the warm accent
+      if (warmBias > 0.01) { cr += (r - cr) * warmBias * 0.4; cg += (g - cg) * warmBias * 0.4; cb += (b - cb) * warmBias * 0.4; }
+      ctx.fillStyle = `rgba(${cr | 0},${cg | 0},${cb | 0},${alpha})`;
+      const s = p.size * this.dpr * (0.55 + 0.95 * (ease + (1 - ease) * depth)) * (1 + energy * 0.5);
+      ctx.fillRect(d.x - s / 2, d.y - s / 2, s, s);
+    }
+    // energy filaments: a few bright arcs leaping from the core to the sphere's surface
+    if (ease < 0.4 && (energy > 0.14 || mood.sweep > 0.3)) this.drawFilaments(ctx, c, R, t, [r, g, b], mood, energy);
+  }
+
+  drawFilaments(ctx, c, R, t, [r, g, b], mood, energy) {
+    const n = 3;
+    ctx.lineCap = "round";
+    for (let i = 0; i < n; i++) {
+      const seed = Math.floor(t * 6) + i * 97; // re-roll a few times a second
+      const sr = (s) => ((Math.sin(s * 127.1) * 43758.5453) % 1 + 1) % 1;
+      const a = sr(seed) * TAU;
+      const pr = this.project(Math.cos(a), sr(seed + 1) * 2 - 1, Math.sin(a), R, c);
+      const steps = 6;
+      ctx.strokeStyle = `rgba(${r},${g},${b},${(0.18 + energy * 0.42) * mood.alpha})`;
+      ctx.lineWidth = this.dpr * 1.2;
+      ctx.beginPath();
+      ctx.moveTo(c, c);
+      for (let k = 1; k <= steps; k++) {
+        const f = k / steps;
+        const jx = (sr(seed + k * 3) - 0.5) * R * 0.18 * (1 - f);
+        const jy = (sr(seed + k * 3 + 1) - 0.5) * R * 0.18 * (1 - f);
+        ctx.lineTo(c + (pr.x - c) * f + jx, c + (pr.y - c) * f + jy);
+      }
+      ctx.stroke();
+    }
+  }
+
+  // Tilted electron orbits, each with a bright bead. Segments that pass behind the sphere fade
+  // out, so the rings read as wrapping a solid globe. Beads bloom when they come round the front.
+  drawOrbits(ctx, c, R, t, [r, g, b], [ar, ag, ab], mood, energy) {
+    const { dpr } = this;
+    const steps = 140;
+    for (const o of this.orbits) {
+      ctx.lineWidth = dpr;
+      let prev = null;
+      for (let i = 0; i <= steps; i++) {
+        const a = (i / steps) * TAU;
+        const cx = Math.cos(a) * o.rad;
+        const cz = Math.sin(a) * o.rad;
+        const ct = Math.cos(o.tilt), st = Math.sin(o.tilt);
+        const pr = this.project(cx, cz * st, cz * ct, R, c, o.yaw);
+        if (prev) {
+          const depth = (pr.z + 1) / 2; // behind sphere (0) .. in front (1)
+          const occl = pr.z < -0.15 ? 0.28 : 1; // dim the back half (occluded by the globe)
+          ctx.strokeStyle = `rgba(${r},${g},${b},${(0.12 + 0.3 * depth) * occl * mood.alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(prev.x, prev.y);
+          ctx.lineTo(pr.x, pr.y);
+          ctx.stroke();
+        }
+        prev = pr;
+      }
+      // the electron bead
+      const ba = o.bead + t * o.speed;
+      const cx = Math.cos(ba) * o.rad, cz = Math.sin(ba) * o.rad;
+      const ct = Math.cos(o.tilt), st = Math.sin(o.tilt);
+      const pr = this.project(cx, cz * st, cz * ct, R, c, o.yaw);
+      const depth = (pr.z + 1) / 2;
+      const sz = dpr * (1.6 + energy * 2) * pr.proj * (0.6 + 0.6 * depth);
+      ctx.save();
+      ctx.shadowColor = `rgba(${ar},${ag},${ab},0.9)`;
+      ctx.shadowBlur = dpr * (4 + energy * 8) * depth;
+      ctx.fillStyle = `rgba(${ar},${ag},${ab},${(0.5 + 0.5 * depth) * mood.alpha})`;
+      ctx.beginPath();
+      ctx.arc(pr.x, pr.y, sz, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Plasma core: layered gradient, flickering, with a crisp containment rim.
+  drawCore(ctx, c, R, t, [r, g, b], mood, energy, pulse) {
+    const core = R * 0.3 * pulse;
+    const flick = 0.8 + 0.2 * Math.sin(t * 7 + Math.sin(t * 3));
+    const grad = ctx.createRadialGradient(c, c, 0, c, c, core);
+    grad.addColorStop(0, `rgba(255,255,255,${(0.6 + energy * 0.4) * mood.alpha * flick})`);
+    grad.addColorStop(0.35, `rgba(${r},${g},${b},${(0.55 + energy * 0.4) * mood.alpha})`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.save();
+    ctx.shadowColor = `rgba(${r},${g},${b},0.9)`;
+    ctx.shadowBlur = this.dpr * (10 + energy * 20);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(c, c, core, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+    // containment rim
+    ctx.strokeStyle = `rgba(${r},${g},${b},${(0.4 + energy * 0.3) * mood.alpha})`;
+    ctx.lineWidth = this.dpr * 1.2;
+    ctx.beginPath();
+    ctx.arc(c, c, core, 0, TAU);
+    ctx.stroke();
+  }
+
+  // Circular oscilloscope: the voice waveform wrapped around the sphere, closing into a ring.
+  drawOscilloscope(ctx, c, R, [r, g, b], mood, energy, pulse) {
+    const base = R * 1.28 * pulse;
+    const span = R * 0.32;
+    ctx.lineWidth = this.dpr * 1.6;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    for (let i = 0; i <= WAVE; i++) {
+      const w = this.wave[i % WAVE];
+      const a = (i / WAVE) * TAU + this.rot * 0.3;
+      const rad = base + (w - 0.3) * span * (0.3 + mood.spectrum);
+      const x = c + Math.cos(a) * rad;
+      const y = c + Math.sin(a) * rad;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.save();
+    // a multi-hue gradient sweep so the waveform shimmers through the palette
+    const a = (0.3 + energy * 0.55) * mood.alpha;
+    const grad = ctx.createLinearGradient(c - base, c - base, c + base, c + base);
+    const stops = [PALETTE[0], PALETTE[2], PALETTE[5], PALETTE[7], PALETTE[9]];
+    stops.forEach((s, i) => grad.addColorStop(i / (stops.length - 1), `rgba(${s[0]},${s[1]},${s[2]},${a})`));
+    ctx.shadowColor = `rgba(${r},${g},${b},0.7)`;
+    ctx.shadowBlur = this.dpr * (3 + energy * 6);
+    ctx.strokeStyle = grad;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // HUD: one quiet bezel ring, a single slow progress arc, and four corner brackets.
+  // Deliberately spare — the light (halo, core, orbits) carries the orb, not the chrome.
+  drawHud(ctx, c, R, t, [r, g, b], mood, energy) {
+    const { dpr } = this;
+    const bezel = R * 1.55;
+    // a single thin bezel ring (no graduations)
+    ctx.strokeStyle = `rgba(${r},${g},${b},${0.22 * mood.alpha})`;
+    ctx.lineWidth = dpr;
+    ctx.beginPath();
+    ctx.arc(c, c, bezel, 0, TAU);
+    ctx.stroke();
+
+    // one slow progress arc riding just outside the ring
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.rotate(t * (0.4 + mood.spin * 0.5));
+    ctx.strokeStyle = `rgba(${r},${g},${b},${(0.4 + energy * 0.4) * mood.alpha})`;
+    ctx.lineWidth = dpr * 2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(0, 0, bezel * 1.1, 0, TAU * 0.28);
+    ctx.stroke();
+    ctx.restore();
+
+    // corner brackets, framing the orb like a targeting reticle (subtle)
+    const m = R * 1.75;
+    const len = R * 0.2;
+    ctx.strokeStyle = `rgba(${r},${g},${b},${0.32 * mood.alpha})`;
+    ctx.lineWidth = dpr * 1.2;
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const x = c + sx * m, y = c + sy * m;
+      ctx.beginPath();
+      ctx.moveTo(x - sx * len, y);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x, y - sy * len);
+      ctx.stroke();
+    }
+  }
+
+  // Thinking: a radar sweep with a fading trail.
+  drawSweep(ctx, c, R, t, [r, g, b], mood) {
+    const k = Math.min(1, (mood.spin - 0.2) / 0.8);
+    const head = t * 2.6;
+    for (let i = 0; i < 12; i++) {
+      const a0 = head - (1.0 * i) / 12;
+      ctx.strokeStyle = `rgba(${r},${g},${b},${(0.5 * k) * (1 - i / 12)})`;
+      ctx.lineWidth = this.dpr * 2;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.arc(c, c, R * 1.3, a0, a0 + 0.08);
+      ctx.stroke();
+    }
   }
 }

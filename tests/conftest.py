@@ -143,3 +143,22 @@ def make_fakes() -> Callable[..., dict[str, RecordingFakeModel]]:
         }
 
     return _make
+
+
+@pytest.fixture(autouse=True)
+def close_databases(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Close every assistant database a test opened: one left open warns when it is collected,
+    later, in whatever test runs then (ResourceWarning: unclosed database)."""
+    from spectre.assistant.db import Database
+
+    opened: list[Database] = []
+    init = Database.__init__
+
+    def tracked(self: Database, *args: Any, **kwargs: Any) -> None:
+        init(self, *args, **kwargs)
+        opened.append(self)
+
+    monkeypatch.setattr(Database, "__init__", tracked)
+    yield
+    for database in opened:
+        database.close()

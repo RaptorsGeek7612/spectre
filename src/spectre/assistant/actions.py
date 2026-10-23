@@ -39,7 +39,7 @@ class ActionContext:
     root: Path  # assistant data dir (trash lives here)
     allowed_roots: list[Path] = field(default_factory=list)
     launcher: Any = None  # injectable for tests: callable(target) -> None
-    runner: Any = None  # injectable for tests: subprocess.run-like, for the job toolkits
+    runner: Any = None  # injectable for tests: subprocess.run-like, for lab containers
     pwsh_runner: Any = None  # injectable for tests: subprocess.run-like, for PowerShell
     agent: str = ""  # the agent at work (its trust level shapes the gate), empty = Spectre
     mission: int | None = None
@@ -150,6 +150,50 @@ def system_info(ctx: ActionContext) -> str:
         f"Système : {sys.platform}, {os.cpu_count()} cœurs logiques, "
         f"disque {free // 2**30} Go libres sur {total // 2**30} Go"
     )
+
+
+# ---- labo (conteneurs Docker locaux) --------------------------------------------------------
+
+LAB_CONTAINERS = {"biometrie": "lab-biometrie", "media": "lab-media", "secu": "lab-secu"}
+LAB_TIMEOUT_S = 180.0
+
+
+def lab_run(ctx: ActionContext, lab: str, command: str) -> str:
+    """Run a shell command inside a local lab container (learning/lab use, via `docker exec`)."""
+    container = LAB_CONTAINERS.get(lab.strip().lower())
+    if container is None:
+        raise ActionError(f"labo inconnu : {lab} (au choix : {', '.join(LAB_CONTAINERS)})")
+    if not command.strip():
+        raise ActionError("commande vide")
+    runner = ctx.runner or subprocess.run
+    docker = shutil.which("docker") or "docker"
+    try:
+        proc = runner(
+            [docker, "exec", "-i", container, "bash", "-lc", command],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=LAB_TIMEOUT_S,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise ActionError("Docker est introuvable sur ce PC.") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise ActionError(
+            f"commande trop longue (> {int(LAB_TIMEOUT_S)} s) dans {container}"
+        ) from exc
+    out, err = (proc.stdout or "").strip(), (proc.stderr or "").strip()
+    if proc.returncode != 0:
+        hint = ""
+        if "is not running" in err or "No such container" in err:
+            hint = " — démarre le labo : docker compose up -d"
+        raise ActionError(
+            f"{container} (code {proc.returncode}) : {(err or out or 'échec')[:500]}{hint}"
+        )
+    body = out or "(aucune sortie)"
+    if err:
+        body += f"\n[stderr] {err[:500]}"
+    return body[:MAX_READ_CHARS]
 
 
 # ---- open -----------------------------------------------------------------------------------

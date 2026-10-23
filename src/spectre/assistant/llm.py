@@ -13,6 +13,7 @@ import json
 import types
 import urllib.error
 import urllib.request
+import weakref
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, Union, get_args, get_origin
@@ -105,6 +106,8 @@ def gate_caller(root: Path, config: AssistantConfig) -> ToolCall:
             args,
         )
 
+    # the connection lives as long as this caller (an engine keeps it for its tool loops)
+    weakref.finalize(call, db.close)
     return call
 
 

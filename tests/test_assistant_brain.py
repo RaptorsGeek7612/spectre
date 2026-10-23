@@ -118,6 +118,27 @@ def test_long_system_prompt_stays_off_the_command_line(tmp_path: Path) -> None:
     assert bare[-2:] == ["--tools", ""]
 
 
+def test_effort_is_set_per_claude_model(tmp_path: Path) -> None:
+    cli = ClaudeCLI(AssistantConfig(), tmp_path)  # defaults: opus high, sonnet medium
+    opus = cli.command(system="S", model="opus", resume=None, with_tools=False)
+    assert opus[opus.index("--effort") + 1] == "high"
+    sonnet = cli.command(system="S", model="sonnet", resume=None, with_tools=False)
+    assert sonnet[sonnet.index("--effort") + 1] == "medium"
+    # Haiku 4.5 takes no effort, so it never gets the flag
+    haiku = cli.command(system="S", model="haiku", resume=None, with_tools=False)
+    assert "--effort" not in haiku
+    # an unknown or empty level falls back to Claude Code's own default (no flag)
+    tuned = ClaudeCLI(AssistantConfig(model_effort={"opus": "bogus", "sonnet": ""}), tmp_path)
+    assert "--effort" not in tuned.command(system="S", model="opus", resume=None, with_tools=False)
+    assert "--effort" not in tuned.command(
+        system="S", model="sonnet", resume=None, with_tools=False
+    )
+    # xhigh and max are accepted levels
+    high = ClaudeCLI(AssistantConfig(model_effort={"opus": "max"}), tmp_path)
+    cmd = high.command(system="S", model="opus", resume=None, with_tools=False)
+    assert cmd[cmd.index("--effort") + 1] == "max"
+
+
 def test_cli_missing_binary_and_timeout(tmp_path: Path) -> None:
     def missing(*_a: Any, **_k: Any) -> Any:
         raise FileNotFoundError

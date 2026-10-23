@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -146,6 +147,15 @@ def test_memory_context_and_mirror(db: Database, tmp_path: Path) -> None:
     mem.remember("Barth", "ville", "Lyon", category="lieu")
     mem.remember("Spectre", "ton", "tutoiement", category="persona")
     assert mem.context_block().startswith("- [persona]")
+    for i in range(30):
+        mem.remember("Olivier", f"souvenir {i}", "x" * 200, category="lieu")
+    full = mem.context_block(150, 45_000)
+    assert full.count("\n- [") == 31 and "autre(s) souvenir" not in full  # 32 facts, all in
+    capped = mem.context_block(5)  # a fact budget: the rest is announced, for recall
+    assert capped.count("- [") == 5 and "+ 27 autre(s) souvenir(s)" in capped and "recall" in capped
+    small = mem.context_block(150, 2_000)  # a character budget (2 000 at least)
+    assert len(small) < 2_300 and "autre(s) souvenir" in small
+    assert mem.context_block(10_000, 10**9).count("- [") == 32  # bounds keep it reasonable
     folder = tmp_path / "memoire"
     (folder).mkdir()
     (folder / "projet.md").write_text("old", encoding="utf-8")
@@ -399,6 +409,57 @@ def test_approval_flow(db: Database, ctx: ActionContext, home: Path) -> None:
     tools.deny(ctx, 3, "")
     row = db.one("SELECT * FROM approvals WHERE id = 3")
     assert row and row["status"] == "denied" and row["result"] == "refusé par l'utilisateur"
+
+
+def test_lab_run(db: Database, tmp_path: Path, home: Path) -> None:
+    from types import SimpleNamespace
+
+    calls: list[list[str]] = []
+
+    def fake_runner(cmd: list[str], **kwargs: Any) -> Any:
+        calls.append(cmd)
+        if "boom" in cmd[-1]:
+            return SimpleNamespace(
+                stdout="", stderr="Error: No such container: lab-media", returncode=1
+            )
+        if "warn" in cmd[-1]:
+            return SimpleNamespace(stdout="ok-sortie", stderr="bruit", returncode=0)
+        return SimpleNamespace(stdout="ok-sortie", stderr="", returncode=0)
+
+    ctx = ActionContext(db=db, root=tmp_path / "a", allowed_roots=[home], runner=fake_runner)
+    gate = Gate(db)
+    # média : exécution locale, automatique (WRITE / "lab")
+    assert tools.TOOLS["lab_run"].risk(ctx, {"lab": "media"}) == (Level.WRITE, "lab")
+    out = tools.execute(gate, ctx, "lab_run", {"lab": "media", "command": "echo hi"})
+    assert "ok-sortie" in out
+    assert calls[0][1:4] == ["exec", "-i", "lab-media"]
+    # sécu : touche une cible -> validation requise (EXTERNAL), le runner n'est pas appelé
+    assert tools.TOOLS["lab_run"].risk(ctx, {"lab": "secu"}) == (Level.EXTERNAL, "lab_secu")
+    pending = tools.execute(gate, ctx, "lab_run", {"lab": "secu", "command": "nmap juice-shop"})
+    assert pending.startswith("EN ATTENTE DE VALIDATION") and len(calls) == 1
+    # labo inconnu, commande vide, conteneur arrêté (indice de démarrage)
+    assert tools.execute(gate, ctx, "lab_run", {"lab": "nope", "command": "x"}).startswith("ÉCHEC")
+    assert tools.execute(gate, ctx, "lab_run", {"lab": "media", "command": " "}).startswith("ÉCHEC")
+    stopped = tools.execute(gate, ctx, "lab_run", {"lab": "media", "command": "boom"})
+    assert "docker compose up -d" in stopped
+    # stderr présent mais succès : annexé à la sortie
+    assert "[stderr] bruit" in tools.execute(
+        gate, ctx, "lab_run", {"lab": "media", "command": "warn"}
+    )
+
+    # Docker absent et commande trop longue -> échecs explicites
+    def missing(cmd: list[str], **kwargs: Any) -> Any:
+        raise FileNotFoundError
+
+    def slow(cmd: list[str], **kwargs: Any) -> Any:
+        raise subprocess.TimeoutExpired(cmd, 1.0)
+
+    gone = ActionContext(db=db, root=tmp_path / "a", allowed_roots=[home], runner=missing)
+    assert "Docker est introuvable" in tools.execute(
+        gate, gone, "lab_run", {"lab": "media", "command": "x"}
+    )
+    lag = ActionContext(db=db, root=tmp_path / "a", allowed_roots=[home], runner=slow)
+    assert "trop longue" in tools.execute(gate, lag, "lab_run", {"lab": "media", "command": "x"})
 
 
 def test_workspace_drafts_rewritten_without_approval(db: Database, ctx: ActionContext) -> None:

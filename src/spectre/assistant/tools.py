@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import actions, activity, powershell, runctx
+from spectre.assistant import actions, activity, competences, powershell, runctx
 from spectre.assistant.actions import ActionContext, ActionError
 from spectre.assistant.company import (
     DEPARTMENTS,
@@ -73,9 +73,21 @@ def _recall(ctx: ActionContext, query: str) -> str:
     )
 
 
+def _competence(ctx: ActionContext, name: str) -> str:
+    try:
+        return competences.read(name)
+    except ValueError as exc:
+        raise ActionError(str(exc)) from exc
+
+
 def _forget(ctx: ActionContext, fact_id: int) -> str:
     fact = Memory(ctx.db).forget(int(fact_id))
     return f"oublié : #{fact['id']} {fact['subject']} {fact['predicate']} {fact['value']}"
+
+
+def _restore_fact(ctx: ActionContext, fact_id: int) -> str:
+    fact = Memory(ctx.db).restore(int(fact_id))
+    return f"restauré : #{fact['id']} {fact['subject']} {fact['predicate']} {fact['value']}"
 
 
 def _start_mission(ctx: ActionContext, goal: str, kind: str = "mission", agent: str = "") -> str:
@@ -1089,6 +1101,13 @@ def _write_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
     return Level.DESTRUCTIVE, "overwrite_file"
 
 
+def _lab_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
+    # le labo sécu contacte un réseau/une cible -> toujours la validation de l'utilisateur
+    if str(args.get("lab", "")).strip().lower() == "secu":
+        return (Level.EXTERNAL, "lab_secu")
+    return (Level.WRITE, "lab")
+
+
 def _powershell_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
     # lecture seule (cmdlets Get-/Test-... sans effet de bord) -> tout de suite ; le reste
     # peut tout faire sur le PC -> niveau critique, toujours la validation de l'utilisateur
@@ -1136,7 +1155,24 @@ TOOLS: dict[str, Tool] = {
         ),
         Tool("recall", "Chercher dans la mémoire de Spectre.", Level.READ, "memory", _recall),
         Tool(
+            "competence",
+            "Lire une de tes compétences en entier (guide détaillé sur ce PC : personnalité, "
+            "amitié, développement humain, mémoire, savoirs, création, labos...), par son nom.",
+            Level.READ,
+            "read",
+            _competence,
+        ),
+        Tool(
             "forget", "Oublier un fait mémorisé (par son numéro).", Level.WRITE, "memory", _forget
+        ),
+        Tool(
+            "restore_fact",
+            "Restaurer un souvenir archivé ou fusionné (le rangement de la nuit n'efface "
+            "jamais rien). fact_id : son numéro.",
+            Level.WRITE,
+            "memory",
+            _restore_fact,
+            lead_only=True,
         ),
         Tool(
             "open_url",
@@ -1219,6 +1255,19 @@ TOOLS: dict[str, Tool] = {
             Level.WRITE,
             "mission",
             _start_mission,
+        ),
+        Tool(
+            "lab_run",
+            "Exécuter une commande dans un labo Docker local (apprentissage/labo), via docker "
+            "exec. lab=biometrie : reconnaissance visage/voix/empreintes (scripts "
+            "/work/shared/face_demo*.py, voice_demo*.py, fp_match.py) ; lab=media : "
+            "FFmpeg/OpenCV/MoviePy ; lab=secu : suite Kali (cibles possédées ou autorisées "
+            "uniquement — chaque exécution demande ta validation). Échange de fichiers via le "
+            "dossier shared/ du labo.",
+            Level.WRITE,
+            "lab",
+            actions.lab_run,
+            _lab_risk,
         ),
         Tool(
             "create_agent",
@@ -1461,7 +1510,16 @@ TOOLS: dict[str, Tool] = {
             "française d'un fichier .txt ; options = vitesse), agrandir (image ×4). Production "
             "(Kyra) : scenario_pdf (scénario .fountain en PDF), plans (liste des plans d'une "
             "vidéo), derushage (retire les silences d'un rush), loudness (son de diffusion ; "
-            "options = web ou tv). Ils créent "
+            "options = web ou tv). Design (Kyra) : maquette_png (capture d'une page HTML pour la "
+            "relire ; options = paysage, story, fil ou carre), maquette_pdf (page HTML en PDF), "
+            "vectoriel (SVG en PDF ou PNG ; options = pdf ou png). Rétro-ingénierie (Syfer) : "
+            "retro (rétro-ingénierie d'un fichier avec REA ; "
+            "options = inspect-artifact par défaut, inspect-pe-resources, "
+            "inspect-managed-artifact, "
+            "inspect-go-binary, analyze-javascript-application… en statique, sans exécuter le "
+            "fichier ; ou, pour un binaire natif via Ghidra, analyze, search <terme>, "
+            "function <nom>, decompile <adresse>, xrefs <adresse>, trace <terme> ; "
+            "rapport complet dans workspace/retro). Ils créent "
             "un nouveau fichier à côté de la source. target : le fichier, le dossier ou "
             "l'adresse. Chaque agent ne voit que les outils de son domaine. Aussi les outils "
             "ajoutés par Spectre (liste : outils_agents).",

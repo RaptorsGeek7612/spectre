@@ -10,6 +10,7 @@ outside, so it waits for the user's approval.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -49,6 +50,8 @@ class Kit:
     remote: bool = False  # the target is a URL or host (probing it reaches outside)
     output: Callable[[ActionContext, str, str], Path] | None = None  # the file it creates
     timeout: float = TIMEOUT_S
+    report: Callable[[ActionContext, str, str], Path] | None = None  # where long stdout is kept
+    env: Callable[[ActionContext, str, str], dict[str, str]] | None = None  # extra env vars
 
 
 def _bin(names: tuple[str, ...]) -> str | None:
@@ -62,6 +65,12 @@ def _bin(names: tuple[str, ...]) -> str | None:
         Path.home() / "AppData" / "Roaming" / "uv" / "tools" / "semgrep" / "Scripts",
         Path.home() / ".local" / "bin",  # uv tools: rembg, whisper-ctranslate2, kokoro-tts
         Path.home() / "Apps" / "realesrgan",
+        Path("C:/Program Files/Inkscape/bin"),
+        # Chromium (open source) as installed by Playwright: Kyra renders her HTML designs
+        *sorted(
+            (Path.home() / "AppData" / "Local" / "ms-playwright").glob("chromium-*/chrome-win*"),
+            reverse=True,
+        ),
         *sorted(Path("C:/Program Files").glob("ImageMagick-*"), reverse=True),
         *sorted(Path("C:/Program Files/Eclipse Adoptium").glob("*/bin"), reverse=True),
     ]
@@ -134,6 +143,143 @@ def _subtitle_filter(path: Path) -> str:
     """ffmpeg's `subtitles=` filter wants its path escaped (the drive colon, quotes)."""
     escaped = path.as_posix().replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     return f"subtitles='{escaped}'"
+
+
+def _page(ctx: ActionContext, target: str, kinds: tuple[str, ...] = (".html", ".htm")) -> Path:
+    """The design file a renderer opens: a local HTML (or SVG) page the agent may read."""
+    page = resolve_path(ctx, target)
+    if page.suffix.lower() not in kinds:
+        raise ActionError(f"fichier attendu : {' ou '.join(kinds)} ({page.name})")
+    return page
+
+
+def _headless(*flags: str) -> list[str]:
+    """Headless Chromium, given time for fonts, images and entrance animations to settle."""
+    return [
+        _bin(("chrome",)) or "chrome",
+        "--headless",
+        "--disable-gpu",
+        "--virtual-time-budget=5000",
+        *flags,
+    ]
+
+
+def _vector(options: str) -> str:
+    kind = options.strip().lower() or "pdf"
+    if kind not in ("pdf", "png"):
+        raise ActionError("options = pdf (vectoriel, pour l'impression) ou png")
+    return kind
+
+
+# Syfer's reverse engineering: REA (github.com/morluto/rea, MIT). Static inspections read the
+# file without running it. Native commands decompile machine code through Ghidra (open source,
+# NSA). Runtime capture, debuggers, Frida and adb are deliberately left out.
+REA_COMMANDS = {
+    "inspect-artifact": "vue d'ensemble d'un fichier (format, archive, membres, pistes suivantes)",
+    "inspect-pe-resources": "ressources d'un .exe/.dll Windows (icônes, versions, manifestes)",
+    "inspect-managed-artifact": "assembly .NET : identité, métadonnées, dépendances",
+    "inspect-managed-members": "assembly .NET : types, méthodes, signatures, chaînes",
+    "inspect-managed-native-boundaries": "assembly .NET : appels natifs (P/Invoke)",
+    "inspect-go-binary": "binaire Go : version du compilateur, modules, réglages de build",
+    "inspect-rust-binary": "binaire Rust : dépendances embarquées (cargo-auditable)",
+    "inspect-electron-fuses": "appli Electron : fusibles de sécurité de l'exécutable",
+    "analyze-javascript-application": "appli JavaScript/Electron (dossier ou .asar) : modules, IPC",
+    "inspect-sqlite-database": "base SQLite : schéma et tables",
+    "identify-flutter-build": "APK Flutter : version de Dart et du moteur",
+}
+# Native commands (binaire natif C/C++) run through Ghidra: each takes one extra argument after
+# the file (except `analyze`): a fonction, une adresse (0x…) ou un terme à chercher.
+REA_NATIVE = {
+    "analyze": ("vue d'ensemble du binaire natif (Ghidra)", False),
+    "search": ("cherche une chaîne ou un nom de fonction (Ghidra)", True),
+    "function": ("décompile une fonction par son nom (Ghidra)", True),
+    "decompile": ("décompile le code à une adresse 0x… (Ghidra)", True),
+    "xrefs": ("références vers une adresse 0x… (Ghidra)", True),
+    "trace": ("suit un terme à travers les références (Ghidra)", True),
+}
+REA_JS = (
+    Path.home()
+    / "AppData"
+    / "Roaming"
+    / "npm"
+    / "node_modules"
+    / "rea-agents"
+    / "scripts"
+    / "rea.mjs"
+)
+
+
+def _newest(pattern: str, *bases: Path) -> Path | None:
+    """The newest directory matching `pattern` under any base (Ghidra, a JDK…)."""
+    for base in bases:
+        found = sorted(base.glob(pattern), reverse=True)
+        if found:
+            return found[0]
+    return None
+
+
+def ghidra_dir() -> Path | None:
+    return _newest("ghidra_*_PUBLIC", Path.home() / "Apps" / "ghidra")
+
+
+def _jdk_dir() -> Path | None:
+    return _newest("jdk-21*", Path("C:/Program Files/Eclipse Adoptium")) or _newest(
+        "jdk-2[2-9]*", Path("C:/Program Files/Eclipse Adoptium")
+    )
+
+
+def _rea_parse(options: str) -> tuple[str, str]:
+    """(command, extra argument). A static command takes none; a native one may need a function,
+    an address or a search term."""
+    parts = options.strip().split(maxsplit=1)
+    command = (parts[0] if parts else "inspect-artifact").lower()
+    extra = parts[1] if len(parts) > 1 else ""
+    if command in REA_COMMANDS:
+        return command, ""
+    if command in REA_NATIVE:
+        if REA_NATIVE[command][1] and not extra:
+            raise ActionError(f"« {command} » attend un argument (fonction, adresse 0x… ou terme)")
+        return command, extra
+    allowed = ", ".join((*REA_COMMANDS, *REA_NATIVE))
+    raise ActionError(f"commande REA inconnue : {command} (au choix : {allowed})")
+
+
+def _rea_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    command, extra = _rea_parse(options)
+    argv = [_bin(("node",)) or "node", str(REA_JS), command, _local(ctx, target)]
+    if command in REA_NATIVE:
+        if ghidra_dir() is None or _jdk_dir() is None:
+            raise ActionError(
+                "l'analyse native a besoin de Ghidra (~/Apps/ghidra) et d'un JDK 21 ; "
+                "installe-les, ou utilise une commande statique (inspect-artifact…)"
+            )
+        if extra:
+            argv.append(extra)
+        argv += ["--provider", "ghidra"]
+    return [*argv, "--json"]
+
+
+def _rea_env(ctx: ActionContext, target: str, options: str) -> dict[str, str]:
+    """Point REA at Ghidra and its JDK for a native command, without touching the global
+    environment: both tools are found under the user's Apps folder."""
+    command, _ = _rea_parse(options)
+    gh, jdk = ghidra_dir(), _jdk_dir()
+    if command in REA_NATIVE and gh is not None and jdk is not None:
+        return {
+            "GHIDRA_INSTALL_DIR": str(gh),
+            "JAVA_HOME": str(jdk),
+            # let Ghidra import and analyze a big binary before REA gives up, just under the
+            # kit's own 900 s hard limit (a CPU-only machine is slow on large files)
+            "REA_GHIDRA_STARTUP_TIMEOUT_MS": "840000",
+        }
+    return {}
+
+
+def _rea_report(ctx: ActionContext, target: str, options: str) -> Path:
+    """REA's full Evidence JSON, kept in the workspace: it can run to hundreds of thousands
+    of characters, far more than one answer holds."""
+    name = resolve_path(ctx, target).name
+    return ctx.workspace / "retro" / f"{name}-{_rea_parse(options)[0]}.json"
 
 
 LOUDNESS = {"web": -14, "tv": -23}  # LUFS: streaming platforms; French TV (EBU R128)
@@ -559,6 +705,62 @@ KITS: dict[str, Kit] = {
         ("ffmpeg",),
         output=lambda ctx, t, o: _beside(ctx, t, f"{-_loudness(o)}lufs"),
         timeout=1800.0,
+    ),
+    # ---- Kyra, designer: render an HTML design to print, capture it to check it, export vectors
+    "maquette_pdf": Kit(
+        "Chromium (maquette HTML en PDF : une page par slide ou par @page)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: _headless(
+            "--no-pdf-header-footer",
+            f"--print-to-pdf={_beside(ctx, t, 'maquette', '.pdf')}",
+            _page(ctx, t).as_uri(),
+        ),
+        ("chrome",),
+        output=lambda ctx, t, o: _beside(ctx, t, "maquette", ".pdf"),
+        timeout=300.0,
+    ),
+    "maquette_png": Kit(
+        "Chromium (capture PNG d'une maquette HTML, pour la relire)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: _headless(
+            "--hide-scrollbars",
+            "--window-size={1},{2}".format(*_format(o.strip() or "paysage")),
+            f"--screenshot={_beside(ctx, t, _format(o.strip() or 'paysage')[0], '.png')}",
+            _page(ctx, t).as_uri(),
+        ),
+        ("chrome",),
+        output=lambda ctx, t, o: _beside(ctx, t, _format(o.strip() or "paysage")[0], ".png"),
+        timeout=300.0,
+    ),
+    "vectoriel": Kit(
+        "Inkscape (export d'un SVG en PDF vectoriel ou en PNG)",
+        ("chatgpt",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("inkscape",)) or "inkscape",
+            str(_page(ctx, t, (".svg",))),
+            f"--export-type={_vector(o)}",
+            f"--export-filename={_beside(ctx, t, 'export', '.' + _vector(o))}",
+        ],
+        ("inkscape",),
+        output=lambda ctx, t, o: _beside(ctx, t, "export", "." + _vector(o)),
+    ),
+    # ---- Syfer: reverse engineering of a local file with REA (static; or native through Ghidra)
+    "retro": Kit(
+        "REA (rétro-ingénierie d'un fichier : exe, dll, .NET, Go, Rust, Electron, et natif Ghidra)",
+        ("mistral",),
+        Level.READ,
+        "scan",
+        _rea_argv,  # node, not rea.cmd: cmd.exe would re-parse the path
+        ("node",),
+        report=_rea_report,
+        env=_rea_env,
+        timeout=900.0,  # a native Ghidra analysis imports and analyzes before answering
     ),
 }
 
@@ -1005,7 +1207,10 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
         )
     if kit.agents and ctx.agent not in ("", "opus", *kit.agents):
         raise ActionError(f"{kit.label} n'est pas un outil de ton domaine")
-    if _bin(kit.bins) is None or (name == "languagetool" and not LANGUAGETOOL.is_file()):
+    missing = (name == "languagetool" and not LANGUAGETOOL.is_file()) or (
+        name == "retro" and not REA_JS.is_file()
+    )
+    if _bin(kit.bins) is None or missing:
         raise ActionError(f"{kit.label} n'est pas installé sur ce PC")
     if kit.needs_target and not target.strip():
         raise ActionError("précise la cible (un fichier, un dossier ou une adresse)")
@@ -1013,6 +1218,7 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
         raise ActionError("pandoc : indique le fichier de sortie dans options (ex. sortie.docx)")
     command = kit.argv(ctx, target, options)
     runner = ctx.runner or subprocess.run
+    extra_env = kit.env(ctx, target, options) if kit.env is not None else {}
     try:
         proc = runner(
             command,
@@ -1023,6 +1229,7 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
             timeout=kit.timeout,
             check=False,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            env={**os.environ, **extra_env} if extra_env else None,
         )
     except FileNotFoundError as exc:
         raise ActionError(f"{kit.label} est introuvable : {exc}") from exc
@@ -1039,6 +1246,19 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
             detail = (err or out or "aucun fichier produit")[:400]
             raise ActionError(f"{kit.label} (code {proc.returncode}) : {detail}")
         return f"Fichier créé : {made}"
+    if kit.report is not None and out:
+        if proc.returncode != 0:  # REA answers its errors in JSON on stdout
+            raise ActionError(f"{kit.label} (code {proc.returncode}) : {out[:400]}")
+        kept = kit.report(ctx, target, options)
+        kept.parent.mkdir(parents=True, exist_ok=True)
+        kept.write_text(out, encoding="utf-8")
+        preview = 4000
+        more = (
+            f"\n[… {len(out) - preview} caractères de plus dans le rapport]"
+            if len(out) > preview
+            else ""
+        )
+        return f"Rapport complet : {kept}\n{out[:preview]}{more}"
     body = out or err or "(aucune sortie : rien à signaler)"
     if err and out:
         body += f"\n[détails] {err[:400]}"

@@ -39,6 +39,8 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "write_file": "ALWAYS",
     "reminder": "ALWAYS",
     "mission": "ALWAYS",
+    "lab": "ALWAYS",  # labo biométrie/multimédia : calcul local, réversible
+    "lab_secu": "ASK",  # labo sécurité : contacte une cible -> validation (aussi niveau EXTERNAL)
     "agent": "ALWAYS",  # creating an agent; deleting one is destructive, so it still asks
     "skill": "ALWAYS",  # only a proposal: the user approves it before anything is written
     "dev_config": "ASK",  # the test command will be run on this PC

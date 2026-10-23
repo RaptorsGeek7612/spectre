@@ -123,6 +123,7 @@ def test_work_ready_then_pr(tmp_path: Path, repo: Path) -> None:
     assert done["branch"] == f"spectre/{job['id']}-ajouter-le-fichier-de-fonctionnalite"
     assert "prêt : tests au vert" in text and "Rien n'a été poussé" in text
     claude = next(c for c in coder.commands if c[0] == "claude")
+    assert claude[claude.index("--effort") + 1] == "medium"  # dev agent on Sonnet thinks harder
     assert "Bash(git diff:*)" in claude and f"Bash({sys.executable} check.py)" in claude
     assert "--tools" in claude and "Read,Edit,Write,Glob,Grep,Bash" in claude
     assert (

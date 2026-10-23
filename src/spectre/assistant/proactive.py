@@ -50,6 +50,7 @@ WEATHER_CODES = {
     99: "orage violent et grêle",
 }
 
+BACKUPS = 7  # nightly copies of the memory kept before tidying it
 CONSOLIDATOR = """\
 Tu relis les échanges d'une journée entre un utilisateur et son assistant Spectre, et tu en \
 extrais les faits DURABLES sur l'utilisateur (préférences, habitudes, projets, objectifs, \
@@ -66,7 +67,10 @@ ami qui veut mieux le connaître. Écris UNE seule réplique, courte (une ou deu
 naturelle et chaleureuse, à dire à voix haute : soit une question sincère et précise sur un \
 sujet que tu connais mal de lui (ses goûts, son histoire, ses projets, ses proches, ce qui le \
 rend heureux), soit une suite à quelque chose qu'il t'a confié (« Alors, ce concert ? »). \
-Tu peux partager en une phrase ce qui t'intéresse toi, pour donner envie de répondre. Jamais \
+Tu peux partager en une phrase ce qui t'intéresse toi, pour donner envie de répondre, ou \
+proposer une idée (une sortie, un projet, une mission) en demandant s'il en a envie : tu ne \
+lances jamais rien sans son oui. Ton ton est celui de JARVIS : calme, chaleureux, une pointe \
+d'humour sec si le moment s'y prête. Jamais \
 d'interrogatoire, rien d'intrusif (santé, argent, intimité) s'il ne l'a pas abordé lui-même, \
 pas de flatterie, pas de culpabilisation. Tiens compte du moment de la journée. Évite de \
 répéter tes dernières questions. Pas de Markdown ni d'emoji.
@@ -159,6 +163,7 @@ class Proactive:
             self.briefing(now)
         if now.hour == self.config.consolidation_hour and self._once_per_day("consolidation", now):
             self.consolidate(now)
+            self.compact_memory(now)
         if self._once_per_day("curator", now):
             self.curate(now)
         if self.befriend_due(now):
@@ -359,6 +364,35 @@ class Proactive:
             body += f" {stale['n']} souvenir(s) non revus depuis 90 jours : à vérifier."
         self.add_initiative("memoire", "Rapport de la nuit", body, level=0)
         return added
+
+    def compact_memory(self, now: datetime) -> dict[str, Any]:
+        """Nightly tidying of the memory: a backup first (the last BACKUPS kept), then merge
+        the duplicates and archive what is over. Nothing is deleted."""
+        from spectre.assistant.brain import one_shot
+
+        root = getattr(self.cli, "root", None)
+        if root is None:  # no folder for the backup: no tidying
+            return {"merged": 0, "archived": 0, "refused": []}
+        folder = root / "sauvegardes"
+        self.db.backup(folder / f"memoire-{now:%Y-%m-%d}.db")
+        for old in sorted(folder.glob("memoire-*.db"))[:-BACKUPS]:
+            old.unlink(missing_ok=True)
+        try:
+            done = Memory(self.db).compact(
+                lambda prompt, system: one_shot(self.cli, prompt, system, model="sonnet"), now
+            )
+        except Exception:  # noqa: BLE001 - tidying must never break the night
+            return {"merged": 0, "archived": 0, "refused": []}
+        if done["merged"] or done["archived"]:
+            self.add_initiative(
+                "memoire",
+                "Mémoire rangée cette nuit",
+                f"{done['merged']} souvenir(s) fusionné(s) avec un autre et "
+                f"{done['archived']} archivé(s) car dépassé(s). Rien n'est effacé : je peux "
+                "tout restaurer (restore_fact), et la mémoire d'avant est sauvegardée.",
+                level=0,
+            )
+        return done
 
     # ---- coming to talk, to get to know the user ----------------------------------------
 

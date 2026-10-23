@@ -7,6 +7,83 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Couleurs de la vue « Conversation »** : les quatre relevés HUD prennent chacun une raie du
+  spectre (Mémoire cyan, Validations violet, Missions bleu, **Cerveau ambre** — écho de l'état
+  « réflexion » de l'Orbe), la barre de signal passe en dégradé cyan→violet→rouge et les repères
+  d'angle sont teintés — l'UI reprend la palette colorée de l'Orbe sans surcharge.
+- **Vue « Conversation » mieux structurée autour de l'Orbe** : la scène est encadrée par de
+  fins repères d'angle (dans l'esprit du réticule de l'Orbe), les quatre relevés HUD forment un
+  cadre régulier (ceux du bas descendus au tiers inférieur) et le champ de saisie partage la
+  même « console » que le dock (même plaque, même filet) — l'ensemble HUD + Orbe + commandes se
+  lit comme un seul panneau, homogène sur ordinateur comme sur téléphone.
+- **Nouvelle Orbe de l'assistant, bien plus futuriste** (`web/static/orb.js`) : une sphère 3-D
+  de particules colorées en rotation (le « cerveau »), triée en profondeur pour paraître pleine,
+  des orbites inclinées avec électrons lumineux qui passent devant et derrière, un cœur plasma
+  qui irradie, des filaments d'énergie, un oscilloscope circulaire multicolore qui réagit à la
+  voix en direct et une surcouche HUD (biseau gradué, arcs, réticule). Palette cyan → turquoise
+  → bleu → violet → magenta ; vire vers l'ambre quand Spectre réfléchit. Même interface
+  (`setState`, `setLevel`, `spellWord`), le mot SPECTRE à l'éveil et le respect de
+  « prefers-reduced-motion » sont conservés.
+- **Specs réseaux sociaux 2026 pour Kyra** (`spectre-pub-communication`) : tableau par réseau
+  (YouTube long et Shorts, TikTok, Instagram Reels/fil/Stories, Facebook fil/Reels/Stories,
+  LinkedIn, X, Pinterest, Snapchat, Threads, Bluesky, fiche Google) — ratio, pixels, durée,
+  poids, notes — plus les règles transverses (accroche, sous-titres, vertical d'abord, −14 LUFS,
+  publicité vs organique). Chiffres de guides recoupés, à revérifier sur les pages officielles.
+- **Ghidra branché pour Syfer (analyse native)** : l'outil `retro` sait maintenant décompiler
+  un binaire natif C/C++ via Ghidra (libre, NSA) — `analyze`, `search <terme>`,
+  `function <nom>`, `decompile <adresse 0x…>`, `xrefs <adresse>`, `trace <terme>`. Ghidra
+  12.1.4 (compatible REA 6.7.0) est installé sous `~/Apps/ghidra` avec un JDK 21 ; le kit
+  trouve les deux tout seul et les passe à REA par l'environnement du sous-processus
+  (`GHIDRA_INSTALL_DIR`, `JAVA_HOME`, délai de démarrage relevé), sans toucher à
+  l'environnement global. Si Ghidra manque, l'analyse native est refusée avec un message clair ;
+  les commandes statiques restent disponibles sans lui.
+- **Chaque agent Claude réfléchit avec le bon effort** (nouveauté des agents de Claude Code :
+  le drapeau `--effort`). Spectre règle maintenant l'effort par modèle et l'applique à tous ses
+  agents sur un moteur Claude — cerveau, agents de mission, planificateur, équipe de dev :
+  Opus en `high`, Sonnet en `medium` par défaut, réglable par `model_effort` dans les réglages
+  (niveaux `low`, `medium`, `high`, `xhigh`, `max`). Haiku 4.5 ne prend pas d'effort : il n'en
+  reçoit jamais. Cela applique enfin la règle « régler l'effort, pas la température » sur le vrai
+  appel à Claude Code (`claude -p`), qui jusqu'ici laissait l'effort par défaut du CLI.
+- **Syfer, expert en rétro-ingénierie** sur la méthode de REA « Reverse Engineer Anything »
+  (github.com/morluto/rea, MIT) : compétence `spectre-retro-ingenierie` — base légale vérifiée
+  d'abord (interopérabilité L122-6-1 CPI et directive 2009/24/CE, sécurité, jamais de
+  contournement de protection), routage de la cible, du résumé au détail, registre des
+  constats, observé / déduit / inconnu, reconstruction originale d'une fonctionnalité,
+  analyse de malware isolée. Outil `toolkit` `retro` réservé à Syfer : les inspections
+  **statiques** de REA (format et archive, ressources d'un .exe, assemblies .NET, binaires Go
+  et Rust, fusibles Electron, applis JavaScript/.asar, SQLite, Flutter) ; le fichier n'est
+  jamais exécuté, le rapport complet est gardé dans `workspace/retro/` et la réponse en
+  donne un aperçu. Débogueurs, Frida, capture d'exécution et adb ne sont pas branchés.
+- **Kyra devient designer, sur le modèle de Claude Design** (Anthropic Labs) : compétence
+  `spectre-design` — cadrage (chercher le contexte existant, questions en une fois), système
+  de design posé d'abord (`DESIGN.md`, variables CSS : couleurs à rôle, typo, espacements,
+  composants, interdits), rendu « IA générique » à fuir, 3 variantes et réglages en direct,
+  maquettes, prototypes cliquables, slides 1920×1080 et one-pagers en HTML autonome,
+  vérification par capture avant de livrer, exports libres, passage au développement, droit
+  (jamais la charte d'une autre marque). Trois outils `toolkit` réservés à Kyra :
+  `maquette_png` (capture d'une page HTML par Chromium, aux formats paysage/story/fil/carre),
+  `maquette_pdf` (page HTML en PDF, une page par slide) et `vectoriel` (SVG en PDF ou PNG avec
+  Inkscape).
+- **Une mémoire bien plus grande, mais raisonnable** : Spectre a en tête jusqu'à 150 faits
+  sur l'utilisateur à chaque échange (au lieu de 40), dans une enveloppe de 45 000 caractères
+  (≈ 11 000 tokens) ; les plus fiables d'abord, les autres restent en mémoire et sont retrouvés
+  avec `recall`. Réglages `memory_facts` et `memory_chars` (400 faits et 120 000 caractères au
+  plus) dans la page Réglages. Le planificateur des missions en reçoit 40 (au lieu de 20).
+- **Rangement de la mémoire chaque nuit, sans rien effacer** (`Memory.compact`, après la
+  consolidation de 3 h) : sauvegarde de la base d'abord (`sauvegardes/memoire-<date>.db`, les
+  7 dernières gardées), puis une relecture (Sonnet) propose de fusionner les doublons et
+  d'archiver ce qui est dépassé ; chaque fusion est vérifiée (même catégorie, aucun chiffre ni
+  date perdu, texte pas raccourci), 15 fusions et 5 archivages par nuit au plus, rien
+  d'archivé qui a été vu dans la semaine. Les règles de l'utilisateur et ses confidences ne
+  sont jamais touchées. Les faits fusionnés ou archivés restent en base, restaurables
+  (`restore_fact`) ; un compte rendu arrive le matin.
+
+### Fixed
+- Connexions SQLite laissées ouvertes : celle du portail des moteurs hébergés (Simon, Shelby,
+  Ysyss, Lexy) se ferme désormais avec le moteur ; les tests ferment chaque base qu'ils
+  ouvrent. Fin des avertissements « unclosed database » qui apparaissaient au hasard.
+
 ## [0.24.0] - 2026-10-18
 
 ### Added

@@ -300,6 +300,99 @@ def test_production_tools_commands(ctx: Any) -> None:
         toolkit.run(ctx, "derushage", "rush.mp4")
 
 
+def test_design_tools_commands(ctx: Any) -> None:
+    ctx.agent = "chatgpt"
+    home = ctx.allowed_roots[0]
+    for name in ("deck.html", "logo.svg", "note.txt"):
+        (home / name).write_bytes(b"x")
+    ctx.runner.result = subprocess.CompletedProcess([], 0, "", "")
+    for name, target, options, flag in (
+        ("maquette_pdf", "deck.html", "", "--print-to-pdf="),
+        ("maquette_png", "deck.html", "story", "--screenshot="),
+        ("vectoriel", "logo.svg", "png", "--export-filename="),
+    ):
+        with pytest.raises(ActionError, match="aucun fichier produit"):
+            toolkit.run(ctx, name, target, options)
+        assert any(arg.startswith(flag) for arg in ctx.runner.calls[-1]), name
+    pdf, png, vector = (" ".join(call) for call in ctx.runner.calls)
+    assert "--headless" in pdf and "deck-maquette.pdf" in pdf and "file:" in pdf
+    assert "--window-size=1080,1920" in png and "deck-story.png" in png
+    assert "--export-type=png" in vector and "logo-export.png" in vector
+    assert "--window-size=1920,1080" in " ".join(  # a capture is 16:9 by default
+        toolkit.KITS["maquette_png"].argv(ctx, "deck.html", "")
+    )
+    with pytest.raises(ActionError, match=".html"):
+        toolkit.run(ctx, "maquette_pdf", "note.txt")
+    with pytest.raises(ActionError, match="pdf"):
+        toolkit.run(ctx, "vectoriel", "logo.svg", "eps")
+    ctx.agent = "lexy"
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "maquette_png", "deck.html")
+
+
+def test_retro_runs_rea_statically_and_keeps_the_report(ctx: Any, monkeypatch: Any) -> None:
+    rea = ctx.allowed_roots[0] / "rea.mjs"
+    rea.write_text("// REA")
+    monkeypatch.setattr(toolkit, "REA_JS", rea)
+    (ctx.allowed_roots[0] / "app.exe").write_bytes(b"MZ")
+    ctx.agent = "mistral"
+    evidence = '{"evidence_id": "ev_1", "x": "' + "a" * 5000 + '"}'
+    ctx.runner.result = subprocess.CompletedProcess([], 0, evidence, "")
+    out = toolkit.run(ctx, "retro", "app.exe")
+    command = ctx.runner.calls[-1]
+    assert command[1:3] == [str(rea), "inspect-artifact"] and command[-1] == "--json"
+    assert not command[0].lower().endswith(".cmd")  # node itself: cmd.exe never parses the path
+    kept = ctx.workspace / "retro" / "app.exe-inspect-artifact.json"
+    assert kept.read_text(encoding="utf-8") == evidence  # the full report, not the preview
+    assert out.startswith(f"Rapport complet : {kept}") and "caractères de plus" in out
+    toolkit.run(ctx, "retro", "app.exe", "inspect-go-binary")
+    assert ctx.runner.calls[-1][2] == "inspect-go-binary"
+    for command_name in ("debug-with-gdb", "instrument-with-frida", "capture-process"):
+        with pytest.raises(ActionError, match="commande REA inconnue"):
+            toolkit.run(ctx, "retro", "app.exe", command_name)  # nothing that runs the target
+    ctx.runner.result = subprocess.CompletedProcess([], 1, '{"code": "invalid_request"}', "")
+    with pytest.raises(ActionError, match="invalid_request"):
+        toolkit.run(ctx, "retro", "app.exe", "inspect-sqlite-database")
+    assert toolkit.KITS["retro"].level == Level.READ
+    ctx.agent = "chatgpt"
+    with pytest.raises(ActionError, match="ton domaine"):
+        toolkit.run(ctx, "retro", "app.exe")
+    monkeypatch.setattr(toolkit, "REA_JS", ctx.allowed_roots[0] / "absent.mjs")
+    ctx.agent = "mistral"
+    with pytest.raises(ActionError, match="pas installé"):
+        toolkit.run(ctx, "retro", "app.exe")
+
+
+def test_retro_native_commands_go_through_ghidra(ctx: Any, monkeypatch: Any) -> None:
+    rea = ctx.allowed_roots[0] / "rea.mjs"
+    rea.write_text("// REA")
+    monkeypatch.setattr(toolkit, "REA_JS", rea)
+    gh = ctx.allowed_roots[0] / "ghidra_12.1.4_PUBLIC"
+    jdk = ctx.allowed_roots[0] / "jdk-21"
+    (target := ctx.allowed_roots[0] / "app.exe").write_bytes(b"MZ")
+    # with Ghidra and a JDK found, a native command targets the Ghidra provider...
+    monkeypatch.setattr(toolkit, "ghidra_dir", lambda: gh)
+    monkeypatch.setattr(toolkit, "_jdk_dir", lambda: jdk)
+    argv = toolkit._rea_argv(ctx, str(target), "function main")
+    assert argv[2] == "function" and argv[-3:] == ["--provider", "ghidra", "--json"]
+    assert "main" in argv  # the extra positional (a function name) is passed through
+    env = toolkit._rea_env(ctx, str(target), "function main")
+    assert env["GHIDRA_INSTALL_DIR"] == str(gh) and env["JAVA_HOME"] == str(jdk)
+    assert "REA_GHIDRA_STARTUP_TIMEOUT_MS" in env  # a big binary gets time to import
+    # analyze needs no extra argument; a static command never gets the provider or the env
+    assert toolkit._rea_argv(ctx, str(target), "analyze")[2] == "analyze"
+    assert toolkit._rea_env(ctx, str(target), "inspect-artifact") == {}
+    assert "--provider" not in toolkit._rea_argv(ctx, str(target), "inspect-go-binary")
+    # a native command that needs an argument refuses without one
+    with pytest.raises(ActionError, match="attend un argument"):
+        toolkit._rea_argv(ctx, str(target), "decompile")
+    # without Ghidra installed, native analysis is refused with a clear reason
+    monkeypatch.setattr(toolkit, "ghidra_dir", lambda: None)
+    with pytest.raises(ActionError, match="Ghidra"):
+        toolkit._rea_argv(ctx, str(target), "analyze")
+    assert toolkit._rea_env(ctx, str(target), "analyze") == {}  # nothing to inject, no crash
+
+
 # ---- Simon: trading maths and market data ---------------------------------------------------
 
 

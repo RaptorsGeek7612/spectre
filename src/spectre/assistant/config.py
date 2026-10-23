@@ -187,6 +187,12 @@ class AssistantConfig:
     mission_model: str = "sonnet"  # execution agents for mission steps (or chatgpt, mistral)
     verifier_model: str = "haiku"  # Kaïto's engine: checks each mission step
     planner_model: str = ""  # plans and reports missions; empty = the brain's engine
+    # Effort each Claude model thinks with (low, medium, high, xhigh, max), applied to every
+    # agent on that engine (brain, missions, planner). Haiku 4.5 takes no effort, so it is left
+    # out; an empty, missing or unknown level keeps Claude Code's own default.
+    model_effort: dict[str, str] = field(
+        default_factory=lambda: {"opus": "high", "sonnet": "medium"}
+    )
     fallback_models: list[str] = field(default_factory=list)  # tried in order when one fails
     mission_parallel: int = 2  # missions running at the same time (1 to 4)
     learning_model: str = ""  # reviews finished missions for skills; empty = the verifier
@@ -217,6 +223,8 @@ class AssistantConfig:
     auto_max_level: int = 2  # actions above this level need your approval
     actions_per_minute: int = 60  # action budget against runaway loops
     actions_per_day: int = 3000
+    memory_facts: int = 150  # facts about you given to Spectre with each conversation
+    memory_chars: int = 45_000  # and at most this many characters of them (the rest: recall)
     allowed_roots: list[str] = field(default_factory=lambda: [str(Path.home())])
     wake_word: str = "spectre"
     mic_device: str = ""  # part of the microphone's name; empty = pick a real microphone
