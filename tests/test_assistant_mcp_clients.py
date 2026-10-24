@@ -261,3 +261,24 @@ def test_hosted_agents_get_an_object_for_arguments() -> None:
     schema = tool_schemas([tools_mod.TOOLS["mcp_call"]])[0]["function"]["parameters"]
     assert schema["properties"]["arguments"]["type"] == "object"
     assert schema["required"] == ["server", "tool"]
+
+
+def test_user_fills_a_secret_spectre_prepared(ctx: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("N8N_TEST_TOKEN", raising=False)
+    mcp_clients.save(
+        ctx, name="n8n", transport="http", url="http://localhost:5678/mcp-server/http",
+        headers={"Authorization": "Bearer ${N8N_TEST_TOKEN}"},
+    )  # fmt: skip
+    assert mcp_clients.describe(ctx.root)[0]["missing"] == ["N8N_TEST_TOKEN"]
+    with pytest.raises(ActionError, match="n'utilise pas"):
+        mcp_clients.set_secret(ctx.root, "n8n", "AUTRE", "x")
+    with pytest.raises(ActionError, match="une seule ligne"):
+        mcp_clients.set_secret(ctx.root, "n8n", "N8N_TEST_TOKEN", "  ")
+    with pytest.raises(ActionError, match="aucun serveur"):
+        mcp_clients.set_secret(ctx.root, "absent", "N8N_TEST_TOKEN", "x")
+    card = mcp_clients.set_secret(ctx.root, "n8n", "N8N_TEST_TOKEN", "Bearer abc")
+    assert card["missing"] == []
+    assert read_env_file(ctx.root / ".env")["N8N_TEST_TOKEN"] == "abc"
+    raw = mcp_clients.load(ctx.root, "n8n")
+    assert raw is not None
+    assert mcp_clients._expand(raw["headers"]["Authorization"], ctx.root) == "Bearer abc"

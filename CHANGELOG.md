@@ -27,6 +27,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   Spectre, celui des agents (WORKER) et l'aide aux agents bloqués (HELPER) le disent ; la fiche
   d'un agent (Équipe) montre ses serveurs MCP ; dans Agents › Serveurs MCP, « Changer les
   agents » sur chaque serveur. Les agents hébergés (`llm.py`) reçoivent `arguments` en objet.
+- **Saisir un secret préparé par Spectre** : quand Spectre branche un serveur avec une
+  référence `${NOM}` (ex. la clé de n8n), sa carte dans Agents › Serveurs MCP indique le secret
+  « à saisir » et offre un champ masqué pour le coller ; la valeur va dans `.env`, seul son nom
+  est journalisé.
 - **Portraits de l'équipe animés pendant la visio** : à partir de la photo d'un agent, deux
   courtes boucles sont fabriquées sur ce PC (LivePortrait via ComfyUI, `tools/animate_portraits.cmd`)
   — une « parle » (lèvres qui bougent) et une « écoute » discrète (bouche fermée). Dans l'appel,

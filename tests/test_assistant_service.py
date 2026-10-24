@@ -628,3 +628,17 @@ def test_api_mcp_agents(api: Client, service: AssistantService) -> None:
     assert card["agents"] == ["Kyra", "Syfer"]
     assert api.json("POST", "/api/assistant/mcp/mem/agents", {"agents": ""})[1]["agents"] == []
     assert api.json("POST", "/api/assistant/mcp/mem/agents", {"agents": "Inconnu"})[0] == 400
+
+
+def test_api_mcp_secret(api: Client, service: AssistantService) -> None:
+    from spectre.assistant import mcp_clients
+
+    card = mcp_clients.build(
+        service.root, name="svc", command="npx", env={"SVC_TOKEN_X": "${SVC_TOKEN_X}"}
+    )
+    mcp_clients._write(service.root, card)
+    path = "/api/assistant/mcp/svc/secret"
+    assert api.json("POST", path, {"var": "SVC_TOKEN_X", "value": "s3cr3t"})[1]["missing"] == []
+    assert api.json("POST", path, {"var": "NOPE", "value": "x"})[0] == 400
+    audit = service.db.one("SELECT args FROM audit WHERE tool = 'mcp_server_secret'")
+    assert "s3cr3t" not in audit["args"]

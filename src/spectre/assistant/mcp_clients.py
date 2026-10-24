@@ -577,8 +577,35 @@ def describe_card(card: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def missing(root: Path, card: dict[str, Any]) -> list[str]:
+    """The secrets a card refers to that are not set yet (in `.env` or the environment)."""
+    from spectre.assistant.providers import read_env_file
+
+    known = read_env_file(root / ".env")
+    refs = describe_card(card)["secrets"]
+    return [r for r in refs if not (known.get(r) or os.environ.get(r))]
+
+
+def set_secret(root: Path, name: str, var: str, value: str) -> dict[str, Any]:
+    """The user types a secret a card refers to (Spectre prepared the card with `${VAR}`)."""
+    from spectre.assistant.providers import write_env_value
+
+    card = load(root, name)
+    if card is None:
+        raise ActionError(f"aucun serveur MCP nommé {name}")
+    if var not in describe_card(card)["secrets"]:
+        raise ActionError(f"le serveur {name} n'utilise pas de secret {var}")
+    secret = value.strip()
+    if not secret or "\n" in secret or len(secret) > 2000:
+        raise ActionError("colle la valeur du secret (une seule ligne)")
+    if secret.lower().startswith("bearer ") and "Bearer ${" in json.dumps(card):
+        secret = secret[7:].strip()  # the card already adds « Bearer »
+    write_env_value(root, var, secret)
+    return describe_card(card) | {"missing": missing(root, card)}
+
+
 def describe(root: Path) -> list[dict[str, Any]]:
-    return [describe_card(c) for c in cards(root)]
+    return [describe_card(c) | {"missing": missing(root, c)} for c in cards(root)]
 
 
 def listing(ctx: ActionContext) -> str:

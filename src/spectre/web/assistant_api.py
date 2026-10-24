@@ -312,6 +312,14 @@ def handle(
             handler._json(200, service.mcp_toggle(unquote(name), enabled))
         case "POST", ["mcp", name, "agents"]:
             handler._json(200, service.mcp_agents(unquote(name), str(body().get("agents", ""))))
+        case "POST", ["mcp", name, "secret"]:
+            data = body()
+            handler._json(
+                200,
+                service.mcp_secret(
+                    unquote(name), str(data.get("var", "")), str(data.get("value", ""))
+                ),
+            )
         case "POST", ["mcp", name, "test"]:
             handler._json(200, service.mcp_test(unquote(name)))
         case "GET", ["telegram"]:

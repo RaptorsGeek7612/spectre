@@ -727,7 +727,14 @@ function mcpCard(s) {
     h("p", {}, h("code", {}, s.target)),
     s.description ? h("p", {}, s.description) : null,
     s.auto.length ? h("p", { class: "meta" }, `Sans validation : ${s.auto.join(", ")}`) : null,
-    s.secrets.length ? h("p", { class: "meta" }, `Secrets (dans .env) : ${s.secrets.join(", ")}`) : null,
+    s.secrets.length ? h("p", { class: "meta" }, `Secrets (dans .env) : ${s.secrets.map((v) => `${v} ${s.missing.includes(v) ? "(à saisir)" : "✓"}`).join(", ")}`) : null,
+    ...s.missing.map((v) => h("form", { class: "inline-form", autocomplete: "off", onsubmit: async (e) => {
+      e.preventDefault();
+      try { await api("POST", `mcp/${encodeURIComponent(s.name)}/secret`, { var: v, value: e.target.elements.value.value }); toast(`Secret ${v} enregistré. Clique sur « Tester ».`, "ok", 7000); }
+      catch (err) { toast(err.message, "error", 7000); }
+      loadMcp();
+    } }, h("input", { type: "password", name: "value", required: true, autocomplete: "off", placeholder: `Valeur de ${v} (clé, jeton…)`, "aria-label": `Valeur du secret ${v}` }),
+      h("button", { class: "btn btn-primary", type: "submit" }, "Enregistrer le secret"))),
     out,
     h("form", { class: "inline-form", autocomplete: "off", onsubmit: async (e) => {
       e.preventDefault();

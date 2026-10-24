@@ -709,6 +709,21 @@ class AssistantService:
         )  # fmt: skip
         return card
 
+    def mcp_secret(self, name: str, var: str, value: str) -> Event:
+        """The user types a secret a card refers to; only its name reaches the audit."""
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            card = mcp_clients.set_secret(self.root, name, var, value)
+        except ActionError as exc:
+            raise ValueError(str(exc)) from exc
+        self.gate.record(
+            "mcp_server_secret", {"name": name, "secret": var},
+            Level.WRITE, "mcp_server", "user", "",
+        )  # fmt: skip
+        return card
+
     def mcp_test(self, name: str) -> Event:
         """Connect to a server and list its tools (the user's check after adding it)."""
         from spectre.assistant import mcp_clients
