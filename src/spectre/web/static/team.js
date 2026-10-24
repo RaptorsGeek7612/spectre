@@ -154,7 +154,7 @@ async function details(agent) {
     h("h4", {}, "Consignes et spécialité"), h("pre", { class: "tm-prompt" }, data.prompt || agent.role),
     data.toolkit && data.toolkit.length ? h("h4", {}, "Logiciels de son métier") : null,
     data.toolkit && data.toolkit.length ? h("div", { class: "ag-tags tm-kit" }, data.toolkit.map((t) =>
-      h("span", { class: t.installed ? "" : "off", title: t.installed ? "installé sur ce PC" : "à installer" }, t.label))) : null,
+      h("span", { class: t.installed ? "" : "off", title: t.name.startsWith("mcp:") ? (t.installed ? "serveur MCP branché" : "serveur MCP désactivé") : t.installed ? "installé sur ce PC" : "à installer" }, t.label))) : null,
     h("h4", {}, "Outils utilisés"), h("p", { class: "meta" }, counts),
     h("h4", {}, "Dernières actions"), h("div", { class: "tm-acts" }, recent)));
   dialog.showModal();

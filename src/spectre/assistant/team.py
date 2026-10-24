@@ -286,6 +286,20 @@ def agent_tools(
         toolkit.SCIENCE_AGENTS: ("science", "Calcul scientifique (SymPy)"),
         toolkit.BETTING_AGENTS: ("paris", "Maths des paris et probabilités"),
     }
+    if root is not None:
+        from spectre.assistant import mcp_clients
+
+        for card in mcp_clients.access(root).get(key, []):
+            found.append(
+                {
+                    "name": f"mcp:{card['name']}",
+                    "label": f"Serveur MCP {card.get('label', card['name'])}",
+                    "installed": bool(card.get("enabled", True)),
+                    "agents": list(card.get("agents") or []),
+                    "category": mcp_clients.risk(card)[1],
+                    "added": True,
+                }
+            )
     for agents, (name, label) in extras.items():
         if key in agents:
             found.append(

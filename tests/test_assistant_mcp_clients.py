@@ -204,3 +204,60 @@ def test_calls_go_through_the_gate(ctx: Any, gate: Gate, echo_server: Path) -> N
     assert "validation" in plug.lower() and mcp_clients.load(ctx.root, "mem") is None
     unplug = tools_mod.execute(gate, ctx, "mcp_server_delete", {"name": "echo"})
     assert "validation" in unplug.lower()
+
+
+def test_spectre_equips_its_agents(ctx: Any, gate: Gate, echo_server: Path) -> None:
+    from spectre.assistant import team
+    from spectre.assistant.config import AssistantConfig
+
+    _card(ctx, echo_server, agents="Kyra")
+    assert "Kyra, Syfer" in mcp_clients.grant(ctx, "echo", "Syfer")
+    assert mcp_clients.load(ctx.root, "echo")["agents"] == ["chatgpt", "mistral"]
+    assert "Kyra" not in mcp_clients.grant(ctx, "echo", "Kyra", "retirer")
+    assert "tous les agents" in mcp_clients.grant(ctx, "echo", "tous", "remplacer")
+    assert mcp_clients.grant(ctx, "echo", "Kyra", "ajouter").endswith("tous les agents")
+    assert "Kyra" not in mcp_clients.grant(ctx, "echo", "Kyra", "retirer")
+    with pytest.raises(ActionError, match="mode inconnu"):
+        mcp_clients.grant(ctx, "echo", "Kyra", "tout")
+    with pytest.raises(ActionError, match="agents à qui retirer"):
+        mcp_clients.grant(ctx, "echo", "tous", "retirer")
+    with pytest.raises(ActionError, match="branche-le d'abord"):
+        mcp_clients.grant(ctx, "absent", "Kyra")
+    mcp_clients.grant(ctx, "echo", "Syfer, agent:7", "remplacer")
+    assert mcp_clients.load(ctx.root, "echo")["agents"] == ["agent:7", "mistral"]
+    # the agent's profile lists the servers it may use
+    kit = team.agent_tools(AssistantConfig(), "mistral", ctx.root)
+    assert any(t["name"] == "mcp:echo" and t["category"] == "mcp_read" for t in kit)
+    assert not any(
+        t["name"] == "mcp:echo" for t in team.agent_tools(AssistantConfig(), "lexy", ctx.root)
+    )
+    # Spectre's grant waits for the user's approval
+    pending = tools_mod.execute(gate, ctx, "mcp_server_agents", {"name": "echo", "agents": "Lexy"})
+    assert "validation" in pending.lower()
+
+
+def test_an_agent_asks_for_a_server(ctx: Any, gate: Gate, echo_server: Path) -> None:
+    _card(ctx, echo_server, agents="Kyra")
+    ctx.agent = "lexy"
+    with pytest.raises(ActionError, match="compte rendu"):
+        mcp_clients.request(ctx, "absent", "pour les cotes")
+    asked = tools_mod.execute(
+        gate, ctx, "mcp_server_request", {"name": "echo", "reason": "relire les cotes"}
+    )
+    assert "validation" in asked.lower()
+    row = ctx.db.one("SELECT * FROM approvals WHERE tool = 'mcp_server_request'")
+    assert "Lexy" in tools_mod.run_approved(gate, ctx, row["id"])
+    assert mcp_clients.load(ctx.root, "echo")["agents"] == ["chatgpt", "lexy"]
+    assert "déjà accès" in mcp_clients.request(ctx, "echo", "x")
+    assert mcp_clients.call(ctx, "echo", "echo", {"text": "ok"}) == "echo: ok"
+    # the lead-only tools stay Spectre's
+    refused = tools_mod.execute(gate, ctx, "mcp_server_agents", {"name": "echo", "agents": "tous"})
+    assert refused.startswith("REFUSÉ")
+
+
+def test_hosted_agents_get_an_object_for_arguments() -> None:
+    from spectre.assistant.llm import tool_schemas
+
+    schema = tool_schemas([tools_mod.TOOLS["mcp_call"]])[0]["function"]["parameters"]
+    assert schema["properties"]["arguments"]["type"] == "object"
+    assert schema["required"] == ["server", "tool"]

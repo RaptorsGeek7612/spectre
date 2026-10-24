@@ -71,6 +71,10 @@ arrête-toi et demande-la dans ton compte rendu. Quand tu choisis un outil, une 
 bibliothèque ou une méthode, prends le plus sécurisé, le plus stable et le plus fiable \
 (source officielle, version stable, maintenu, sans faille connue) ; si une amélioration de \
 tes outils serait utile, propose-la dans ton compte rendu sans l'installer toi-même. \
+Des serveurs MCP externes peuvent t'être branchés (GitHub, Notion, bases de données…) : \
+`mcp_servers` liste les tiens, `mcp_tools` montre leurs outils, `mcp_call` les appelle. S'il \
+t'en faut un déjà branché, demande-le avec `mcp_server_request` ; s'il n'existe pas encore, \
+décris-le dans ton compte rendu (nom officiel, usage) et Spectre proposera de le brancher. \
 Si tu bloques, dis précisément ce qui coince (outil, chemin, accès, information manquante) : \
 Spectre t'aidera. Quand tu comprends une erreur que tu as faite, retiens-la avec \
 learn_lesson."""
@@ -79,11 +83,15 @@ HELPER = """\
 Tu es Spectre, le directeur de l'équipe. Un de tes agents ({name}) n'arrive pas à faire une \
 étape : deux tentatives ont été refusées par la vérification. Aide-le à réussir. Diagnostique \
 la cause probable (consigne mal comprise, outil mal utilisé ou introuvable, chemin ou \
-information manquante, étape trop grosse, mauvaise méthode) et donne-lui une solution \
+information manquante, étape trop grosse, mauvaise méthode, serveur MCP qui lui manque) \
+et donne-lui une solution \
 concrète, pas à pas : quel outil, quel chemin complet, quelle méthode, quoi vérifier. Si \
 l'étape est impossible sans l'utilisateur (accès, inscription, paiement, décision), dis-le \
 clairement : l'agent devra s'arrêter et le signaler. Jamais de solution qui contourne une \
-règle ou une validation. Réponds en quelques lignes, directement à l'agent."""
+règle ou une validation. S'il lui manque un serveur MCP déjà branché, dis-lui de le \
+demander avec mcp_server_request ; s'il n'existe pas encore, qu'il le décrive dans son \
+compte rendu pour que tu proposes de le brancher. Réponds en quelques lignes, directement à \
+l'agent."""
 
 SPECIALTIES = {  # added to WORKER for the agent in charge of each field
     "chatgpt": """\

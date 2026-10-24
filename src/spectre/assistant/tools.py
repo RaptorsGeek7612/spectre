@@ -756,6 +756,18 @@ def _mcp_server_save(
     )
 
 
+def _mcp_server_agents(ctx: ActionContext, name: str, agents: str, mode: str = "ajouter") -> str:
+    from spectre.assistant import mcp_clients
+
+    return mcp_clients.grant(ctx, name, agents, mode)
+
+
+def _mcp_server_request(ctx: ActionContext, name: str, reason: str) -> str:
+    from spectre.assistant import mcp_clients
+
+    return mcp_clients.request(ctx, name.strip().lower(), reason)
+
+
 def _mcp_server_delete(ctx: ActionContext, name: str) -> str:
     from spectre.assistant import mcp_clients
 
@@ -1785,6 +1797,30 @@ TOOLS: dict[str, Tool] = {
             "mcp_server",
             _mcp_server_save,
             lead_only=True,
+        ),
+        Tool(
+            "mcp_server_agents",
+            "Donner un serveur MCP déjà branché aux agents qui en ont besoin, ou le leur "
+            "retirer. name : le serveur ; agents : leurs noms séparés par des virgules (Kyra, "
+            "Syfer…) ou « tous » ; mode : ajouter (par défaut), retirer ou remplacer. Quand "
+            "tu confies une mission, vérifie que l'agent a les serveurs MCP qu'il lui faut "
+            "(mcp_servers) ; sinon, branche-le (mcp_server_save avec ses agents) ou donne-le "
+            "lui ici. Demande validation.",
+            Level.WRITE,
+            "mcp_server",
+            _mcp_server_agents,
+            lead_only=True,
+        ),
+        Tool(
+            "mcp_server_request",
+            "Demander l'accès à un serveur MCP déjà branché qui te manque pour ton travail "
+            "(liste complète : demande à Spectre). name : le serveur ; reason : pourquoi tu en "
+            "as besoin (une phrase). L'utilisateur valide, puis tu l'utilises avec mcp_tools et "
+            "mcp_call. Pour un serveur pas encore branché, décris-le dans ton compte rendu : "
+            "Spectre proposera de le brancher.",
+            Level.WRITE,
+            "mcp_server",
+            _mcp_server_request,
         ),
         Tool(
             "mcp_server_delete",

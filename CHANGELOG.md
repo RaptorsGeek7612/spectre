@@ -18,6 +18,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   brancher un (`mcp_server_save`, catégorie `mcp_server` = ASK) ; l'utilisateur en ajoute,
   teste, désactive ou débranche dans **Agents › Serveurs MCP**. Aucun secret dans une fiche :
   référence `${NOM}`, les jetons tapés dans l'interface vont dans `.env`.
+- **Spectre équipe ses sous-agents en serveurs MCP** : `mcp_server_agents` (Spectre, validé
+  par l'utilisateur) donne un serveur branché aux agents qui en ont besoin, le leur retire ou
+  fixe la liste ; un sous-agent à qui il en manque un le demande avec `mcp_server_request`
+  (validation), ou le décrit dans son compte rendu s'il n'est pas encore branché. Le prompt de
+  Spectre, celui des agents (WORKER) et l'aide aux agents bloqués (HELPER) le disent ; la fiche
+  d'un agent (Équipe) montre ses serveurs MCP ; dans Agents › Serveurs MCP, « Changer les
+  agents » sur chaque serveur. Les agents hébergés (`llm.py`) reçoivent `arguments` en objet.
 - **Portraits de l'équipe animés pendant la visio** : à partir de la photo d'un agent, deux
   courtes boucles sont fabriquées sur ce PC (LivePortrait via ComfyUI, `tools/animate_portraits.cmd`)
   — une « parle » (lèvres qui bougent) et une « écoute » discrète (bouche fermée). Dans l'appel,

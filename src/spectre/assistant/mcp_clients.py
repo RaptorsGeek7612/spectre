@@ -110,7 +110,7 @@ def _agents(raw: str) -> list[str]:
     names = [n.strip() for n in re.split(r"[,;]", raw) if n.strip()]
     if not names or [n.lower() for n in names] == ["tous"]:
         return []
-    return sorted({resolve_agent(n) for n in names})
+    return sorted({n if n.startswith("agent:") else resolve_agent(n) for n in names})
 
 
 def _command(raw: str) -> str:
@@ -294,6 +294,69 @@ def delete(ctx_or_root: ActionContext | Path, name: str) -> str:
         raise ActionError(f"aucun serveur MCP nommé {name}")
     path.unlink()
     return f"serveur MCP « {name} » retiré (ses secrets restent dans .env)"
+
+
+def set_agents(root: Path, name: str, agents: str, mode: str = "remplacer") -> dict[str, Any]:
+    """Give a plugged server to agents (ajouter), take it back (retirer) or set the list."""
+    card = load(root, name)
+    if card is None:
+        raise ActionError(f"aucun serveur MCP nommé {name} (branche-le d'abord : mcp_server_save)")
+    mode = mode.strip().lower() or "remplacer"
+    wanted = _agents(agents)
+    current = list(card.get("agents") or [])
+    if mode == "ajouter":
+        if not current:
+            return describe_card(card)  # already open to every agent
+        card["agents"] = sorted({*current, *wanted}) if wanted else []
+    elif mode == "retirer":
+        if not wanted:
+            raise ActionError("indique les agents à qui retirer le serveur")
+        if not current:
+            from spectre.assistant.config import AGENT_ORDER
+
+            current = list(AGENT_ORDER)
+        card["agents"] = [a for a in current if a not in wanted] or ["opus"]
+    elif mode == "remplacer":
+        card["agents"] = wanted
+    else:
+        raise ActionError(f"mode inconnu : {mode} (ajouter, retirer ou remplacer)")
+    card["updated"] = now_iso()
+    _write(root, card)
+    return describe_card(card)
+
+
+def grant(ctx: ActionContext, name: str, agents: str, mode: str = "ajouter") -> str:
+    """Spectre gives a plugged server to the agents who need it (after the user's approval)."""
+    card = set_agents(ctx.root, name.strip().lower(), agents, mode)
+    who = ", ".join(card["agents"]) or "tous les agents"
+    return f"serveur MCP « {card['name']} » : accessible à {who}"
+
+
+def request(ctx: ActionContext, name: str, reason: str) -> str:
+    """An agent asks for a plugged server it lacks (after the user's approval, it gets it)."""
+    agent = ctx.agent or "opus"
+    card = load(ctx.root, name)
+    if card is None:
+        raise ActionError(
+            f"aucun serveur MCP nommé {name} : décris dans ton compte rendu le serveur qu'il te "
+            "faut (nom officiel, à quoi il sert) ; Spectre proposera de le brancher"
+        )
+    if allowed(card, agent):
+        return f"tu as déjà accès au serveur MCP « {card['name']} » (mcp_tools puis mcp_call)"
+    set_agents(ctx.root, card["name"], agent, "ajouter")
+    return f"serveur MCP « {card['name']} » ouvert à {', '.join(_names([agent]))} : {reason[:200]}"
+
+
+def access(root: Path) -> dict[str, list[dict[str, Any]]]:
+    """For each agent key, the plugged servers it may use (an empty list = every agent)."""
+    from spectre.assistant.config import AGENT_ORDER
+
+    found: dict[str, list[dict[str, Any]]] = {}
+    for card in cards(root):
+        keys = list(card.get("agents") or []) or list(AGENT_ORDER)
+        for key in keys:
+            found.setdefault(key, []).append(card)
+    return found
 
 
 def set_enabled(root: Path, name: str, enabled: bool) -> dict[str, Any]:

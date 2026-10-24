@@ -729,6 +729,13 @@ function mcpCard(s) {
     s.auto.length ? h("p", { class: "meta" }, `Sans validation : ${s.auto.join(", ")}`) : null,
     s.secrets.length ? h("p", { class: "meta" }, `Secrets (dans .env) : ${s.secrets.join(", ")}`) : null,
     out,
+    h("form", { class: "inline-form", autocomplete: "off", onsubmit: async (e) => {
+      e.preventDefault();
+      try { await api("POST", `mcp/${encodeURIComponent(s.name)}/agents`, { agents: e.target.elements.agents.value }); toast(`Agents de ${s.name} mis à jour.`, "ok"); }
+      catch (err) { toast(err.message, "error", 7000); }
+      loadMcp();
+    } }, h("input", { type: "text", name: "agents", value: s.agents.join(", "), placeholder: "tous, ou ex. Kyra, Syfer", "aria-label": `Agents qui utilisent ${s.name}` }),
+      h("button", { class: "btn", type: "submit" }, "Changer les agents")),
     h("div", { class: "row" },
       h("button", { class: "btn", type: "button", onclick: test }, h("span", {}, "Tester")),
       h("button", { class: "btn", type: "button", onclick: call("/toggle", { enabled: s.enabled ? "non" : "oui" }) }, h("span", {}, s.enabled ? "Désactiver" : "Activer")),

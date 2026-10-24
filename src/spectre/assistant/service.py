@@ -694,6 +694,21 @@ class AssistantService:
         except ActionError as exc:
             raise ValueError(str(exc)) from exc
 
+    def mcp_agents(self, name: str, agents: str) -> Event:
+        """The user sets which agents may use a plugged server (empty = every agent)."""
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            card = mcp_clients.set_agents(self.root, name, agents.strip() or "tous")
+        except ActionError as exc:
+            raise ValueError(str(exc)) from exc
+        self.gate.record(
+            "mcp_server_agents", {"name": name, "agents": agents},
+            Level.WRITE, "mcp_server", "user", "",
+        )  # fmt: skip
+        return card
+
     def mcp_test(self, name: str) -> Event:
         """Connect to a server and list its tools (the user's check after adding it)."""
         from spectre.assistant import mcp_clients

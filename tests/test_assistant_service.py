@@ -620,3 +620,11 @@ def test_api_mcp_servers(api: Client, service: AssistantService, tmp_path: Path)
     assert api.json("POST", "/api/assistant/mcp/absent/toggle", {})[0] == 400
     assert "retiré" in api.json("POST", "/api/assistant/mcp/echo/delete", {})[1]["result"]
     assert api.json("POST", "/api/assistant/mcp/echo/delete", {})[0] == 400
+
+
+def test_api_mcp_agents(api: Client, service: AssistantService) -> None:
+    api.json("POST", "/api/assistant/mcp", {"name": "mem", "command": "npx", "args": "-y x"})
+    card = api.json("POST", "/api/assistant/mcp/mem/agents", {"agents": "Kyra, Syfer"})[1]
+    assert card["agents"] == ["Kyra", "Syfer"]
+    assert api.json("POST", "/api/assistant/mcp/mem/agents", {"agents": ""})[1]["agents"] == []
+    assert api.json("POST", "/api/assistant/mcp/mem/agents", {"agents": "Inconnu"})[0] == 400

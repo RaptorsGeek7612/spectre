@@ -310,6 +310,8 @@ def handle(
         case "POST", ["mcp", name, "toggle"]:
             enabled = str(body().get("enabled", "oui")).lower() in ("oui", "true", "1")
             handler._json(200, service.mcp_toggle(unquote(name), enabled))
+        case "POST", ["mcp", name, "agents"]:
+            handler._json(200, service.mcp_agents(unquote(name), str(body().get("agents", ""))))
         case "POST", ["mcp", name, "test"]:
             handler._json(200, service.mcp_test(unquote(name)))
         case "GET", ["telegram"]:
