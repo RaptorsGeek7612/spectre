@@ -693,6 +693,75 @@ def _agent_tool_delete(ctx: ActionContext, name: str) -> str:
     return agent_tools.delete(ctx, name)
 
 
+def _mcp_servers(ctx: ActionContext) -> str:
+    from spectre.assistant import mcp_clients
+
+    return mcp_clients.listing(ctx)
+
+
+def _mcp_tools(ctx: ActionContext, server: str) -> str:
+    from spectre.assistant import mcp_clients
+
+    return mcp_clients.tools_text(ctx, server.strip().lower())
+
+
+def _mcp_call(
+    ctx: ActionContext, server: str, tool: str, arguments: dict[str, Any] | None = None
+) -> str:
+    from spectre.assistant import mcp_clients
+
+    return mcp_clients.call(ctx, server.strip().lower(), tool.strip(), arguments or {})
+
+
+def _mcp_call_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
+    from spectre.assistant import mcp_clients
+
+    card = mcp_clients.load(ctx.root, str(args.get("server", "")))
+    return mcp_clients.risk(card, str(args.get("tool", "")).strip())
+
+
+def _mcp_server_save(
+    ctx: ActionContext,
+    name: str,
+    transport: str = "stdio",
+    command: str = "",
+    args: list[str] | None = None,
+    url: str = "",
+    env: dict[str, str] | None = None,
+    headers: dict[str, str] | None = None,
+    label: str = "",
+    description: str = "",
+    agents: str = "tous",
+    level: str = "action",
+    auto: list[str] | None = None,
+    timeout: int = 120,
+) -> str:
+    from spectre.assistant import mcp_clients
+
+    return mcp_clients.save(
+        ctx,
+        name=name,
+        transport=transport,
+        command=command,
+        args=args or [],
+        url=url,
+        env=env or {},
+        headers=headers or {},
+        label=label,
+        description=description,
+        agents=agents,
+        level=level,
+        auto=auto or [],
+        timeout=timeout,
+    )
+
+
+def _mcp_server_delete(ctx: ActionContext, name: str) -> str:
+    from spectre.assistant import mcp_clients
+
+    return mcp_clients.delete(ctx, name)
+
+
 def _trading(ctx: ActionContext, operation: str, values: list[float]) -> str:
     from spectre.assistant import toolkit
 
@@ -1668,6 +1737,61 @@ TOOLS: dict[str, Tool] = {
             Level.DESTRUCTIVE,
             "agent_tool",
             _agent_tool_delete,
+            lead_only=True,
+        ),
+        Tool(
+            "mcp_servers",
+            "Lister les serveurs MCP externes branchés à Spectre (GitHub, Notion, bases de "
+            "données, navigateur…) que tu peux utiliser : leur nom, leur niveau, leur état.",
+            Level.READ,
+            "read",
+            _mcp_servers,
+        ),
+        Tool(
+            "mcp_tools",
+            "Les outils d'un serveur MCP branché, avec leurs paramètres (* = requis). server : "
+            "son nom (liste : mcp_servers). Lance le serveur le temps de la lecture.",
+            Level.READ,
+            "mcp_read",
+            _mcp_tools,
+        ),
+        Tool(
+            "mcp_call",
+            "Appeler un outil d'un serveur MCP branché. server : son nom ; tool : le nom de "
+            "l'outil (voir mcp_tools) ; arguments : l'objet de ses paramètres, ex. "
+            '{"query": "…"}. Selon le niveau du serveur, l\'appel passe seul (lecture, '
+            "écriture locale, ou outil déclaré sans validation) ou attend la validation de "
+            "l'utilisateur (action vers l'extérieur).",
+            Level.EXTERNAL,
+            "mcp_action",
+            _mcp_call,
+            _mcp_call_risk,
+        ),
+        Tool(
+            "mcp_server_save",
+            "Brancher un serveur MCP externe (ou mettre à jour sa fiche). name : nom court "
+            "(minuscules) ; transport : stdio (un programme local : command = npx, uvx, docker, "
+            'ou le chemin d\'un .exe ; args = ses arguments, ex. ["-y", '
+            '"@modelcontextprotocol/server-memory"]) ou http (url = l\'adresse https du '
+            "serveur, headers = ses en-têtes) ; env : variables d'environnement ; JAMAIS de "
+            "secret en clair : écris ${NOM} et demande à l'utilisateur de saisir la valeur dans "
+            "Agents › Serveurs MCP ; label, description (quand s'en servir) ; agents : noms "
+            "séparés par des virgules ou « tous » ; level : lecture (ne fait que lire), "
+            "ecriture (modifie des choses locales et réversibles) ou action (agit vers "
+            "l'extérieur : chaque appel demande validation ; par défaut) ; auto : les outils de "
+            "lecture qui passent sans validation. Uniquement un serveur officiel ou reconnu, "
+            "vérifié (compétence spectre-amelioration). Demande validation.",
+            Level.WRITE,
+            "mcp_server",
+            _mcp_server_save,
+            lead_only=True,
+        ),
+        Tool(
+            "mcp_server_delete",
+            "Débrancher un serveur MCP externe (supprime sa fiche). name : son nom.",
+            Level.DESTRUCTIVE,
+            "mcp_server",
+            _mcp_server_delete,
             lead_only=True,
         ),
         Tool(

@@ -60,6 +60,10 @@ DEFAULT_POLICIES: Final[dict[str, Policy]] = {
     "powershell": "ASK",  # PowerShell qui modifie le PC (la lecture seule passe en "read")
     "agent_tool": "ASK",  # a tool card Spectre writes for its agents: you approve it
     "install_agent_tool": "ASK",  # installing that tool's program (winget, uv tool)
+    "mcp_server": "ASK",  # plugging an external MCP server into Spectre: you approve it
+    "mcp_read": "ALWAYS",  # a tool of a plugged server that only reads (as you set it)
+    "mcp_write": "ALWAYS",  # local and reversible changes (as you set it); outward asks
+    "mcp_action": "ASK",  # a tool of a plugged server acting outside: each call asks
     "install": "NEVER",
     "modify_core": "NEVER",
     "payment": "ASK",  # a payment only on your explicit go, each time (agents included)

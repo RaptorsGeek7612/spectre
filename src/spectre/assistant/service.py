@@ -651,6 +651,63 @@ class AssistantService:
         self.gate.record("delete_webhook", {"name": name}, Level.DESTRUCTIVE, "webhook", "user", "")
         return {"name": row["name"]}
 
+    # ---- external MCP servers (added by the user from the interface) ------------------------
+
+    def mcp_list(self) -> list[Event]:
+        from spectre.assistant import mcp_clients
+
+        return mcp_clients.describe(self.root)
+
+    def mcp_save(self, data: dict[str, Any]) -> Event:
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            card = mcp_clients.save_from_user(self.root, data)
+        except (ActionError, ValueError) as exc:
+            raise ValueError(str(exc)) from exc
+        self.gate.record(
+            "mcp_server_save", {"name": card["name"], "target": card["target"]},
+            Level.WRITE, "mcp_server", "user", "",
+        )  # fmt: skip
+        return card
+
+    def mcp_delete(self, name: str) -> Event:
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            result = mcp_clients.delete(self.root, name)
+        except ActionError as exc:
+            raise ValueError(str(exc)) from exc
+        self.gate.record(
+            "mcp_server_delete", {"name": name}, Level.DESTRUCTIVE, "mcp_server", "user", ""
+        )
+        return {"result": result}
+
+    def mcp_toggle(self, name: str, enabled: bool) -> Event:
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            return mcp_clients.set_enabled(self.root, name, enabled)
+        except ActionError as exc:
+            raise ValueError(str(exc)) from exc
+
+    def mcp_test(self, name: str) -> Event:
+        """Connect to a server and list its tools (the user's check after adding it)."""
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            found = mcp_clients.list_tools(self.ctx, name)
+        except ActionError as exc:
+            return {"ok": False, "error": str(exc), "tools": []}
+        return {
+            "ok": True,
+            "tools": [{"name": t["name"], "description": t["description"]} for t in found],
+        }
+
     def hook(self, name: str, headers: dict[str, str], body: bytes) -> tuple[int, str]:
         """A call on /hooks/<name>: (HTTP status, message)."""
         try:

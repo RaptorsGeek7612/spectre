@@ -301,6 +301,17 @@ def handle(
             handler._json(200, service.create_webhook(body(), base_url(handler)))
         case "POST", ["webhooks", name, "delete"]:
             handler._json(200, service.delete_webhook(unquote(name)))
+        case "GET", ["mcp"]:
+            handler._json(200, service.mcp_list())
+        case "POST", ["mcp"]:
+            handler._json(200, service.mcp_save(body()))
+        case "POST", ["mcp", name, "delete"]:
+            handler._json(200, service.mcp_delete(unquote(name)))
+        case "POST", ["mcp", name, "toggle"]:
+            enabled = str(body().get("enabled", "oui")).lower() in ("oui", "true", "1")
+            handler._json(200, service.mcp_toggle(unquote(name), enabled))
+        case "POST", ["mcp", name, "test"]:
+            handler._json(200, service.mcp_test(unquote(name)))
         case "GET", ["telegram"]:
             handler._json(200, service.telegram_status())
         case "POST", ["telegram", "token"]:

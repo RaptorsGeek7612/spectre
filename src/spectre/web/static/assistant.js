@@ -700,7 +700,58 @@ async function loadAgents() {
   $("#agents-redaction").replaceChildren(...data.redaction.map(agentCard));
   loadEngines().catch((err) => toast(err.message, "error"));
   loadTrust().catch((err) => toast(err.message, "error"));
+  loadMcp().catch((err) => toast(err.message, "error"));
 }
+/* ---- external MCP servers ---- */
+const MCP_LEVEL = { lecture: "lecture seule", ecriture: "écriture locale", action: "action (validation)" };
+async function loadMcp() {
+  const rows = await api("GET", "mcp");
+  $("#mcp-servers").replaceChildren(...(rows.length ? rows.map(mcpCard) : [h("p", { class: "empty-cards" }, "Aucun serveur MCP branché.")]));
+}
+function mcpCard(s) {
+  const out = h("p", { class: "meta" });
+  const call = (path, body, done) => async () => {
+    try { const r = await api("POST", `mcp/${encodeURIComponent(s.name)}${path}`, body); if (done) toast(done, "ok"); return r; }
+    catch (err) { toast(err.message, "error", 7000); }
+    finally { if (path !== "/test") loadMcp(); }
+  };
+  const test = async () => {
+    out.textContent = "Connexion…";
+    const r = await call("/test", {})();
+    if (!r) { out.textContent = ""; return; }
+    out.textContent = r.ok ? `${r.tools.length} outil${r.tools.length > 1 ? "s" : ""} : ${r.tools.map((t) => t.name).join(", ") || "aucun"}` : `Échec : ${r.error}`;
+  };
+  return h("article", { class: "card", "data-status": s.enabled ? "running" : "done" },
+    h("h3", {}, s.label !== s.name ? `${s.label} (${s.name})` : s.name),
+    h("span", { class: "meta" }, `${s.transport} · ${MCP_LEVEL[s.level] || s.level} · ${s.agents.length ? s.agents.join(", ") : "tous les agents"}${s.enabled ? "" : " · désactivé"}`),
+    h("p", {}, h("code", {}, s.target)),
+    s.description ? h("p", {}, s.description) : null,
+    s.auto.length ? h("p", { class: "meta" }, `Sans validation : ${s.auto.join(", ")}`) : null,
+    s.secrets.length ? h("p", { class: "meta" }, `Secrets (dans .env) : ${s.secrets.join(", ")}`) : null,
+    out,
+    h("div", { class: "row" },
+      h("button", { class: "btn", type: "button", onclick: test }, h("span", {}, "Tester")),
+      h("button", { class: "btn", type: "button", onclick: call("/toggle", { enabled: s.enabled ? "non" : "oui" }) }, h("span", {}, s.enabled ? "Désactiver" : "Activer")),
+      h("button", { class: "btn btn-ghost", type: "button", onclick: call("/delete", {}, `Serveur ${s.name} débranché.`) }, h("span", {}, "Débrancher"))));
+}
+$("#mcp-form").addEventListener("change", (e) => {
+  if (e.target.name !== "transport") return;
+  const http = e.target.value === "http";
+  e.currentTarget.querySelectorAll(".mcp-http").forEach((el) => { el.hidden = !http; });
+  e.currentTarget.querySelectorAll(".mcp-stdio").forEach((el) => { el.hidden = http; });
+});
+$("#mcp-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try {
+    const s = await api("POST", "mcp", data);
+    toast(`Serveur ${s.name} branché. Clique sur « Tester » pour voir ses outils.`, "ok", 7000);
+    e.target.reset();
+    e.target.querySelectorAll(".mcp-http").forEach((el) => { el.hidden = true; });
+    e.target.querySelectorAll(".mcp-stdio").forEach((el) => { el.hidden = false; });
+  } catch (err) { toast(err.message, "error", 9000); }
+  loadMcp();
+});
 /* ---- earned autonomy and what the AI costs ---- */
 const LEVEL_MARK = { apprenti: "○ apprenti", "confirmé": "◐ confirmé", expert: "● expert" };
 async function loadTrust() {

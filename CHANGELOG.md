@@ -8,6 +8,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 ## [Unreleased]
 
 ### Added
+- **Serveurs MCP externes** (`assistant/mcp_clients.py`) : Spectre devient aussi *client* MCP.
+  Chaque serveur est une fiche de données (`~/.spectre/assistant/serveurs-mcp/<nom>.json`) :
+  programme local en stdio (npx, uvx, docker, un .exe — jamais un shell) ou adresse en HTTP
+  (https, http seulement en local), agents autorisés, niveau (`lecture` / `ecriture` seuls,
+  `action` = validation à chaque appel ; liste d'outils « sans validation »). Les agents s'en
+  servent par `mcp_servers`, `mcp_tools` et `mcp_call`, **toujours à travers le portail** et le
+  journal (catégories `mcp_read`, `mcp_write`, `mcp_action`). Spectre peut proposer d'en
+  brancher un (`mcp_server_save`, catégorie `mcp_server` = ASK) ; l'utilisateur en ajoute,
+  teste, désactive ou débranche dans **Agents › Serveurs MCP**. Aucun secret dans une fiche :
+  référence `${NOM}`, les jetons tapés dans l'interface vont dans `.env`.
 - **Portraits de l'équipe animés pendant la visio** : à partir de la photo d'un agent, deux
   courtes boucles sont fabriquées sur ce PC (LivePortrait via ComfyUI, `tools/animate_portraits.cmd`)
   — une « parle » (lèvres qui bougent) et une « écoute » discrète (bouche fermée). Dans l'appel,

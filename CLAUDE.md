@@ -82,7 +82,8 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   `brief.py` ; équipe `team.py` ; visio `call.py` (+ `activity`) ; sessions `sessions.py` ; Laya
   `laya.py` ; outils par métier `toolkit.py` (`toolkit`/`finance`/`science`/`paris`, scan local =
   READ, distant = ASK) ; studio de Kyra `media.py` (ComfyUI, `generate_image`/`generate_video`) ; outils ajoutés aux
-  agents par Spectre `agent_tools.py` (fiches JSON, jamais de code) ; pièces jointes
+  agents par Spectre `agent_tools.py` (fiches JSON, jamais de code) ; serveurs MCP externes
+  `mcp_clients.py` (fiches JSON, client MCP stdio/HTTP, appels via le portail, secrets en `${NOM}`) ; pièces jointes
   `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait) ;
   leçons tirées des erreurs `lessons.py` (aide de Spectre à un agent bloqué : `HELPER` de
   `missions.py`) ; mises à jour hebdomadaires des outils `updates.py` ; paiements préparés
