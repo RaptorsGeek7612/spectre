@@ -7,6 +7,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-10-24
+
 ### Added
 - **Serveurs MCP externes** (`assistant/mcp_clients.py`) : Spectre devient aussi *client* MCP.
   Chaque serveur est une fiche de données (`~/.spectre/assistant/serveurs-mcp/<nom>.json`) :

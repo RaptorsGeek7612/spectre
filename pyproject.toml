@@ -1,6 +1,6 @@
 [project]
 name = "spectre"
-version = "0.24.0"
+version = "0.25.0"
 description = "Spectre: a multi-agent Claude pipeline (Scout, Scribe, Warden) orchestrated with LangGraph."
 readme = "README.md"
 license = "GPL-3.0-or-later"
