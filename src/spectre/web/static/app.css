@@ -630,6 +630,9 @@ select:focus-visible, input:focus-visible, textarea:focus-visible { outline: non
 .field input, .field select { min-height: 42px; padding: 0 12px; }
 .form-error { min-height: 1.2em; margin: 0; color: var(--danger); font-size: 0.86rem; }
 .login .btn { justify-content: center; }
+.login .link-btn { justify-self: center; background: none; border: 0; padding: 4px; color: var(--muted, inherit); font: inherit; font-size: 0.86rem; text-decoration: underline; cursor: pointer; }
+.login .link-btn:hover { color: inherit; }
+.login-plate .muted { margin: 0; font-size: 0.9rem; opacity: 0.8; }
 
 /* ---------- Sheet (settings), palette, menu, toasts ------------------------------------ */
 dialog { color: var(--bone); padding: 0; border: 1px solid var(--hair-2); background: var(--plate); box-shadow: var(--shadow); }

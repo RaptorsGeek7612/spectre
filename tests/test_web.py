@@ -555,6 +555,68 @@ def test_password_flow(tmp_path: Path) -> None:
         assert client.json("POST", "/api/login", {"password": "sesame"})[0] == 429
 
 
+def test_auth_reset_code(tmp_path: Path) -> None:
+    auth = Auth("old-password", tmp_path / "s.key")
+    token = auth.issue()
+    code = auth.request_reset(now=100.0)
+    assert code is not None and len(code) == 8 and code.isdigit()
+    assert auth.request_reset(now=110.0) is None  # one request a minute
+    assert auth.reset_password(code, "short", now=101.0)[0] is False
+    assert auth.reset_password(
+        "00000000" if code != "00000000" else "1", "new-password-1", now=101.0
+    ) == (
+        False,
+        "code incorrect",
+    )
+    assert auth.reset_password(code, "new-password-1", now=102.0) == (True, "mot de passe changé")
+    assert auth.password == "new-password-1" and not auth.valid(token)  # old sessions closed
+    assert auth.reset_password(code, "new-password-2", now=103.0)[0] is False  # single use
+    assert Auth("x", tmp_path / "s.key").valid(auth.issue())  # new key was saved
+
+
+def test_auth_reset_code_expires_and_dies_after_tries(tmp_path: Path) -> None:
+    auth = Auth("pw", tmp_path / "s.key")
+    code = auth.request_reset(now=0.0)
+    assert code is not None
+    assert auth.reset_password(code, "new-password", now=auth_mod.RESET_CODE_TTL_S + 1)[
+        1
+    ].startswith("code expiré")
+    code = auth.request_reset(now=1000.0)
+    assert code is not None
+    wrong = "1" + code[1:] if code[0] != "1" else "2" + code[1:]
+    for _ in range(auth_mod.RESET_MAX_TRIES):
+        auth.reset_password(wrong, "new-password", now=1001.0)
+    assert auth.reset_password(code, "new-password", now=1002.0)[0] is False
+    assert auth.password == "pw"
+
+
+def test_forgotten_password_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    saved: list[str] = []
+    monkeypatch.setattr(server_mod, "save_password", lambda pw: saved.append(pw) or True)
+    with _serve(tmp_path, password="sesame") as client:
+        status, data = client.json("POST", "/api/password/forgot", {})
+        assert status == 200 and data["sent_to"]
+        code_file = Path(data["sent_to"][0])
+        code = code_file.read_text(encoding="utf-8").split(":")[1].split()[0]
+        assert code not in json.dumps(data)  # never given to the page
+        assert client.json("POST", "/api/password/forgot", {})[0] == 429
+        assert (
+            client.json("POST", "/api/password/reset", {"code": "x", "password": "nouveau-mdp"})[0]
+            == 400
+        )
+        status, headers, _ = client.request(
+            "POST", "/api/password/reset", {"code": code, "password": "nouveau-mdp"}
+        )
+        assert status == 200 and "HttpOnly" in headers["set-cookie"]
+        assert saved == ["nouveau-mdp"] and not code_file.exists()
+        assert client.json("POST", "/api/login", {"password": "sesame"})[0] == 401
+        assert client.json("POST", "/api/login", {"password": "nouveau-mdp"})[0] == 200
+
+
+def test_forgotten_password_off_without_password(client: Client) -> None:
+    assert client.json("POST", "/api/password/forgot", {})[0] == 404
+
+
 def test_login_without_password_is_noop(client: Client) -> None:
     assert client.json("POST", "/api/login", {"password": "x"})[1] == {"ok": True}
 

@@ -11,6 +11,9 @@ const NAME = { scout: "Scout", scribe: "Scribe", warden: "Warden" };
 const I18N = {
   fr: {
     "login.password": "Mot de passe", "login.submit": "Entrer",
+    "login.forgot": "Mot de passe oublié ?", "forgot.send": "Recevoir un code", "forgot.code": "Code reçu",
+    "forgot.new": "Nouveau mot de passe (8 caractères ou plus)", "forgot.submit": "Changer et entrer", "forgot.back": "Retour",
+    "forgot.info": "Un code à usage unique va être envoyé sur ce PC (et sur Telegram s'il est relié).",
     "rail.new": "Nouvelle plaque", "rail.search": "Rechercher, #tag…", "rail.allProjects": "Tous les projets",
     "rail.archives": "Archives", "rail.settings": "Réglages",
     "composer.placeholder": "Décris le texte à produire…  ( / pour les commandes )",
@@ -28,6 +31,9 @@ const I18N = {
   },
   en: {
     "login.password": "Password", "login.submit": "Enter",
+    "login.forgot": "Forgot password?", "forgot.send": "Get a code", "forgot.code": "Code received",
+    "forgot.new": "New password (8 characters or more)", "forgot.submit": "Change and enter", "forgot.back": "Back",
+    "forgot.info": "A one-time code will be sent to this PC (and to Telegram if linked).",
     "rail.new": "New plate", "rail.search": "Search, #tag…", "rail.allProjects": "All projects",
     "rail.archives": "Archive", "rail.settings": "Settings",
     "composer.placeholder": "Describe the text to produce…  ( / for commands )",
@@ -244,6 +250,8 @@ class HttpBackend {
   }
   status() { return this.call("GET", "/api/status"); }
   login(password) { return this.call("POST", "/api/login", { password }); }
+  forgotPassword() { return this.call("POST", "/api/password/forgot", {}); }
+  resetPassword(code, password) { return this.call("POST", "/api/password/reset", { code, password }); }
   logout() { return this.call("POST", "/api/logout", {}); }
   listRuns(q, archived) { return this.call("GET", `/api/runs?q=${encodeURIComponent(q)}&archived=${archived ? 1 : 0}`); }
   getRun(id) { return this.call("GET", `/api/runs/${id}`); }
@@ -1150,8 +1158,36 @@ async function boot() {
       try { await backend.login($("#login-password").value); state.status = await backend.status(); await enterApp(); }
       catch (err) { $("#login-error").textContent = err.message; }
     });
+    forgotPassword(backend);
     return;
   }
   await enterApp();
 }
+/* Forgotten password: a one-time code goes to a file on the PC (and Telegram), never to this page. */
+function forgotPassword(backend) {
+  const swap = (forgot) => {
+    $("#login-form").hidden = forgot; $("#forgot-form").hidden = !forgot;
+    (forgot ? $("#forgot-send") : $("#login-password")).focus();
+  };
+  $("#forgot-open").addEventListener("click", () => swap(true));
+  $("#forgot-back").addEventListener("click", () => swap(false));
+  $("#forgot-send").addEventListener("click", async () => {
+    $("#forgot-error").textContent = "";
+    try {
+      const { sent_to: to } = await backend.forgotPassword();
+      $("#forgot-info").textContent = to.length
+        ? `Code envoyé : ${to.join(" et ")}. Il est valable 10 minutes.`
+        : "Le code n'a pas pu être envoyé : vérifiez le dossier de Spectre sur le PC.";
+      $("#forgot-code").focus();
+    } catch (err) { $("#forgot-error").textContent = err.message; }
+  });
+  $("#forgot-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      await backend.resetPassword($("#forgot-code").value, $("#forgot-password").value);
+      state.status = await backend.status(); await enterApp();
+    } catch (err) { $("#forgot-error").textContent = err.message; }
+  });
+}
+
 boot().catch((err) => { document.body.prepend(h("p", { class: "alert", role: "alert" }, `Spectre n'a pas pu démarrer : ${err.message}`)); });
