@@ -12,6 +12,7 @@ import os
 import socket
 import sys
 import threading
+import time
 import webbrowser
 from collections.abc import Iterable, Iterator, Sequence
 from http import HTTPStatus
@@ -390,14 +391,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._json(200, {"ok": True, "sent_to": self._deliver_reset_code(code)})
             return
-        client = self._client()
-        if auth.locked_out(client):
-            self._error(HTTPStatus.TOO_MANY_REQUESTS, "trop d'essais : réessayez dans une minute")
-            return
+        # Not the login lockout: wrong passwords typed before must not block the way back in.
+        # The code limits itself (5 tries, 10 minutes, a new one at most once a minute).
         body = self._body()
         ok, message = auth.reset_password(str(body.get("code", "")), str(body.get("password", "")))
         if not ok:
-            auth.check_password(client, "")  # counts as a failed try for the lockout
             self._error(HTTPStatus.BAD_REQUEST, message)
             return
         try:
@@ -420,7 +418,8 @@ class Handler(BaseHTTPRequestHandler):
             return []
         text = (
             f"Code pour changer le mot de passe de Spectre : {code}\n"
-            "Valable 10 minutes. Si vous n'avez rien demandé, ignorez ce message."
+            f"Envoyé à {time.strftime('%H:%M')}, valable 10 minutes. "
+            "Si vous n'avez rien demandé, ignorez ce message."
         )
         sent = []
         try:

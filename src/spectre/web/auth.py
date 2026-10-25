@@ -95,18 +95,21 @@ class Auth:
     # ---- forgotten password ------------------------------------------------------------------
 
     def request_reset(self, now: float | None = None) -> str | None:
-        """New 8-digit one-time code, or None while the last one was asked less than a minute ago.
+        """The 8-digit one-time code: the one still valid if there is one, else a new one;
+        None when a new one was made less than a minute ago.
 
         The code is never returned to the web page: the caller delivers it where only the owner
         can read it (a file on the PC, the paired Telegram chats).
         """
         moment = now if now is not None else time.monotonic()
         with self._lock:
+            if self._reset is not None and moment <= self._reset[1]:
+                return self._reset[0]  # asked again: the same code, so an earlier copy still works
             if moment - self._last_reset_request < RESET_COOLDOWN_S:
                 return None
             self._last_reset_request = moment
             code = f"{secrets.randbelow(10**8):08d}"
-            self._reset = (self._sign("reset." + code), moment + RESET_CODE_TTL_S, RESET_MAX_TRIES)
+            self._reset = (code, moment + RESET_CODE_TTL_S, RESET_MAX_TRIES)
             return code
 
     def reset_password(
@@ -126,13 +129,14 @@ class Auth:
         with self._lock:
             if self._reset is None:
                 return False, "demandez d'abord un code"
-            digest, expires, tries = self._reset
+            expected, expires, tries = self._reset
             if moment > expires:
                 self._reset = None
                 return False, "code expiré : demandez-en un nouveau"
-            if not hmac.compare_digest(digest, self._sign("reset." + code.strip())):
+            typed = "".join(ch for ch in code if ch.isdigit())  # spaces or dashes when copied
+            if not hmac.compare_digest(expected.encode(), typed.encode()):
                 tries -= 1
-                self._reset = (digest, expires, tries) if tries > 0 else None
+                self._reset = (expected, expires, tries) if tries > 0 else None
                 return (
                     False,
                     "code incorrect" if tries > 0 else "code incorrect : demandez-en un nouveau",

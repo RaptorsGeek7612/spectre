@@ -560,7 +560,7 @@ def test_auth_reset_code(tmp_path: Path) -> None:
     token = auth.issue()
     code = auth.request_reset(now=100.0)
     assert code is not None and len(code) == 8 and code.isdigit()
-    assert auth.request_reset(now=110.0) is None  # one request a minute
+    assert auth.request_reset(now=110.0) == code  # asked again: the same code
     assert auth.reset_password(code, "short", now=101.0)[0] is False
     assert auth.reset_password(
         "00000000" if code != "00000000" else "1", "new-password-1", now=101.0
@@ -587,6 +587,7 @@ def test_auth_reset_code_expires_and_dies_after_tries(tmp_path: Path) -> None:
     for _ in range(auth_mod.RESET_MAX_TRIES):
         auth.reset_password(wrong, "new-password", now=1001.0)
     assert auth.reset_password(code, "new-password", now=1002.0)[0] is False
+    assert auth.request_reset(now=1003.0) is None  # a new code at most once a minute
     assert auth.password == "pw"
 
 
@@ -599,13 +600,18 @@ def test_forgotten_password_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         code_file = Path(data["sent_to"][0])
         code = code_file.read_text(encoding="utf-8").split(":")[1].split()[0]
         assert code not in json.dumps(data)  # never given to the page
-        assert client.json("POST", "/api/password/forgot", {})[0] == 429
+        assert client.json("POST", "/api/password/forgot", {})[0] == 200  # same code again
+        assert code_file.read_text(encoding="utf-8").split(":")[1].split()[0] == code
+        for _ in range(auth_mod.MAX_FAILURES):  # wrong passwords typed before...
+            client.json("POST", "/api/login", {"password": "non"})
         assert (
             client.json("POST", "/api/password/reset", {"code": "x", "password": "nouveau-mdp"})[0]
             == 400
         )
-        status, headers, _ = client.request(
-            "POST", "/api/password/reset", {"code": code, "password": "nouveau-mdp"}
+        status, headers, _ = client.request(  # ...do not block the way back in
+            "POST",
+            "/api/password/reset",
+            {"code": code[:4] + " " + code[4:], "password": "nouveau-mdp"},
         )
         assert status == 200 and "HttpOnly" in headers["set-cookie"]
         assert saved == ["nouveau-mdp"] and not code_file.exists()
