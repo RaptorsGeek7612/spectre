@@ -56,6 +56,23 @@ def handle(
         case "POST", ["approvals", approval_id, "deny"]:
             service.deny(int(approval_id), str(body().get("reason", "")))
             handler._json(200, {"ok": True})
+        case "GET", ["vscode"]:
+            from spectre.assistant import vscode
+
+            handler._json(200, vscode.status())
+        case "POST", ["vscode", action]:
+            from spectre.assistant import vscode
+
+            if action not in ("connect", "disconnect"):
+                raise KeyError(action)
+            done = vscode.connect(service.root) if action == "connect" else vscode.disconnect()
+            handler._json(200, {"result": done})
+        case "GET", ["browser"]:
+            handler._json(200, service.browser())
+        case "POST", ["browser", "token"]:
+            handler._json(200, service.browser_token(bool(body().get("renew"))))
+        case "POST", ["browser", "forget"]:
+            handler._json(200, service.browser_forget())
         case "GET", ["agents"]:
             handler._json(200, service.agents())
         case "POST", ["agents"]:
@@ -91,6 +108,12 @@ def handle(
         case "POST", ["team", key, "portrait", "generate"]:
             body()
             handler._json(200, service.generate_portrait(unquote(key)))
+        case "GET", ["team", key, "code"]:
+            since = int(query.get("since", ["0"])[0] or 0)
+            handler._json(200, service.code_live(unquote(key), since))
+        case "GET", ["team", key, "code", "file"]:
+            path = query.get("path", [""])[0]
+            handler._json(200, service.code_file(unquote(key), path))
         case "GET", ["team", key, "models"]:
             handler._json(200, service.team_models(unquote(key)))
         case "GET", ["team", key]:
@@ -168,6 +191,19 @@ def handle(
             handler._json(
                 200, {"result": service.act("update_task", {"task_id": int(task_id)} | data)}
             )
+        case "GET", ["tasks", task_id]:
+            handler._json(200, service.task_card(int(task_id)))
+        case "GET", ["tasks", task_id, "file"]:
+            handler._json(200, service.task_file(int(task_id), query.get("path", [""])[0]))
+        case "POST", ["tasks", task_id, "comment"]:
+            args = {"task_id": int(task_id), "text": str(body().get("text", ""))}
+            handler._json(200, {"result": service.act("comment_task", args)})
+        case "POST", ["tasks", task_id, "changes"]:
+            args = {"task_id": int(task_id), "text": str(body().get("text", ""))}
+            handler._json(200, {"result": service.act("request_changes", args)})
+        case "POST", ["tasks", task_id, "assign"]:
+            args = {"task_id": int(task_id), "agent": str(body().get("agent", ""))}
+            handler._json(200, {"result": service.act("assign_task", args)})
         case "POST", ["tasks", task_id, "start"]:
             handler._json(
                 200, {"result": service.act("start_tasks", {"task_ids": str(int(task_id))})}

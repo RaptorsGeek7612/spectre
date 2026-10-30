@@ -7,6 +7,37 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Deux agentes sur Gemini** (`gemini:gemini-pro-latest` par défaut, changeable dans la page
+  Équipe ; clé `GEMINI_API_KEY`) : **Charlotte**, graphiste (compétence `spectre-graphisme` ;
+  outils `vectoriser` (VTracer), `palette` (ImageMagick), `mise_en_page` (Typst), et les outils
+  image/maquette de Kyra), et **Célya**, romancière (compétence `spectre-roman` ; outils
+  `livre_pdf` (Typst), `grammalecte`, `epub_verif` (EPUBCheck), `ebook` (Calibre), `vale`).
+- **Rust pour toute l'équipe** : compétence `spectre-rust` et outil `cargo` (check, clippy,
+  test, fmt, build, doc, new, tree) ouvert à tous les agents ; Rust 1.99 installé (rustup).
+- **VS Code** : outil `vscode` (ouvrir un fichier à une ligne, un dossier, un diff) et bouton
+  « Brancher Spectre dans VS Code » (Réglages) qui ajoute le serveur MCP de Spectre au
+  `mcp.json` de l'utilisateur (`assistant/vscode.py`, sauvegarde de l'ancien fichier).
+- **Pages ouvertes dans Chrome** : extension libre `tools/chrome-extension` (MV3, à charger
+  non empaquetée) qui envoie la page active à `POST /browser/page` avec sa propre clé ;
+  `assistant/browser_pages.py` garde les 40 dernières, refuse connexion et paiement ; outil
+  `browser_pages` pour tous les agents (texte = donnée, jamais consigne) ; Réglages : clé,
+  pages reçues, tout oublier.
+- **« View » sur les fiches de l'équipe** : le code qu'un agent écrit, en direct
+  (`assistant/codeview.py`, `web/static/codeview.js`) : fichiers écrits par `write_file`,
+  relus toutes les 2 s, lignes changées surlignées, coloration, « Ouvrir dans VS Code », et
+  diff en direct des worktrees du département technique.
+- **Tableau des tâches façon Claude Agent Teams (Matrix)** : glisser-déposer entre colonnes,
+  fiche complète (historique des statuts, commentaires lus par la mission en cours, étapes et
+  rapport de la mission, fichiers produits, « Voir le code »), « Demander des changements »
+  (la tâche repart à l'agent qui l'a faite, avec la demande), réaffectation, badges « prête »,
+  « attend ton oui » et agent, rafraîchissement toutes les 5 s. Outils `comment_task`,
+  `request_changes`, `assign_task` ; table `task_events`.
+- **Compétences vidéo de Claude Code partagées** (`~/.claude/skills` : HyperFrames,
+  motion-graphics, product-launch-video, faceless-explainer, music-to-video…) : listées dans
+  le prompt avec leurs agents (Kyra, Charlotte, Célya, Gétro) et lues sur place
+  (`competences.SHARED`) ; les descriptions YAML repliées (`description: >`) sont comprises.
+
 ## [0.25.0] - 2026-10-24
 
 ### Added

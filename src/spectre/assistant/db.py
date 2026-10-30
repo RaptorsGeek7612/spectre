@@ -88,6 +88,11 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TEXT NOT NULL, updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS tasks_company ON tasks(company_id, status);
+CREATE TABLE IF NOT EXISTS task_events (
+  id INTEGER PRIMARY KEY, task_id INTEGER NOT NULL, ts TEXT NOT NULL, kind TEXT NOT NULL,
+  actor TEXT NOT NULL DEFAULT '', text TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS task_events_task ON task_events(task_id);
 CREATE TABLE IF NOT EXISTS mission_notes (
   id INTEGER PRIMARY KEY, mission_id INTEGER NOT NULL, ts TEXT NOT NULL, text TEXT NOT NULL,
   used INTEGER NOT NULL DEFAULT 0

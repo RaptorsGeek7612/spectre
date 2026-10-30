@@ -196,3 +196,30 @@
 .ag-card[data-agent="opus"], .ag-card[data-agent="sonnet"], .ag-card[data-agent="haiku"], .ag-card[data-agent="chatgpt"], .ag-card[data-agent="mistral"], .ag-card[data-agent="cursor"], .ag-card[data-agent="antigravity"], .ag-card[data-agent="simon"], .ag-card[data-agent="shelby"], .ag-card[data-agent="ysyss"], .ag-card[data-agent="lexy"] { --c: var(--agent); }
 [data-agent] :is(.tm-name, .cl-name, .cl-row-name, .ag-name),
 #cl-lines li[data-agent] > b, #cl-sub b[data-agent] { color: var(--agent, var(--c, currentColor)); }
+
+/* ---- live code viewer (« View » on a team card, « Voir le code » on a task) ---- */
+.tm-dialog:has(.cv) { width: min(1280px, calc(100vw - 24px)); }
+.cv-top { display: flex; align-items: center; gap: 14px; }
+.cv-top .icon-btn { margin-left: auto; }
+.cv-follow { display: inline-flex; align-items: center; gap: 6px; font-size: 0.84rem; color: var(--ash); }
+.cv-doing { margin: 0; }
+.cv-body { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 10px; min-height: 50vh; }
+.cv-files { display: grid; align-content: start; gap: 4px; max-height: 70vh; overflow: auto; }
+.cv-file { display: grid; gap: 1px; text-align: left; padding: 6px 8px; background: var(--ground); border: 1px solid var(--hair); color: var(--bone); font: inherit; cursor: pointer; }
+.cv-file[aria-current="true"] { border-color: var(--l589); }
+.cv-fname { overflow-wrap: anywhere; font-size: 0.86rem; }
+.cv-main { display: grid; grid-template-rows: auto 1fr; gap: 6px; min-width: 0; }
+.cv-filehead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.cv-filehead .btn { margin-left: auto; }
+.cv-pre { margin: 0; max-height: 66vh; overflow: auto; padding: 8px 0; background: var(--ground); border: 1px solid var(--hair); font: 0.8rem/1.45 ui-monospace, "Cascadia Code", Consolas, monospace; tab-size: 4; }
+.cv-code { display: block; min-width: max-content; }
+.cv-line { display: block; padding-right: 12px; white-space: pre; }
+.cv-new { background: rgb(139 212 80 / 0.14); box-shadow: inset 3px 0 var(--l546); }
+.cv-n { display: inline-block; width: 4.2em; padding-right: 1em; text-align: right; color: var(--dim); user-select: none; }
+.cv-kw { color: var(--l405); }
+.cv-str { color: var(--l546); }
+.cv-num { color: var(--l615); }
+.cv-com { color: var(--dim); font-style: italic; }
+.cv-type { color: var(--l486); }
+.cv-devjob summary { cursor: pointer; }
+@media (max-width: 720px) { .cv-body { grid-template-columns: 1fr; } .cv-files { max-height: 22vh; } }

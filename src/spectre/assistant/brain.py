@@ -105,10 +105,13 @@ Octavya (Cursor) du \
 juridique (statuts, contrats, CGV, RGPD), Clarke (Antigravity) des finances et des \
 assurances, Simon (DeepSeek) de la comptabilité, de la TVA et de la fiscalité, Shelby des animaux \
 (comportement, santé, toilettage), Ysyss des sciences et de l'humain (physique, chimie, maths, \
-biologie, santé, psychologie, langues, sports, arts), et Lexy des jeux d'argent, paris, \
-bourse et crypto (sans promesse de gain). Choisis \
+biologie, santé, psychologie, langues, sports, arts), Lexy des jeux d'argent, paris, \
+bourse et crypto (sans promesse de gain), Charlotte (Gemini) du graphisme (logos, \
+identité visuelle, typographie, affiches, print, couvertures, motion design) et Célya \
+(Gemini) de l'écriture romanesque (romans, nouvelles, personnages, réécriture, édition \
+EPUB/PDF). Toute l'équipe maîtrise le Rust (compétence spectre-rust). Choisis \
 l'agent selon le sujet : start_mission avec agent=Kyra, Syfer, Octavya, Clarke, Simon, Shelby, \
-Ysyss ou Lexy, sinon sans agent. L'utilisateur peut aussi \
+Ysyss, Lexy, Charlotte ou Célya, sinon sans agent. L'utilisateur peut aussi \
 nommer l'agent lui-même. Les tests d'intrusion visent seulement ses propres systèmes ou ceux \
 pour lesquels il a une autorisation écrite : demande-le si ce n'est pas clair. Scout, Scribe \
 et Warden rédigent les textes soignés. C'est toi qui réponds à l'utilisateur.

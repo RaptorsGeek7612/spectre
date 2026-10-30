@@ -351,6 +351,8 @@ PORTRAIT_WHO = {
     "shelby": "warm woman in her late 20s, fair skin, long wavy auburn hair, green eyes, small gold earrings, soft green top, gentle caring expression",  # noqa: E501
     "ysyss": "intelligent woman in her 30s, light-olive skin, dark hair in a bun, round glasses, blue-grey eyes, dark blue top, thoughtful look",  # noqa: E501
     "lexy": "sharp woman in her late 20s, fair skin, blonde bob hair, blue-grey eyes, small earrings, dark modern blazer, confident analytical look",  # noqa: E501
+    "charlotte": "stylish creative woman in her early 30s, light skin with freckles, short asymmetric copper-red hair, hazel eyes, black turtleneck, small geometric earrings, keen artistic look",  # noqa: E501
+    "celya": "dreamy literary woman in her 30s, warm beige skin, long dark curly hair, brown eyes, cream knit sweater, delicate necklace, soft thoughtful smile",  # noqa: E501
 }
 
 
@@ -368,6 +370,8 @@ PORTRAIT_BG = {
     "shelby": "soft teal green",
     "ysyss": "bright cobalt blue",
     "lexy": "plum magenta",
+    "charlotte": "vivid coral orange",
+    "celya": "deep emerald green",
 }
 
 

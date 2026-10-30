@@ -45,7 +45,8 @@ les administrations, France, UE, international ; outil `administration`, module
 toolkit nmap/subfinder/httpx/trufflehog), `spectre-retro-ingenierie` (Syfer : rétro-ingénierie
 sur la méthode REA, github.com/morluto/rea ; outil toolkit `retro` = inspections statiques de
 REA 6.7.0, installé par `npm install -g rea-agents@6.7.0 --ignore-scripts`, lancé par `node`
-et jamais par `rea.cmd`), `spectre-amelioration` (s'améliorer, lui et ses
+et jamais par `rea.cmd`), `spectre-rust` (tous les agents : Rust, outil toolkit `cargo`), `spectre-graphisme`
+(Charlotte, graphiste), `spectre-roman` (Célya, romancière), `spectre-amelioration` (s'améliorer, lui et ses
 agents : toujours le plus sûr, stable et fiable, vérifié avant de proposer). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
 charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
 
@@ -71,7 +72,8 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   `cli_agents.py`), ou `fournisseur:modèle` (OpenAI-compatible, `llm.py`) ; routage + secours dans
   `engines.py`, un moteur par rôle (`config.ROLES`). Agents dans `config.AGENT_*` : hébergés
   (`HOSTED_AGENTS`, moteur par défaut dans `AGENT_DEFAULT_ENGINES` de `spectre/config.py`) =
-  Simon (DeepSeek), Shelby, Ysyss, Lexy (Claude Sonnet) ; `agent_engines` déplace un agent. Les
+  Simon (DeepSeek), Shelby, Ysyss, Lexy (Claude Sonnet), Charlotte (graphiste) et Célya
+  (romancière) sur Gemini ; `agent_engines` déplace un agent. Les
   CLI externes n'ont que les outils MCP de Spectre.
 - **Carte des modules** (`assistant/`) : missions `missions.py` (prompt WORKER, `SPECIALTIES`,
   `mission_parallel`) ; entreprises/tâches `company.py` ; automatisation `routines.py` +
@@ -83,7 +85,11 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   `laya.py` ; outils par métier `toolkit.py` (`toolkit`/`finance`/`science`/`paris`, scan local =
   READ, distant = ASK) ; studio de Kyra `media.py` (ComfyUI, `generate_image`/`generate_video`) ; outils ajoutés aux
   agents par Spectre `agent_tools.py` (fiches JSON, jamais de code) ; serveurs MCP externes
-  `mcp_clients.py` (fiches JSON, client MCP stdio/HTTP, appels via le portail, secrets en `${NOM}`) ; pièces jointes
+  `mcp_clients.py` (fiches JSON, client MCP stdio/HTTP, appels via le portail, secrets en `${NOM}`) ;
+  code en direct des agents `codeview.py` (bouton « View » de l'Équipe, `static/codeview.js`) ;
+  pages ouvertes dans Chrome `browser_pages.py` (extension `tools/chrome-extension`,
+  `POST /browser/page` avec sa clé) ; Spectre dans VS Code `vscode.py` (mcp.json utilisateur) ;
+  compétences vidéo de Claude Code partagées par agent (`competences.SHARED`) ; pièces jointes
   `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait) ;
   leçons tirées des erreurs `lessons.py` (aide de Spectre à un agent bloqué : `HELPER` de
   `missions.py`) ; mises à jour hebdomadaires des outils `updates.py` ; paiements préparés

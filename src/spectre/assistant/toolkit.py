@@ -66,6 +66,10 @@ def _bin(names: tuple[str, ...]) -> str | None:
         Path.home() / ".local" / "bin",  # uv tools: rembg, whisper-ctranslate2, kokoro-tts
         Path.home() / "Apps" / "realesrgan",
         Path("C:/Program Files/Inkscape/bin"),
+        Path.home() / ".cargo" / "bin",  # Rust (rustup): cargo, rustc, vtracer
+        Path.home() / "AppData" / "Local" / "Programs" / "Microsoft VS Code" / "bin",
+        Path("C:/Program Files/Calibre2"),
+        Path("C:/Program Files/FontForgeBuilds/bin"),
         # Chromium (open source) as installed by Playwright: Kyra renders her HTML designs
         *sorted(
             (Path.home() / "AppData" / "Local" / "ms-playwright").glob("chromium-*/chrome-win*"),
@@ -298,6 +302,123 @@ def _srt(ctx: ActionContext, target: str, options: str) -> Path:
     return resolve_path(ctx, str(resolve_path(ctx, target).with_suffix(".srt")))
 
 
+# ---- Rust for every agent: cargo on a project folder (its Cargo.toml) ------------------------
+CARGO_COMMANDS = {
+    "check": "vérifie que le code compile (rapide)",
+    "clippy": "lint : erreurs courantes et code non idiomatique",
+    "test": "lance les tests",
+    "fmt": "met le code en forme (rustfmt)",
+    "build": "compile le projet",
+    "doc": "génère la documentation",
+    "new": "crée un projet (la cible = le nouveau dossier)",
+    "tree": "arbre des dépendances",
+}
+
+
+def _cargo_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    words = options.split()
+    sub = (words[0] if words else "check").lower()
+    if sub not in CARGO_COMMANDS:
+        raise ActionError(f"cargo : commande au choix {', '.join(CARGO_COMMANDS)}")
+    cargo = _bin(("cargo",)) or "cargo"
+    flags = [w for w in words[1:] if re.fullmatch(r"--?[a-z][a-z0-9-]*", w)]
+    if sub == "new":
+        return [cargo, "new", *flags, _local(ctx, target)]
+    folder = resolve_path(ctx, target)
+    manifest = folder if folder.name == "Cargo.toml" else folder / "Cargo.toml"
+    if not manifest.is_file():
+        raise ActionError(f"pas de Cargo.toml dans {folder}")
+    argv = [cargo, sub, "--manifest-path", str(manifest), *flags]
+    if sub == "clippy":
+        argv += ["--", "-D", "warnings"] if "--strict" in words else []
+        argv = [a for a in argv if a != "--strict"]
+    return argv
+
+
+# ---- VS Code: open a file at a line, a folder, or a diff in the user's editor -----------------
+_SHELL_META = re.compile(r'[&|<>^%"!]')  # `code` is a .cmd script: cmd.exe re-reads its line
+
+
+def _vscode_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    code = _bin(("code",)) or "code"
+    path = resolve_path(ctx, target)
+    wanted = options.strip()
+    paths = [str(path)]
+    if wanted.lower().startswith("diff:"):
+        other = resolve_path(ctx, wanted[5:].strip())
+        argv = [code, "--reuse-window", "--diff", str(path), str(other)]
+        paths.append(str(other))
+    elif wanted.lower().startswith("ligne:") or wanted.lower().startswith("line:"):
+        line = wanted.split(":", 1)[1].strip()
+        if not line.isdigit():
+            raise ActionError("vscode : options ligne:<numéro>")
+        argv = [code, "--reuse-window", "--goto", f"{path}:{line}"]
+    else:
+        argv = [code, "--reuse-window", str(path)]
+    if any(_SHELL_META.search(p) for p in paths):
+        raise ActionError('vscode : ce chemin contient un caractère spécial (& | < > ^ % " !)')
+    return argv
+
+
+# ---- Charlotte: raster to vector, an image's palette, print layout with Typst ----------------
+def _vtracer_out(ctx: ActionContext, target: str, options: str) -> Path:
+    return _beside(ctx, target, "vecteur", ".svg")
+
+
+def _vtracer_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    mode = options.strip().lower() or "couleur"
+    if mode not in ("couleur", "noir"):
+        raise ActionError("vectoriser : options couleur (par défaut) ou noir (un logo au trait)")
+    return [
+        _bin(("vtracer",)) or "vtracer",
+        "--input",
+        _local(ctx, target),
+        "--output",
+        str(_vtracer_out(ctx, target, options)),
+        "--colormode",
+        "color" if mode == "couleur" else "bw",
+    ]
+
+
+def _palette_count(options: str) -> str:
+    raw = options.strip() or "8"
+    if not raw.isdigit() or not 2 <= int(raw) <= 24:
+        raise ActionError("palette : options = le nombre de couleurs, de 2 à 24")
+    return raw
+
+
+def _typst_out(ctx: ActionContext, target: str, options: str) -> Path:
+    return resolve_path(ctx, str(resolve_path(ctx, target).with_suffix(".pdf")))
+
+
+def _typst_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    source = _page(ctx, target, (".typ",))
+    return [
+        _bin(("typst",)) or "typst",
+        "compile",
+        str(source),
+        str(_typst_out(ctx, target, options)),
+    ]
+
+
+# ---- Célya: French grammar (Grammalecte), EPUB check (EPUBCheck), e-books (Calibre) ----------
+def _grammalecte_cli() -> Path:
+    found = _newest("grammalecte*/grammalecte-cli.py", Path.home() / "Apps")
+    return found or Path.home() / "Apps" / "grammalecte" / "grammalecte-cli.py"
+
+
+def _epubcheck_jar() -> Path:
+    found = _newest("epubcheck*/epubcheck.jar", Path.home() / "Apps")
+    return found or Path.home() / "Apps" / "epubcheck" / "epubcheck.jar"
+
+
+def _ebook_out(ctx: ActionContext, target: str, options: str) -> Path:
+    kind = options.strip().lower().lstrip(".") or "epub"
+    if kind not in ("epub", "azw3", "pdf", "docx", "odt", "txt", "mobi"):
+        raise ActionError("ebook : options = le format voulu (epub, azw3, pdf, docx, odt, txt)")
+    return _beside(ctx, target, "livre", f".{kind}")
+
+
 KITS: dict[str, Kit] = {
     "gitleaks": Kit(
         "Gitleaks (fuite de secrets)",
@@ -419,7 +540,7 @@ KITS: dict[str, Kit] = {
     ),
     "vale": Kit(
         "Vale (style de rédaction)",
-        ("cursor", "scribe", "warden", "scout"),
+        ("cursor", "celya", "scribe", "warden", "scout"),
         Level.READ,
         "prose",
         lambda ctx, t, o: [_bin(("vale",)) or "vale", "--no-exit", _local(ctx, t)],
@@ -533,7 +654,7 @@ KITS: dict[str, Kit] = {
     ),
     "image_format": Kit(
         "ImageMagick (visuel recadré au format d'un réseau)",
-        ("chatgpt",),
+        ("chatgpt", "charlotte"),
         Level.WRITE,
         "convert",
         lambda ctx, t, o: [
@@ -577,7 +698,7 @@ KITS: dict[str, Kit] = {
     ),
     "detourage": Kit(
         "rembg (détourage : fond transparent)",
-        ("chatgpt",),
+        ("chatgpt", "charlotte"),
         Level.WRITE,
         "convert",
         lambda ctx, t, o: [
@@ -615,7 +736,7 @@ KITS: dict[str, Kit] = {
     ),
     "agrandir": Kit(
         "Real-ESRGAN (image agrandie ×4, pour l'impression)",
-        ("chatgpt",),
+        ("chatgpt", "charlotte"),
         Level.WRITE,
         "convert",
         lambda ctx, t, o: [
@@ -709,7 +830,7 @@ KITS: dict[str, Kit] = {
     # ---- Kyra, designer: render an HTML design to print, capture it to check it, export vectors
     "maquette_pdf": Kit(
         "Chromium (maquette HTML en PDF : une page par slide ou par @page)",
-        ("chatgpt",),
+        ("chatgpt", "charlotte"),
         Level.WRITE,
         "convert",
         lambda ctx, t, o: _headless(
@@ -723,7 +844,7 @@ KITS: dict[str, Kit] = {
     ),
     "maquette_png": Kit(
         "Chromium (capture PNG d'une maquette HTML, pour la relire)",
-        ("chatgpt",),
+        ("chatgpt", "charlotte"),
         Level.WRITE,
         "convert",
         lambda ctx, t, o: _headless(
@@ -738,7 +859,7 @@ KITS: dict[str, Kit] = {
     ),
     "vectoriel": Kit(
         "Inkscape (export d'un SVG en PDF vectoriel ou en PNG)",
-        ("chatgpt",),
+        ("chatgpt", "charlotte"),
         Level.WRITE,
         "convert",
         lambda ctx, t, o: [
@@ -761,6 +882,111 @@ KITS: dict[str, Kit] = {
         report=_rea_report,
         env=_rea_env,
         timeout=900.0,  # a native Ghidra analysis imports and analyzes before answering
+    ),
+    # ---- every agent: Rust (cargo) and the user's VS Code
+    "cargo": Kit(
+        "Cargo (Rust : check, clippy, test, fmt, build, doc, new, tree)",
+        (),
+        Level.WRITE,
+        "write_file",
+        _cargo_argv,
+        ("cargo",),
+        timeout=900.0,
+    ),
+    "vscode": Kit(
+        "VS Code (ouvrir un fichier, une ligne, un dossier ou un diff)",
+        (),
+        Level.UI,
+        "open",
+        _vscode_argv,
+        ("code",),
+        timeout=60.0,
+    ),
+    # ---- Charlotte, graphic designer
+    "vectoriser": Kit(
+        "VTracer (image matricielle en SVG vectoriel)",
+        ("charlotte", "chatgpt"),
+        Level.WRITE,
+        "convert",
+        _vtracer_argv,
+        ("vtracer",),
+        output=_vtracer_out,
+    ),
+    "palette": Kit(
+        "ImageMagick (palette de couleurs d'une image, en hexadécimal)",
+        ("charlotte", "chatgpt"),
+        Level.READ,
+        "read",
+        lambda ctx, t, o: [
+            _bin(("magick",)) or "magick",
+            _local(ctx, t),
+            "-colors",
+            _palette_count(o),
+            "-unique-colors",
+            "txt:-",
+        ],
+        ("magick",),
+    ),
+    "mise_en_page": Kit(
+        "Typst (mise en page .typ en PDF : affiche, plaquette, carte)",
+        ("charlotte",),
+        Level.WRITE,
+        "convert",
+        _typst_argv,
+        ("typst",),
+        output=_typst_out,
+    ),
+    # ---- Célya, novelist
+    "livre_pdf": Kit(
+        "Typst (manuscrit ou livre .typ en PDF)",
+        ("celya",),
+        Level.WRITE,
+        "convert",
+        _typst_argv,
+        ("typst",),
+        output=_typst_out,
+    ),
+    "grammalecte": Kit(
+        "Grammalecte (grammaire et typographie françaises)",
+        ("celya", "cursor", "scribe", "warden"),
+        Level.READ,
+        "prose",
+        lambda ctx, t, o: [
+            _bin(("python", "py")) or "python",
+            str(_grammalecte_cli()),
+            "-f",
+            _local(ctx, t),
+            "-off",
+            "apos",
+        ],
+        ("python", "py"),
+    ),
+    "epub_verif": Kit(
+        "EPUBCheck (validité d'un EPUB, norme W3C)",
+        ("celya",),
+        Level.READ,
+        "read",
+        lambda ctx, t, o: [
+            _bin(("java",)) or "java",
+            "-jar",
+            str(_epubcheck_jar()),
+            _local(ctx, t),
+        ],
+        ("java",),
+    ),
+    "ebook": Kit(
+        "Calibre (conversion de livre numérique : EPUB, AZW3, PDF, DOCX)",
+        ("celya",),
+        Level.WRITE,
+        "convert",
+        lambda ctx, t, o: [
+            _bin(("ebook-convert",)) or "ebook-convert",
+            _local(ctx, t),
+            str(_ebook_out(ctx, t, o)),
+        ],
+        ("ebook-convert",),
+        output=_ebook_out,
+        timeout=900.0,
     ),
 }
 
@@ -1177,6 +1403,17 @@ def market(operation: str, symbol: str, options: str = "") -> str:
     raise ActionError(f"opération inconnue : {operation} (au choix : {', '.join(MARKET_OPS)})")
 
 
+def _missing(name: str) -> bool:
+    """A kit run by an interpreter whose program file is absent."""
+    needed = {
+        "languagetool": LANGUAGETOOL,
+        "retro": REA_JS,
+        "grammalecte": _grammalecte_cli(),
+        "epub_verif": _epubcheck_jar(),
+    }
+    return name in needed and not needed[name].is_file()
+
+
 def describe(config: Any) -> list[dict[str, Any]]:
     """Each tool, whether it is installed, and which agents may use it (for the Agents view)."""
     found = []
@@ -1187,8 +1424,7 @@ def describe(config: Any) -> list[dict[str, Any]]:
                 "label": kit.label,
                 "agents": list(kit.agents),
                 "category": kit.category,
-                "installed": _bin(kit.bins) is not None
-                and (name != "languagetool" or LANGUAGETOOL.is_file()),
+                "installed": _bin(kit.bins) is not None and not _missing(name),
             }
         )
     return found
@@ -1207,10 +1443,7 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
         )
     if kit.agents and ctx.agent not in ("", "opus", *kit.agents):
         raise ActionError(f"{kit.label} n'est pas un outil de ton domaine")
-    missing = (name == "languagetool" and not LANGUAGETOOL.is_file()) or (
-        name == "retro" and not REA_JS.is_file()
-    )
-    if _bin(kit.bins) is None or missing:
+    if _bin(kit.bins) is None or _missing(name):
         raise ActionError(f"{kit.label} n'est pas installé sur ce PC")
     if kit.needs_target and not target.strip():
         raise ActionError("précise la cible (un fichier, un dossier ou une adresse)")

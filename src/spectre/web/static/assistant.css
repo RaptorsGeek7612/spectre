@@ -276,6 +276,21 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .co-task h3 { font-size: 0.95rem; }
 .co-task[data-status="review"] { border-color: var(--l589); }
 .co-task[data-status="blocked"] { border-style: dashed; }
+.co-task[draggable="true"] { cursor: grab; }
+.co-col.co-drop { outline: 1px dashed var(--l589); outline-offset: 4px; }
+.co-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.co-badge { padding: 1px 6px; border: 1px solid var(--hair); font-size: 0.72rem; color: var(--ash); }
+.co-badge-you { border-color: var(--l656); color: var(--l656); }
+.co-badge-agent { border-color: var(--l486); color: var(--l486); }
+.co-detail .co-form { display: grid; gap: 6px; }
+.co-detail textarea { width: 100%; }
+.co-assign { display: flex; align-items: center; gap: 8px; }
+.co-steps, .co-events, .co-files { display: grid; gap: 6px; margin: 0; padding-left: 1.2em; }
+.co-steps li[data-ok="false"] strong { color: var(--l656); }
+.co-events li { list-style: none; margin-left: -1.2em; padding: 4px 8px; border-left: 2px solid var(--hair); }
+.co-events li[data-kind="comment"] { border-left-color: var(--l486); }
+.co-events li[data-kind="changes"] { border-left-color: var(--l615); }
+.co-events p { margin: 2px 0 0; }
 .sa-status { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
 .sa-chip { padding: 4px 10px; border: 1px solid var(--hair); font-size: 0.85rem; color: var(--bone); }
 .sa-chip.good { border-color: var(--l546); }

@@ -35,6 +35,8 @@ CLI_ENGINES = (
     "shelby",
     "ysyss",
     "lexy",
+    "charlotte",
+    "celya",
 )
 MAX_MODEL = 120
 

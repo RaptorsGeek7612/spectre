@@ -65,6 +65,8 @@ DEFAULT_VOICES = {
     "shelby": ("jessica", "naturel"),
     "ysyss": ("siwis", "pose"),
     "lexy": ("jessica", "vif"),
+    "charlotte": ("siwis", "vif"),
+    "celya": ("jessica", "pose"),
 }
 
 

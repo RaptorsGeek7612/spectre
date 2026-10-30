@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import call, engines, greetings, sessions, team, tools, winapi
+from spectre.assistant import call, codeview, engines, greetings, sessions, team, tools, winapi
 from spectre.assistant.brain import Brain, ClaudeCLI
 from spectre.assistant.company import DEPARTMENTS, Companies
 from spectre.assistant.config import (
@@ -738,6 +738,45 @@ class AssistantService:
             "tools": [{"name": t["name"], "description": t["description"]} for t in found],
         }
 
+    # ---- the pages the user opens in Chrome (Spectre's extension) ---------------------------
+
+    def browser_page(self, authorization: str, body: bytes) -> tuple[int, str]:
+        """`POST /browser/page` from the extension: (HTTP status, message)."""
+        from spectre.assistant import browser_pages
+
+        if not browser_pages.authorized(self.root, authorization):
+            return 401, "clé de l'extension invalide (copie-la depuis les réglages de Spectre)"
+        try:
+            data = json.loads(body.decode("utf-8") or "{}")
+            if not isinstance(data, dict):
+                raise ValueError("objet JSON attendu")
+            saved = browser_pages.Pages(self.db).save(
+                str(data.get("url", "")), str(data.get("title", "")), str(data.get("text", ""))
+            )
+        except (ValueError, UnicodeDecodeError) as exc:
+            return 400, str(exc)
+        return 200, f"page #{saved['id']} reçue ({saved['chars']} caractères)"
+
+    def browser(self) -> Event:
+        from spectre.assistant import browser_pages
+
+        return {
+            "ready": bool(browser_pages.token(self.root, create=False)),
+            "pages": browser_pages.Pages(self.db).recent(),
+            "extension": str(Path(__file__).resolve().parents[3] / "tools" / "chrome-extension"),
+        }
+
+    def browser_token(self, renew: bool = False) -> Event:
+        from spectre.assistant import browser_pages
+
+        value = browser_pages.renew(self.root) if renew else browser_pages.token(self.root)
+        return {"token": value}
+
+    def browser_forget(self) -> Event:
+        from spectre.assistant import browser_pages
+
+        return {"forgotten": browser_pages.Pages(self.db).forget()}
+
     def hook(self, name: str, headers: dict[str, str], body: bytes) -> tuple[int, str]:
         """A call on /hooks/<name>: (HTTP status, message)."""
         try:
@@ -878,10 +917,32 @@ class AssistantService:
                 for t in companies.tasks(found["id"])
             ],
             "ready": [t["id"] for t in companies.ready(found["id"])],
+            "waiting": companies.waiting_tasks(found["id"]),
             "agents": agents,
             "parallel": self.missions.parallel,
             "active": self.missions.active(),
         }
+
+    def task_card(self, task_id: int) -> Event:
+        return Companies(self.db).card(task_id)
+
+    def task_file(self, task_id: int, path: str) -> Event:
+        task = Companies(self.db).task(task_id)
+        known = codeview.files(self.db, mission=task["mission_id"]) if task["mission_id"] else []
+        return codeview.read(path, known)
+
+    # ---- the live code viewer (« View » on a team card) ------------------------------------
+
+    def code_live(self, key: str, since: int = 0) -> Event:
+        return codeview.live(self.db, self._agent_key(key), since)
+
+    def code_file(self, key: str, path: str) -> Event:
+        return codeview.read(path, codeview.files(self.db, agent=self._agent_key(key)))
+
+    def _agent_key(self, key: str) -> str:
+        if key in AGENT_NAMES or key.startswith("agent:"):
+            return key
+        raise KeyError(key)
 
     def initiatives(self, status: str = "pending") -> list[Event]:
         return self.db.all(

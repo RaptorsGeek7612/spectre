@@ -52,6 +52,7 @@ _TYPES = {
 }
 RESET_CODE_FILE = "code-mot-de-passe.txt"  # in the web state folder: only on the PC
 MAX_BODY = 2 * 1024 * 1024  # 2 MB: requests and imports, never file uploads of binaries
+MAX_PAGE = 1024 * 1024  # a page sent by the Chrome extension (its text is cut at 200 000 chars)
 STATIC_ROOT = files("spectre.web") / "static"
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 SECURITY_HEADERS = {
@@ -216,6 +217,13 @@ class Handler(BaseHTTPRequestHandler):
                 # signed by the sender instead of logged in: the webhook checks the signature
                 status, message = self.app.assistant.hook(
                     path.removeprefix("/hooks/").strip("/"), dict(self.headers), self._raw_body()
+                )
+                self._json(status, {"ok": status == 200, "result": message})
+                return
+            if path == "/browser/page" and method == "POST" and self.app.assistant:
+                # Spectre's Chrome extension: its own key instead of the session cookie
+                status, message = self.app.assistant.browser_page(
+                    self.headers.get("Authorization") or "", self._raw_body(MAX_PAGE)
                 )
                 self._json(status, {"ok": status == 200, "result": message})
                 return

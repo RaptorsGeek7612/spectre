@@ -267,7 +267,9 @@
           <button class="btn" type="submit">Ajouter</button>
         </form>
         <div class="co-actions"><button class="btn btn-primary" type="button" id="company-start">Lancer les tâches prêtes</button><span class="meta" id="company-capacity"></span></div>
+        <p class="meta">Glisse une carte d’une colonne à l’autre pour la déplacer (vers « En cours » : la lancer). Une tâche à valider renvoyée « À faire » repart à son agent avec tes changements. Le tableau se met à jour tout seul.</p>
         <div id="company-board" class="co-board"></div>
+        <dialog id="task-detail" class="tm-dialog"></dialog>
       </div>
     </section>
 
@@ -451,6 +453,16 @@
           <button class="btn btn-primary" type="submit" id="face-enroll">Enregistrer ce visage</button>
         </form>
         <div id="faces" class="facts"></div>
+      </section>
+      <section class="faces-panel" aria-labelledby="links-title">
+        <h3 class="as-h" id="links-title">VS Code et Chrome</h3>
+        <p class="meta">VS Code : les agents ouvrent leurs fichiers dans ton éditeur (outil vscode), et tu peux aussi brancher Spectre dans VS Code pour que ses agents (mode Agent) utilisent les outils de Spectre, toujours avec ta validation pour ce qui est sensible.</p>
+        <div class="row"><button class="btn" type="button" id="vscode-toggle">Brancher Spectre dans VS Code</button><span class="meta" id="vscode-state"></span></div>
+        <p class="meta">Chrome : l’extension de Spectre lui envoie la page que tu regardes (adresse, titre, texte visible), pour que lui et ses agents la lisent. Rien ne quitte le PC ; pause, sites exclus (banques, mail, mots de passe par défaut) et navigation privée jamais lue. Pour l’installer : chrome://extensions › Mode développeur › Charger l’extension non empaquetée › le dossier ci-dessous, puis colle la clé dans ses options.</p>
+        <p class="meta"><code id="browser-folder"></code></p>
+        <div class="row"><button class="btn" type="button" id="browser-key">Afficher la clé</button><button class="btn btn-ghost" type="button" id="browser-renew">Changer la clé</button><button class="btn btn-ghost" type="button" id="browser-forget">Oublier toutes les pages</button></div>
+        <p class="meta"><code id="browser-token" hidden></code></p>
+        <div id="browser-pages" class="facts"></div>
       </section>
     </section>
   </main>
