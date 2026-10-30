@@ -43,6 +43,7 @@ async function send(tab, force = false) {
   if (!cfg.token) return { ok: false, result: "clé manquante : ouvre les options de l'extension" };
   if (!force && cfg.paused) return { ok: false, result: "en pause" };
   if (excluded(tab.url, cfg.exclude)) return { ok: false, result: "site exclu" };
+  if (tab.url.startsWith(cfg.server.replace(/\/$/, ""))) return { ok: false, result: "c'est Spectre lui-même" };
   let page;
   try {
     const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readPage });
