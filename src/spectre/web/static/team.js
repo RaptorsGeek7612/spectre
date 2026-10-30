@@ -4,6 +4,7 @@
 import { $, api, clock, h, money, toast, tokens } from "./kit.js";
 import { artStyle, createAvatar, createPhoto, setArtStyle } from "./avatars.js";
 import { openLookEditor } from "./looks.js";
+import { viewAgent } from "./codeview.js";
 import * as voice from "./voice.js";
 
 const LEVEL = { apprenti: "○ apprenti", "confirmé": "◐ confirmé", expert: "● expert" };
@@ -104,6 +105,7 @@ function card(agent, engines, voices) {
   } });
   const actions = h("div", { class: "tm-actions" },
     h("button", { class: "btn", type: "button", onclick: () => details(agent) }, h("span", {}, "Détails")),
+    h("button", { class: "btn", type: "button", title: "Voir en direct le code qu'il ou elle écrit", onclick: () => viewAgent(agent) }, h("span", {}, "View")),
     h("button", { class: "btn btn-ghost", type: "button", onclick: () => openLookEditor($("#team-detail"), { key: agent.key, gender: agent.gender, name: agent.name, look: agent.look,
       onSave: (look) => change(agent, { look }, "apparence enregistrée") }) }, h("span", {}, "Apparence")),
     h("button", { class: "btn btn-ghost", type: "button", onclick: () => upload.click() }, h("span", {}, agent.portrait ? "Changer la photo" : "Mettre une photo")),
@@ -154,7 +156,7 @@ async function details(agent) {
     h("h4", {}, "Consignes et spécialité"), h("pre", { class: "tm-prompt" }, data.prompt || agent.role),
     data.toolkit && data.toolkit.length ? h("h4", {}, "Logiciels de son métier") : null,
     data.toolkit && data.toolkit.length ? h("div", { class: "ag-tags tm-kit" }, data.toolkit.map((t) =>
-      h("span", { class: t.installed ? "" : "off", title: t.installed ? "installé sur ce PC" : "à installer" }, t.label))) : null,
+      h("span", { class: t.installed ? "" : "off", title: t.name.startsWith("mcp:") ? (t.installed ? "serveur MCP branché" : "serveur MCP désactivé") : t.installed ? "installé sur ce PC" : "à installer" }, t.label))) : null,
     h("h4", {}, "Outils utilisés"), h("p", { class: "meta" }, counts),
     h("h4", {}, "Dernières actions"), h("div", { class: "tm-acts" }, recent)));
   dialog.showModal();

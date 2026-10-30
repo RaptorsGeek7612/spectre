@@ -12,6 +12,7 @@ import os
 import socket
 import sys
 import threading
+import time
 import webbrowser
 from collections.abc import Iterable, Iterator, Sequence
 from http import HTTPStatus
@@ -33,7 +34,7 @@ from spectre.config import (
     load_specs,
 )
 from spectre.errors import ConfigurationError
-from spectre.web.auth import COOKIE_NAME, PASSWORD_ENV, SESSION_TTL_S, Auth
+from spectre.web.auth import COOKIE_NAME, PASSWORD_ENV, SESSION_TTL_S, Auth, save_password
 from spectre.web.export import to_markdown, to_share_html
 from spectre.web.pipeline import Event, clean_overrides, stream_run
 from spectre.web.store import Store, title_from
@@ -49,7 +50,9 @@ _TYPES = {
     ".woff2": "font/woff2",
     ".webmanifest": "application/manifest+json",
 }
+RESET_CODE_FILE = "code-mot-de-passe.txt"  # in the web state folder: only on the PC
 MAX_BODY = 2 * 1024 * 1024  # 2 MB: requests and imports, never file uploads of binaries
+MAX_PAGE = 1024 * 1024  # a page sent by the Chrome extension (its text is cut at 200 000 chars)
 STATIC_ROOT = files("spectre.web") / "static"
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 SECURITY_HEADERS = {
@@ -217,6 +220,13 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 self._json(status, {"ok": status == 200, "result": message})
                 return
+            if path == "/browser/page" and method == "POST" and self.app.assistant:
+                # Spectre's Chrome extension: its own key instead of the session cookie
+                status, message = self.app.assistant.browser_page(
+                    self.headers.get("Authorization") or "", self._raw_body(MAX_PAGE)
+                )
+                self._json(status, {"ok": status == 200, "result": message})
+                return
             if not path.startswith("/api/"):
                 if method == "GET":
                     self._static(path)
@@ -228,6 +238,9 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path in ("/api/login", "/api/logout", "/api/status"):
                 getattr(self, "_" + path.removeprefix("/api/"))(method)
+                return
+            if path in ("/api/password/forgot", "/api/password/reset"):
+                self._password(method, path.rsplit("/", 1)[1])
                 return
             if not self.app.auth.valid(self._cookie()):
                 self._error(HTTPStatus.UNAUTHORIZED, "connexion requise")
@@ -369,6 +382,65 @@ class Handler(BaseHTTPRequestHandler):
             f"Max-Age={SESSION_TTL_S}"
         )
         self._json(200, {"ok": True}, {"Set-Cookie": cookie})
+
+    def _password(self, method: str, step: str) -> None:
+        """Forgotten password: `forgot` sends a one-time code where only the owner can read it,
+        `reset` takes that code and the new password."""
+        auth = self.app.auth
+        if method != "POST" or not auth.enabled:
+            raise KeyError("password")
+        if step == "forgot":
+            code = auth.request_reset()
+            if code is None:
+                self._error(
+                    HTTPStatus.TOO_MANY_REQUESTS,
+                    "un code vient d'être envoyé : attendez une minute",
+                )
+                return
+            self._json(200, {"ok": True, "sent_to": self._deliver_reset_code(code)})
+            return
+        # Not the login lockout: wrong passwords typed before must not block the way back in.
+        # The code limits itself (5 tries, 10 minutes, a new one at most once a minute).
+        body = self._body()
+        ok, message = auth.reset_password(str(body.get("code", "")), str(body.get("password", "")))
+        if not ok:
+            self._error(HTTPStatus.BAD_REQUEST, message)
+            return
+        try:
+            saved = save_password(auth.password or "")
+        except OSError:
+            saved = False
+        self._deliver_reset_code(None)
+        cookie = (
+            f"{COOKIE_NAME}={auth.issue()}; HttpOnly; SameSite=Strict; Path=/; "
+            f"Max-Age={SESSION_TTL_S}"
+        )
+        self._json(200, {"ok": True, "saved": saved}, {"Set-Cookie": cookie})
+
+    def _deliver_reset_code(self, code: str | None) -> list[str]:
+        """Writes the code in a file on the PC and sends it to the paired Telegram chats.
+        `None` removes the file once the password is changed. Returns where it went."""
+        path = self.app.store.root / RESET_CODE_FILE
+        if code is None:
+            path.unlink(missing_ok=True)
+            return []
+        text = (
+            f"Code pour changer le mot de passe de Spectre : {code}\n"
+            f"Envoyé à {time.strftime('%H:%M')}, valable 10 minutes. "
+            "Si vous n'avez rien demandé, ignorez ce message."
+        )
+        sent = []
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text + "\n", encoding="utf-8")
+            sent.append(str(path))
+        except OSError:
+            pass
+        telegram = getattr(self.app.assistant, "telegram", None)
+        if telegram is not None and telegram.chats():
+            threading.Thread(target=telegram.broadcast, args=(text,), daemon=True).start()
+            sent.append("Telegram")
+        return sent
 
     def _logout(self, method: str) -> None:
         if method != "POST":

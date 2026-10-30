@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import call, engines, greetings, sessions, team, tools, winapi
+from spectre.assistant import call, codeview, engines, greetings, sessions, team, tools, winapi
 from spectre.assistant.brain import Brain, ClaudeCLI
 from spectre.assistant.company import DEPARTMENTS, Companies
 from spectre.assistant.config import (
@@ -651,6 +651,132 @@ class AssistantService:
         self.gate.record("delete_webhook", {"name": name}, Level.DESTRUCTIVE, "webhook", "user", "")
         return {"name": row["name"]}
 
+    # ---- external MCP servers (added by the user from the interface) ------------------------
+
+    def mcp_list(self) -> list[Event]:
+        from spectre.assistant import mcp_clients
+
+        return mcp_clients.describe(self.root)
+
+    def mcp_save(self, data: dict[str, Any]) -> Event:
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            card = mcp_clients.save_from_user(self.root, data)
+        except (ActionError, ValueError) as exc:
+            raise ValueError(str(exc)) from exc
+        self.gate.record(
+            "mcp_server_save", {"name": card["name"], "target": card["target"]},
+            Level.WRITE, "mcp_server", "user", "",
+        )  # fmt: skip
+        return card
+
+    def mcp_delete(self, name: str) -> Event:
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            result = mcp_clients.delete(self.root, name)
+        except ActionError as exc:
+            raise ValueError(str(exc)) from exc
+        self.gate.record(
+            "mcp_server_delete", {"name": name}, Level.DESTRUCTIVE, "mcp_server", "user", ""
+        )
+        return {"result": result}
+
+    def mcp_toggle(self, name: str, enabled: bool) -> Event:
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            return mcp_clients.set_enabled(self.root, name, enabled)
+        except ActionError as exc:
+            raise ValueError(str(exc)) from exc
+
+    def mcp_agents(self, name: str, agents: str) -> Event:
+        """The user sets which agents may use a plugged server (empty = every agent)."""
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            card = mcp_clients.set_agents(self.root, name, agents.strip() or "tous")
+        except ActionError as exc:
+            raise ValueError(str(exc)) from exc
+        self.gate.record(
+            "mcp_server_agents", {"name": name, "agents": agents},
+            Level.WRITE, "mcp_server", "user", "",
+        )  # fmt: skip
+        return card
+
+    def mcp_secret(self, name: str, var: str, value: str) -> Event:
+        """The user types a secret a card refers to; only its name reaches the audit."""
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            card = mcp_clients.set_secret(self.root, name, var, value)
+        except ActionError as exc:
+            raise ValueError(str(exc)) from exc
+        self.gate.record(
+            "mcp_server_secret", {"name": name, "secret": var},
+            Level.WRITE, "mcp_server", "user", "",
+        )  # fmt: skip
+        return card
+
+    def mcp_test(self, name: str) -> Event:
+        """Connect to a server and list its tools (the user's check after adding it)."""
+        from spectre.assistant import mcp_clients
+        from spectre.assistant.actions import ActionError
+
+        try:
+            found = mcp_clients.list_tools(self.ctx, name)
+        except ActionError as exc:
+            return {"ok": False, "error": str(exc), "tools": []}
+        return {
+            "ok": True,
+            "tools": [{"name": t["name"], "description": t["description"]} for t in found],
+        }
+
+    # ---- the pages the user opens in Chrome (Spectre's extension) ---------------------------
+
+    def browser_page(self, authorization: str, body: bytes) -> tuple[int, str]:
+        """`POST /browser/page` from the extension: (HTTP status, message)."""
+        from spectre.assistant import browser_pages
+
+        if not browser_pages.authorized(self.root, authorization):
+            return 401, "clé de l'extension invalide (copie-la depuis les réglages de Spectre)"
+        try:
+            data = json.loads(body.decode("utf-8") or "{}")
+            if not isinstance(data, dict):
+                raise ValueError("objet JSON attendu")
+            saved = browser_pages.Pages(self.db).save(
+                str(data.get("url", "")), str(data.get("title", "")), str(data.get("text", ""))
+            )
+        except (ValueError, UnicodeDecodeError) as exc:
+            return 400, str(exc)
+        return 200, f"page #{saved['id']} reçue ({saved['chars']} caractères)"
+
+    def browser(self) -> Event:
+        from spectre.assistant import browser_pages
+
+        return {
+            "ready": bool(browser_pages.token(self.root, create=False)),
+            "pages": browser_pages.Pages(self.db).recent(),
+            "extension": str(Path(__file__).resolve().parents[3] / "tools" / "chrome-extension"),
+        }
+
+    def browser_token(self, renew: bool = False) -> Event:
+        from spectre.assistant import browser_pages
+
+        value = browser_pages.renew(self.root) if renew else browser_pages.token(self.root)
+        return {"token": value}
+
+    def browser_forget(self) -> Event:
+        from spectre.assistant import browser_pages
+
+        return {"forgotten": browser_pages.Pages(self.db).forget()}
+
     def hook(self, name: str, headers: dict[str, str], body: bytes) -> tuple[int, str]:
         """A call on /hooks/<name>: (HTTP status, message)."""
         try:
@@ -791,10 +917,32 @@ class AssistantService:
                 for t in companies.tasks(found["id"])
             ],
             "ready": [t["id"] for t in companies.ready(found["id"])],
+            "waiting": companies.waiting_tasks(found["id"]),
             "agents": agents,
             "parallel": self.missions.parallel,
             "active": self.missions.active(),
         }
+
+    def task_card(self, task_id: int) -> Event:
+        return Companies(self.db).card(task_id)
+
+    def task_file(self, task_id: int, path: str) -> Event:
+        task = Companies(self.db).task(task_id)
+        known = codeview.files(self.db, mission=task["mission_id"]) if task["mission_id"] else []
+        return codeview.read(path, known)
+
+    # ---- the live code viewer (« View » on a team card) ------------------------------------
+
+    def code_live(self, key: str, since: int = 0) -> Event:
+        return codeview.live(self.db, self._agent_key(key), since)
+
+    def code_file(self, key: str, path: str) -> Event:
+        return codeview.read(path, codeview.files(self.db, agent=self._agent_key(key)))
+
+    def _agent_key(self, key: str) -> str:
+        if key in AGENT_NAMES or key.startswith("agent:"):
+            return key
+        raise KeyError(key)
 
     def initiatives(self, status: str = "pending") -> list[Event]:
         return self.db.all(
@@ -1015,10 +1163,13 @@ class AssistantService:
     # ---- the team and its video call -------------------------------------------------------
 
     def team(self) -> Event:
-        mine = team.portraits(self.root)
+        mine, alive = team.portraits(self.root), team.clips(self.root)
         agents = team.members(self.db, self.config)
         for agent in agents:
             agent["portrait"] = agent["key"].replace(":", "-") in mine
+            agent["clips"] = (
+                alive.get(agent["key"].replace(":", "-"), []) if agent["portrait"] else []
+            )
         return {"agents": agents, "voices": team.VOICES}
 
     def generate_portrait(self, key: str) -> Event:
@@ -1056,12 +1207,15 @@ class AssistantService:
 
     def call_state(self, since: int, since_event: int) -> Event:
         state = call.snapshot(self.db, since, since_event)
-        mine = team.portraits(self.root)
+        mine, alive = team.portraits(self.root), team.clips(self.root)
         for agent in state["agents"]:  # the portrait the user chose: drawn look or picture
             look = self.config.agent_looks.get(agent["key"], {})
             agent["look"] = look
             agent["gender"] = look.get("g", agent["gender"])
             agent["portrait"] = agent["key"].replace(":", "-") in mine
+            agent["clips"] = (
+                alive.get(agent["key"].replace(":", "-"), []) if agent["portrait"] else []
+            )
         return state
 
     def call_standup(self) -> Event:

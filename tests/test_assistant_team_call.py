@@ -574,6 +574,33 @@ def test_looks_and_portraits(db: Database, tmp_path: Path) -> None:
     assert team.portrait(tmp_path, "agent:3") is None
 
 
+WEBM = b"\x1aE\xdf\xa3" + b"\x00" * 16
+
+
+def test_portrait_clips(tmp_path: Path) -> None:
+    anim = tmp_path / "portraits-anim"
+    anim.mkdir()
+    (anim / "opus-listen.webm").write_bytes(WEBM)
+    (anim / "opus-talk.webm").write_bytes(WEBM)
+    (anim / "agent-3-talk.webm").write_bytes(WEBM)
+    (anim / "simon-talk.webm.part.webm").write_bytes(WEBM)  # still being written
+    (anim / "lexy-talk.webm").write_bytes(b"not a video")
+    assert team.clips(tmp_path) == {
+        "agent-3": ["talk"],
+        "lexy": ["talk"],
+        "opus": ["listen", "talk"],
+    }
+    assert team.clip(tmp_path, "opus", "talk") == WEBM
+    assert team.clip(tmp_path, "agent:3", "talk") == WEBM
+    assert team.clip(tmp_path, "lexy", "talk") is None  # not WebM
+    assert team.clip(tmp_path, "opus", "dance") is None
+    assert team.clip(tmp_path, "..\\opus", "talk") is None
+    team.save_portrait(tmp_path, "opus", PNG)  # a new picture: its old loops go
+    assert "opus" not in team.clips(tmp_path)
+    team.delete_portrait(tmp_path, "agent:3")
+    assert "agent-3" not in team.clips(tmp_path)
+
+
 def test_team_details(db: Database) -> None:
     _day(db)
     found = team.details(db, AssistantConfig(), "cursor")
@@ -681,7 +708,7 @@ def test_mcp_server_hides_spectre_skills_from_agents() -> None:
 def test_api_team_and_call(api: Client, service: AssistantService) -> None:  # noqa: F811
     _day(service.db)
     status, data = api.json("GET", "/api/assistant/team")
-    assert status == 200 and len(data["agents"]) == 11 and "siwis" in data["voices"]
+    assert status == 200 and len(data["agents"]) == 13 and "siwis" in data["voices"]
     status, data = api.json("POST", "/api/assistant/team/cursor", {"engine": "sonnet"})
     assert status == 200 and {a["key"]: a for a in data["agents"]}["cursor"]["moved"] is True
     assert api.json("POST", "/api/assistant/team/simon", {"engine": "cursor"})[0] == 400

@@ -48,6 +48,8 @@ AGENT_DEFAULT_ENGINES: Final[dict[str, str]] = {
     "shelby": "sonnet",  # advisory experts run on the Claude subscription by default
     "ysyss": "sonnet",
     "lexy": "sonnet",
+    "charlotte": "gemini:gemini-pro-latest",  # the user chose Gemini for these two
+    "celya": "gemini:gemini-pro-latest",
 }
 
 ASSISTANT_MODELS: Final[dict[str, str]] = {

@@ -52,6 +52,8 @@ NEEDS = {
     "shelby": Need("animaux, nature et climat", tools=2, vision=1),
     "ysyss": Need("sciences et humain", tools=1, reasoning=3),
     "lexy": Need("jeux, paris, bourse et crypto", tools=2, reasoning=1),
+    "charlotte": Need("graphisme", tools=2, vision=2),
+    "celya": Need("écriture romanesque", tools=1, reasoning=2, context=2),
 }
 DEFAULT_NEED = Need("agent personnalisé", tools=2, reasoning=1)
 

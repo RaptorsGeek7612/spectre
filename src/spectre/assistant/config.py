@@ -23,6 +23,8 @@ AGENT_NAMES = {
     "shelby": "Shelby",  # animals (a woman)
     "ysyss": "Ysyss",  # science and humans (a woman)
     "lexy": "Lexy",  # betting, investing, crypto (a woman)
+    "charlotte": "Charlotte",  # graphic designer (a woman, on Gemini)
+    "celya": "Célya",  # novelist (a woman, on Gemini)
     "opus": "Spectre",  # Spectre itself, when it runs the steps too
 }
 
@@ -39,6 +41,8 @@ AGENT_TOOLS = {
     "shelby": "Claude",
     "ysyss": "Claude",
     "lexy": "Claude",
+    "charlotte": "Gemini",
+    "celya": "Gemini",
 }
 
 # Their department in the team page and the video call
@@ -54,6 +58,8 @@ AGENT_DEPARTMENTS = {
     "shelby": "Animalier",
     "ysyss": "Sciences et savoirs",
     "lexy": "Jeux, paris et investissements",
+    "charlotte": "Graphisme et identité visuelle",
+    "celya": "Écriture romanesque et édition",
 }
 
 # Another name the user may give an engine: the tool rather than the account
@@ -91,6 +97,12 @@ AGENT_ROLES = {
     "santé, psychologie, langues et dialectes, sports, arts et cultures.",
     "lexy": "Jeux d'argent, paris sportifs, investissement et bourse, blockchain, NFT et "
     "cryptomonnaies ; jamais de promesse de gain, rappelle les risques.",
+    "charlotte": "Graphiste : logos et identités visuelles, typographie, affiches, print et "
+    "édition, illustration vectorielle, couleurs, motion design et visuels pour les réseaux ; "
+    "elle travaille avec Inkscape, GIMP, Krita, Scribus, FontForge et Typst (sur Gemini).",
+    "celya": "Romancière : romans, nouvelles, scénarios de fiction, personnages, intrigue, "
+    "style et réécriture ; elle prépare aussi le manuscrit et l'édition (EPUB, PDF, "
+    "correction) avec novelWriter, LanguageTool, Pandoc, Typst, Calibre et Sigil (sur Gemini).",
 }
 AGENT_ORDER = (
     "opus",
@@ -104,6 +116,8 @@ AGENT_ORDER = (
     "shelby",
     "ysyss",
     "lexy",
+    "charlotte",
+    "celya",
 )
 EXTERNAL_AGENTS = ("chatgpt", "mistral", "cursor", "antigravity")  # their own CLI
 HOSTED_AGENTS = (
@@ -111,6 +125,8 @@ HOSTED_AGENTS = (
     "shelby",
     "ysyss",
     "lexy",
+    "charlotte",
+    "celya",
 )  # on a model (`AGENT_DEFAULT_ENGINES`), changeable
 
 AGENT_CHOICES = ("claude", *AGENT_NAMES)  # what a mission may ask for ("claude" = the setting)

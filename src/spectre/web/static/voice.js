@@ -59,14 +59,17 @@ export async function unlock() {
 // Say `text` as agent `key`; resolves when the voice has finished.
 export async function speak(key, gender, text, onLevel = () => {}) {
   if (!text) return;
-  if (useBrowser() && frenchVoices().length) return speakBrowser(key, gender, text, onLevel);
+  // The browser's own voice is the most fluid when it works, but online « natural » voices often
+  // fail without a sound (and without an error): when it never starts, fall back to Spectre's.
+  if (useBrowser() && frenchVoices().length && (await speakBrowser(key, gender, text, onLevel))) return;
   try {
     const { audio } = await api("POST", "call/say", { agent: key, text });
     if (audio) return await playWav(audio, onLevel);
   } catch { /* the PC cannot render: the browser speaks */ }
-  if (frenchVoices().length) return speakBrowser(key, gender, text, onLevel);
+  if (frenchVoices().length) await speakBrowser(key, gender, text, onLevel);
 }
 
+// Resolves true if the voice actually spoke, false if it never started (silent failure).
 function speakBrowser(key, gender, text, onLevel) {
   return new Promise((resolve) => {
     const u = new SpeechSynthesisUtterance(text);
@@ -74,15 +77,16 @@ function speakBrowser(key, gender, text, onLevel) {
     if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "fr-FR";
     u.rate = 1.0;
     u.pitch = 1.0;
-    let flutter = 0;
+    let flutter = 0, started = false;
     const tick = () => onLevel(0.25 + Math.random() * 0.6);
-    u.onstart = () => { flutter = setInterval(tick, 90); };
+    u.onstart = () => { started = true; clearTimeout(watchdog); flutter = setInterval(tick, 90); };
     u.onboundary = () => onLevel(0.9);
-    const end = () => { clearInterval(flutter); onLevel(0); resolve(); };
+    const end = () => { clearTimeout(watchdog); clearInterval(flutter); onLevel(0); resolve(started); };
     u.onend = end;
     u.onerror = end;
+    // If nothing has begun within a second, the browser voice is mute: give up so Spectre speaks.
+    const watchdog = setTimeout(() => { if (!started) { speechSynthesis.cancel(); resolve(false); } }, 1000);
     speechSynthesis.speak(u);
-    setTimeout(() => { if (!speechSynthesis.speaking) end(); }, 400 + text.length * 120);
   });
 }
 

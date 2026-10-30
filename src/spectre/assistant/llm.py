@@ -27,7 +27,7 @@ MAX_TOOL_RESULT = 12_000
 Transport = Callable[[str, dict[str, str], dict[str, Any], float], dict[str, Any]]
 ToolCall = Callable[[str, dict[str, Any]], str]  # (name, args) -> text, through the gate
 
-JSON_TYPES = {str: "string", int: "integer", float: "number", bool: "boolean"}
+JSON_TYPES = {str: "string", int: "integer", float: "number", bool: "boolean", dict: "object"}
 
 
 def post_json(
@@ -51,7 +51,7 @@ def json_type(annotation: Any) -> str:
     if get_origin(annotation) in (Union, types.UnionType):
         inner = [a for a in get_args(annotation) if a is not type(None)]
         annotation = inner[0] if inner else str
-    return JSON_TYPES.get(annotation, "string")
+    return JSON_TYPES.get(get_origin(annotation) or annotation, "string")
 
 
 def tool_schemas(tools: Sequence[Any]) -> list[dict[str, Any]]:

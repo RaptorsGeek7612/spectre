@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Spectre — pages ouvertes",
+  "version": "1.0.0",
+  "description": "Envoie à Spectre (sur ce PC) la page que tu regardes, pour que lui et ses agents puissent la lire. Pause et sites exclus dans les options.",
+  "permissions": ["tabs", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Spectre", "default_popup": "popup.html" },
+  "options_page": "options.html",
+  "incognito": "not_allowed"
+}

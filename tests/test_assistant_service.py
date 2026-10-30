@@ -595,3 +595,50 @@ def test_to_wav() -> None:
     wav = to_wav(b"\x01\x00\x02\x00\x03", 16000)  # the odd byte is dropped
     with wave.open(io.BytesIO(wav)) as reader:
         assert reader.getframerate() == 16000 and reader.getnframes() == 2
+
+
+def test_api_mcp_servers(api: Client, service: AssistantService, tmp_path: Path) -> None:
+    from tests.test_assistant_mcp_clients import SERVER
+
+    script = tmp_path / "echo_server.py"
+    script.write_text(SERVER, encoding="utf-8")
+    assert api.json("GET", "/api/assistant/mcp") == (200, [])
+    bad = api.json("POST", "/api/assistant/mcp", {"name": "x1", "command": "cmd"})
+    assert bad[0] == 400
+    status, card = api.json(
+        "POST",
+        "/api/assistant/mcp",
+        {"name": "echo", "command": sys.executable, "args": f'"{script}"', "level": "lecture",
+         "env": "API_TOKEN=tok"},
+    )  # fmt: skip
+    assert status == 200 and card["secrets"] == ["SPECTRE_MCP_ECHO_API_TOKEN"]
+    tested = api.json("POST", "/api/assistant/mcp/echo/test", {})[1]
+    assert tested["ok"] and {t["name"] for t in tested["tools"]} == {"echo", "fail"}
+    off = api.json("POST", "/api/assistant/mcp/echo/toggle", {"enabled": "non"})[1]
+    assert off["enabled"] is False
+    assert api.json("POST", "/api/assistant/mcp/echo/test", {})[1]["ok"] is False
+    assert api.json("POST", "/api/assistant/mcp/absent/toggle", {})[0] == 400
+    assert "retiré" in api.json("POST", "/api/assistant/mcp/echo/delete", {})[1]["result"]
+    assert api.json("POST", "/api/assistant/mcp/echo/delete", {})[0] == 400
+
+
+def test_api_mcp_agents(api: Client, service: AssistantService) -> None:
+    api.json("POST", "/api/assistant/mcp", {"name": "mem", "command": "npx", "args": "-y x"})
+    card = api.json("POST", "/api/assistant/mcp/mem/agents", {"agents": "Kyra, Syfer"})[1]
+    assert card["agents"] == ["Kyra", "Syfer"]
+    assert api.json("POST", "/api/assistant/mcp/mem/agents", {"agents": ""})[1]["agents"] == []
+    assert api.json("POST", "/api/assistant/mcp/mem/agents", {"agents": "Inconnu"})[0] == 400
+
+
+def test_api_mcp_secret(api: Client, service: AssistantService) -> None:
+    from spectre.assistant import mcp_clients
+
+    card = mcp_clients.build(
+        service.root, name="svc", command="npx", env={"SVC_TOKEN_X": "${SVC_TOKEN_X}"}
+    )
+    mcp_clients._write(service.root, card)
+    path = "/api/assistant/mcp/svc/secret"
+    assert api.json("POST", path, {"var": "SVC_TOKEN_X", "value": "s3cr3t"})[1]["missing"] == []
+    assert api.json("POST", path, {"var": "NOPE", "value": "x"})[0] == 400
+    audit = service.db.one("SELECT args FROM audit WHERE tool = 'mcp_server_secret'")
+    assert "s3cr3t" not in audit["args"]

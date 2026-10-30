@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Spectre — options</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; background: #121315; color: #e9e4d8; }
+  label { display: grid; gap: 4px; margin: 14px 0; }
+  input, textarea { font: inherit; padding: 6px 8px; background: #1b1c1f; color: inherit; border: 1px solid #4a4c52; }
+  textarea { min-height: 180px; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  button { font: inherit; padding: 6px 14px; background: #ffd23f; color: #121315; border: 0; cursor: pointer; }
+  small, .meta { color: #8f8a7f; }
+</style>
+</head>
+<body>
+  <h1>Spectre — pages ouvertes</h1>
+  <p class="meta">L’extension envoie à Spectre, sur ce PC seulement, l’adresse, le titre et le texte visible de la page que tu regardes. Spectre et ses agents peuvent alors la lire (outil <code>browser_pages</code>).</p>
+  <label>Adresse de Spectre<input id="server" type="url" placeholder="http://127.0.0.1:8765"></label>
+  <label>Clé de l’extension<input id="token" type="password" autocomplete="off" placeholder="Réglages de Spectre › Pages ouvertes dans Chrome › Afficher la clé"></label>
+  <label class="row"><input id="paused" type="checkbox"> En pause (rien n’est envoyé)</label>
+  <label>Sites jamais lus (un par ligne, * accepté)<textarea id="exclude"></textarea></label>
+  <div class="row"><button id="save" type="button">Enregistrer</button><span id="state" class="meta"></span></div>
+  <p><small>Les pages de connexion, de mots de passe et de paiement sont aussi refusées par Spectre lui-même. La navigation privée n’est jamais lue.</small></p>
+  <script src="options.js"></script>
+</body>
+</html>

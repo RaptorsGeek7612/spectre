@@ -267,7 +267,9 @@
           <button class="btn" type="submit">Ajouter</button>
         </form>
         <div class="co-actions"><button class="btn btn-primary" type="button" id="company-start">Lancer les tâches prêtes</button><span class="meta" id="company-capacity"></span></div>
+        <p class="meta">Glisse une carte d’une colonne à l’autre pour la déplacer (vers « En cours » : la lancer). Une tâche à valider renvoyée « À faire » repart à son agent avec tes changements. Le tableau se met à jour tout seul.</p>
         <div id="company-board" class="co-board"></div>
+        <dialog id="task-detail" class="tm-dialog"></dialog>
       </div>
     </section>
 
@@ -398,6 +400,24 @@
         <div><button class="btn btn-primary" type="submit">Créer l'agent</button></div>
       </form>
       <div id="agents-created" class="ag-grid"></div>
+      <h3 class="as-h as-h-sub">Serveurs MCP</h3>
+      <p class="meta">Branche à Spectre et à ses agents un serveur MCP (GitHub, Notion, une base de données, un navigateur…) : un programme lancé sur ce PC (npx, uvx, docker…) ou une adresse https. Leurs outils passent par le portail comme le reste : « lecture » s’utilise seul, « action » demande ta validation à chaque appel. Un jeton ou un mot de passe que tu tapes ici est rangé dans ~/.spectre/assistant/.env, jamais dans la fiche. Spectre peut aussi t’en proposer un : tu valides avant qu’il soit branché.</p>
+      <form class="ag-form" id="mcp-form" autocomplete="off">
+        <label><span class="label">Nom</span><input type="text" name="name" maxlength="31" required pattern="[a-z][a-z0-9_\-]{1,30}" placeholder="ex. github (minuscules)"></label>
+        <label><span class="label">Titre (facultatif)</span><input type="text" name="label" maxlength="80" placeholder="ex. GitHub"></label>
+        <label><span class="label">Connexion</span><select name="transport"><option value="stdio">Programme local (stdio)</option><option value="http">Adresse (HTTP)</option></select></label>
+        <label><span class="label">Niveau</span><select name="level"><option value="action">Action : validation à chaque appel</option><option value="ecriture">Écriture locale : seul</option><option value="lecture">Lecture seule : seul</option></select></label>
+        <label class="mcp-stdio"><span class="label">Programme</span><input type="text" name="command" maxlength="300" placeholder="ex. npx, uvx, docker"></label>
+        <label class="mcp-stdio"><span class="label">Arguments</span><input type="text" name="args" maxlength="1000" placeholder="ex. -y @modelcontextprotocol/server-memory"></label>
+        <label class="ag-wide mcp-http" hidden><span class="label">Adresse</span><input type="url" name="url" maxlength="500" placeholder="https://…/mcp"></label>
+        <label class="mcp-http" hidden><span class="label">Jeton (facultatif)</span><input type="password" name="token" autocomplete="off" placeholder="envoyé en Authorization: Bearer"></label>
+        <label class="ag-wide mcp-stdio"><span class="label">Variables d'environnement (facultatif, une par ligne)</span><textarea name="env" rows="2" maxlength="4000" placeholder="GITHUB_PERSONAL_ACCESS_TOKEN=ghp_…"></textarea></label>
+        <label><span class="label">Agents</span><input type="text" name="agents" maxlength="300" placeholder="tous, ou ex. Kyra, Syfer"></label>
+        <label><span class="label">Outils sans validation (facultatif)</span><input type="text" name="auto" maxlength="1000" placeholder="ex. search_issues, get_file_contents"></label>
+        <label class="ag-wide"><span class="label">Quand s'en servir (facultatif)</span><input type="text" name="description" maxlength="400" placeholder="ex. Lire et gérer mes dépôts GitHub"></label>
+        <div><button class="btn btn-primary" type="submit">Brancher le serveur</button></div>
+      </form>
+      <div id="mcp-servers" class="cards"></div>
       <dialog id="agent-look" class="tm-dialog"></dialog>
       <h3 class="as-h as-h-sub">Rédaction</h3>
       <p class="meta">La chaîne qui écrit les textes soignés : recherche, rédaction, contrôle.</p>
@@ -433,6 +453,16 @@
           <button class="btn btn-primary" type="submit" id="face-enroll">Enregistrer ce visage</button>
         </form>
         <div id="faces" class="facts"></div>
+      </section>
+      <section class="faces-panel" aria-labelledby="links-title">
+        <h3 class="as-h" id="links-title">VS Code et Chrome</h3>
+        <p class="meta">VS Code : les agents ouvrent leurs fichiers dans ton éditeur (outil vscode), et tu peux aussi brancher Spectre dans VS Code pour que ses agents (mode Agent) utilisent les outils de Spectre, toujours avec ta validation pour ce qui est sensible.</p>
+        <div class="row"><button class="btn" type="button" id="vscode-toggle">Brancher Spectre dans VS Code</button><span class="meta" id="vscode-state"></span></div>
+        <p class="meta">Chrome : l’extension de Spectre lui envoie la page que tu regardes (adresse, titre, texte visible), pour que lui et ses agents la lisent. Rien ne quitte le PC ; pause, sites exclus (banques, mail, mots de passe par défaut) et navigation privée jamais lue. Pour l’installer : chrome://extensions › Mode développeur › Charger l’extension non empaquetée › le dossier ci-dessous, puis colle la clé dans ses options.</p>
+        <p class="meta"><code id="browser-folder"></code></p>
+        <div class="row"><button class="btn" type="button" id="browser-key">Afficher la clé</button><button class="btn btn-ghost" type="button" id="browser-renew">Changer la clé</button><button class="btn btn-ghost" type="button" id="browser-forget">Oublier toutes les pages</button></div>
+        <p class="meta"><code id="browser-token" hidden></code></p>
+        <div id="browser-pages" class="facts"></div>
       </section>
     </section>
   </main>

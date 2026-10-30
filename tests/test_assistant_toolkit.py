@@ -213,8 +213,10 @@ def test_remote_scan_waits_for_approval(ctx: Any) -> None:
 
 
 def test_media_tools_are_kyras(ctx: Any) -> None:
-    for name in ("video_format", "image_format", "sous_titres", "detourage", "voix_off"):
+    for name in ("video_format", "sous_titres", "voix_off"):
         assert toolkit.KITS[name].agents == ("chatgpt",)
+    for name in ("image_format", "detourage", "agrandir", "vectoriel", "maquette_png"):
+        assert toolkit.KITS[name].agents == ("chatgpt", "charlotte")  # shared with Charlotte
         assert toolkit.KITS[name].level == Level.WRITE
     ctx.agent = "lexy"
     with pytest.raises(ActionError, match="ton domaine"):

@@ -78,6 +78,24 @@
     </label>
     <p id="login-error" class="form-error" role="alert"></p>
     <button class="btn btn-primary" type="submit"><span data-i18n="login.submit">Entrer</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+    <button class="link-btn" id="forgot-open" type="button" data-i18n="login.forgot">Mot de passe oublié ?</button>
+  </form>
+  <form id="forgot-form" class="login-plate" hidden>
+    <img class="mark mark-login" src="logo.svg" alt="">
+    <h1 class="wordmark" aria-label="Spectre"><span aria-hidden="true">SPECTRE</span></h1>
+    <p id="forgot-info" class="muted" data-i18n="forgot.info">Un code à usage unique va être envoyé sur ce PC (et sur Telegram s'il est relié).</p>
+    <button class="btn" id="forgot-send" type="button" data-i18n="forgot.send">Recevoir un code</button>
+    <label class="field">
+      <span class="label" data-i18n="forgot.code">Code reçu</span>
+      <input id="forgot-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required>
+    </label>
+    <label class="field">
+      <span class="label" data-i18n="forgot.new">Nouveau mot de passe (8 caractères ou plus)</span>
+      <input id="forgot-password" type="password" autocomplete="new-password" minlength="8" required>
+    </label>
+    <p id="forgot-error" class="form-error" role="alert"></p>
+    <button class="btn btn-primary" type="submit"><span data-i18n="forgot.submit">Changer et entrer</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+    <button class="link-btn" id="forgot-back" type="button" data-i18n="forgot.back">Retour</button>
   </form>
 </section>
 

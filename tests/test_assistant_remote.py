@@ -180,6 +180,8 @@ def test_agents(service: AssistantService, monkeypatch: pytest.MonkeyPatch) -> N
         "Shelby",
         "Ysyss",
         "Lexy",
+        "Charlotte",
+        "Célya",
     ]
     kyra, syfer = data["assistant"][3], data["assistant"][4]
     assert kyra["engine"] == "Codex (gpt-5.5)" and kyra["default"] is True
@@ -200,7 +202,7 @@ def test_agents(service: AssistantService, monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_api_agents_remote_missions(api: Client, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
-    assert len(api.json("GET", "/api/assistant/agents")[1]["assistant"]) == 11
+    assert len(api.json("GET", "/api/assistant/agents")[1]["assistant"]) == 13
     seen: list[int] = []
 
     class Fake:

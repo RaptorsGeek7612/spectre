@@ -18,6 +18,8 @@ export const LOOKS = {
   shelby: { g: "f", skin: "#edc7a6", shade: "#c79a76", hair: "#9a5b2a", eyes: "#3a7d4a", lips: "#c06a5e", outfit: "#2f5b4a", shirt: "#f1ece0", accent: "#2ecc71", style: "long", beard: "", jewel: true, bg: "#2a4a3a" },
   ysyss: { g: "f", skin: "#c89a73", shade: "#9c7250", hair: "#1a1512", eyes: "#4a5a7a", lips: "#a85c52", outfit: "#2b3550", shirt: "#dfe6f0", accent: "#36d6e7", style: "bun", beard: "", glasses: "round", bg: "#233050" },
   lexy: { g: "f", skin: "#f2d3bc", shade: "#cba588", hair: "#d8b84a", eyes: "#5a7a8a", lips: "#c85a68", outfit: "#39323f", shirt: "#f2e7ea", accent: "#f03ccf", style: "bob", beard: "", jewel: true, bg: "#46323a" },
+  charlotte: { g: "f", skin: "#f3d6c2", shade: "#cfa58a", hair: "#b4471f", eyes: "#6a6a3a", lips: "#c95a50", outfit: "#151517", shirt: "#26262a", accent: "#ff7a45", style: "bob", beard: "", jewel: true, bg: "#4a2c22" },
+  celya: { g: "f", skin: "#dbb393", shade: "#b28768", hair: "#1f1612", eyes: "#4a3020", lips: "#b0625a", outfit: "#e6dccb", shirt: "#f4efe6", accent: "#3ecf8e", style: "long", beard: "", jewel: true, bg: "#1f3d33" },
 };
 const CREATED = [
   { g: "m", skin: "#d8b08f", shade: "#b0835f", hair: "#3a2a1e", eyes: "#3b5a40", lips: "#a96a58", outfit: "#2c3e50", shirt: "#e6e6e6", accent: "#8bd450", style: "side", beard: "", bg: "#2a3d36" },
@@ -242,6 +244,56 @@ export function createPhoto(url, title = "") {
   img.alt = title;
   img.decoding = "async";
   return { el: img, mouth(level) { img.style.setProperty("--talk", level.toFixed(2)); }, look() {}, stop() {} };
+}
+
+// A picture that comes alive on the call: two short loops made from it (LivePortrait, on this
+// PC), one listening (blinks, small nods), one talking. Offline, it stays the still picture;
+// without the loops, or with reduced motion, too.
+const still = matchMedia("(prefers-reduced-motion: reduce)");
+export function createLivePhoto(url, clips, title = "") {
+  const face = createPhoto(url, title);
+  const box = document.createElement("div");
+  box.className = "avatar live-photo";
+  box.append(face.el);
+  const videos = {};
+  for (const kind of ["listen", "talk"]) {
+    if (!clips?.[kind]) continue;
+    const v = document.createElement("video");
+    Object.assign(v, { muted: true, loop: true, playsInline: true, preload: "none", className: "live-clip" });
+    v.setAttribute("aria-hidden", "true");
+    videos[kind] = v;
+    box.append(v);
+  }
+  let online = false, talking = false, hush = 0, loaded = null;
+  const load = () => (loaded ??= Promise.all(Object.entries(videos).map(async ([kind, v]) => {
+    try {  // once, as a blob: plays and loops without asking the server again
+      const r = await fetch(clips[kind]);
+      if (r.ok) v.src = URL.createObjectURL(await r.blob());
+    } catch { /* stays the picture */ }
+  })));
+  const show = async () => {
+    // Only move while the agent actually speaks; the rest of the call it stays the still photo,
+    // so nothing wriggles for no reason. (The listening loop is kept but not played here.)
+    const want = online && !still.matches && talking && videos.talk ? "talk" : "";
+    if (want) await load();
+    for (const [kind, v] of Object.entries(videos)) {
+      const on = kind === want && Boolean(v.src);
+      v.classList.toggle("on", on);
+      if (on) v.play().catch(() => {}); else v.pause();
+    }
+    box.classList.toggle("alive", Object.values(videos).some((v) => v.classList.contains("on")));
+  };
+  return {
+    el: box,
+    mouth(level) {
+      face.mouth(level);
+      if (level > 0.04) { clearTimeout(hush); hush = 0; if (!talking) { talking = true; show(); } }
+      else if (talking && !hush) hush = setTimeout(() => { hush = 0; talking = false; show(); }, 450);  // between two words
+    },
+    online(flag) { if (flag !== online) { online = flag; show(); } },
+    look() {},
+    stop() { Object.values(videos).forEach((v) => { v.pause(); if (v.src) URL.revokeObjectURL(v.src); }); },
+  };
 }
 
 // ---- manga style: big shining eyes, pointed bangs, flat colours with hard shadows ----------

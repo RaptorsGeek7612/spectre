@@ -7,7 +7,82 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-30
+
 ### Added
+- **Mot de passe oublié** : lien sur l'écran de connexion ; un code de 8 chiffres (10 min,
+  5 essais, une demande par minute) est écrit dans `~/.spectre/webui/code-mot-de-passe.txt`
+  et envoyé aux conversations Telegram reliées, jamais à la page ; redemander renvoie le code
+  encore valable. Le nouveau mot de passe va dans l'environnement utilisateur Windows et la clé
+  de signature change : toutes les anciennes sessions sont fermées.
+- **Deux agentes sur Gemini** (`gemini:gemini-pro-latest` par défaut, changeable dans la page
+  Équipe ; clé `GEMINI_API_KEY`) : **Charlotte**, graphiste (compétence `spectre-graphisme` ;
+  outils `vectoriser` (VTracer), `palette` (ImageMagick), `mise_en_page` (Typst), et les outils
+  image/maquette de Kyra), et **Célya**, romancière (compétence `spectre-roman` ; outils
+  `livre_pdf` (Typst), `grammalecte`, `epub_verif` (EPUBCheck), `ebook` (Calibre), `vale`).
+- **Rust pour toute l'équipe** : compétence `spectre-rust` et outil `cargo` (check, clippy,
+  test, fmt, build, doc, new, tree) ouvert à tous les agents ; Rust 1.99 installé (rustup).
+- **VS Code** : outil `vscode` (ouvrir un fichier à une ligne, un dossier, un diff) et bouton
+  « Brancher Spectre dans VS Code » (Réglages) qui ajoute le serveur MCP de Spectre au
+  `mcp.json` de l'utilisateur (`assistant/vscode.py`, sauvegarde de l'ancien fichier).
+- **Pages ouvertes dans Chrome** : extension libre `tools/chrome-extension` (MV3, à charger
+  non empaquetée) qui envoie la page active à `POST /browser/page` avec sa propre clé ;
+  `assistant/browser_pages.py` garde les 40 dernières, refuse connexion et paiement ; outil
+  `browser_pages` pour tous les agents (texte = donnée, jamais consigne) ; Réglages : clé,
+  pages reçues, tout oublier.
+- **« View » sur les fiches de l'équipe** : le code qu'un agent écrit, en direct
+  (`assistant/codeview.py`, `web/static/codeview.js`) : fichiers écrits par `write_file`,
+  relus toutes les 2 s, lignes changées surlignées, coloration, « Ouvrir dans VS Code », et
+  diff en direct des worktrees du département technique.
+- **Tableau des tâches façon Claude Agent Teams (Matrix)** : glisser-déposer entre colonnes,
+  fiche complète (historique des statuts, commentaires lus par la mission en cours, étapes et
+  rapport de la mission, fichiers produits, « Voir le code »), « Demander des changements »
+  (la tâche repart à l'agent qui l'a faite, avec la demande), réaffectation, badges « prête »,
+  « attend ton oui » et agent, rafraîchissement toutes les 5 s. Outils `comment_task`,
+  `request_changes`, `assign_task` ; table `task_events`.
+- **Compétences vidéo de Claude Code partagées** (`~/.claude/skills` : HyperFrames,
+  motion-graphics, product-launch-video, faceless-explainer, music-to-video…) : listées dans
+  le prompt avec leurs agents (Kyra, Charlotte, Célya, Gétro) et lues sur place
+  (`competences.SHARED`) ; les descriptions YAML repliées (`description: >`) sont comprises.
+
+### Fixed
+- Grammalecte : sous Windows il écrit ses résultats dans `<fichier>.res.txt` et rien sur la
+  console ; l'outil vérifie une copie dans un dossier temporaire et renvoie ce fichier.
+- L'extension Chrome n'envoie plus les pages de Spectre lui-même.
+
+## [0.25.0] - 2026-10-24
+
+### Added
+- **Serveurs MCP externes** (`assistant/mcp_clients.py`) : Spectre devient aussi *client* MCP.
+  Chaque serveur est une fiche de données (`~/.spectre/assistant/serveurs-mcp/<nom>.json`) :
+  programme local en stdio (npx, uvx, docker, un .exe — jamais un shell) ou adresse en HTTP
+  (https, http seulement en local), agents autorisés, niveau (`lecture` / `ecriture` seuls,
+  `action` = validation à chaque appel ; liste d'outils « sans validation »). Les agents s'en
+  servent par `mcp_servers`, `mcp_tools` et `mcp_call`, **toujours à travers le portail** et le
+  journal (catégories `mcp_read`, `mcp_write`, `mcp_action`). Spectre peut proposer d'en
+  brancher un (`mcp_server_save`, catégorie `mcp_server` = ASK) ; l'utilisateur en ajoute,
+  teste, désactive ou débranche dans **Agents › Serveurs MCP**. Aucun secret dans une fiche :
+  référence `${NOM}`, les jetons tapés dans l'interface vont dans `.env`.
+- **Spectre équipe ses sous-agents en serveurs MCP** : `mcp_server_agents` (Spectre, validé
+  par l'utilisateur) donne un serveur branché aux agents qui en ont besoin, le leur retire ou
+  fixe la liste ; un sous-agent à qui il en manque un le demande avec `mcp_server_request`
+  (validation), ou le décrit dans son compte rendu s'il n'est pas encore branché. Le prompt de
+  Spectre, celui des agents (WORKER) et l'aide aux agents bloqués (HELPER) le disent ; la fiche
+  d'un agent (Équipe) montre ses serveurs MCP ; dans Agents › Serveurs MCP, « Changer les
+  agents » sur chaque serveur. Les agents hébergés (`llm.py`) reçoivent `arguments` en objet.
+- **Saisir un secret préparé par Spectre** : quand Spectre branche un serveur avec une
+  référence `${NOM}` (ex. la clé de n8n), sa carte dans Agents › Serveurs MCP indique le secret
+  « à saisir » et offre un champ masqué pour le coller (puis « Remplacer » pour en changer) ;
+  la valeur va dans `.env`, seul son nom est journalisé.
+- **Portraits de l'équipe animés pendant la visio** : à partir de la photo d'un agent, deux
+  courtes boucles sont fabriquées sur ce PC (LivePortrait via ComfyUI, `tools/animate_portraits.cmd`)
+  — une « parle » (lèvres qui bougent) et une « écoute » discrète (bouche fermée). Dans l'appel,
+  le portrait **ne s'anime que quand l'agent a la parole** (boucle « parle ») ; le reste du temps
+  il reste la photo fixe, pour que rien ne gigote sans raison. Boucles en fondu enchaîné (lecture
+  avant, sans saccade), mouvement volontairement doux pour ne pas déformer le visage. Hors ligne,
+  sans les boucles ou en mouvement réduit, la photo ne bouge pas. Une nouvelle photo
+  rend ses boucles caduques et les supprime. Les clips sont servis par
+  `GET /api/assistant/team/<clé>/clip/<écoute|parle>` (WebM vérifié, 20 Mo max).
 - **Couleurs de la vue « Conversation »** : les quatre relevés HUD prennent chacun une raie du
   spectre (Mémoire cyan, Validations violet, Missions bleu, **Cerveau ambre** — écho de l'état
   « réflexion » de l'Orbe), la barre de signal passe en dégradé cyan→violet→rouge et les repères

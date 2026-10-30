@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import secrets
+import sys
 import threading
 import time
 from pathlib import Path
@@ -14,6 +16,10 @@ COOKIE_NAME = "spectre_session"
 SESSION_TTL_S = 24 * 3600
 MAX_FAILURES = 5
 LOCKOUT_S = 60.0
+RESET_CODE_TTL_S = 10 * 60
+RESET_MAX_TRIES = 5
+RESET_COOLDOWN_S = 60.0
+MIN_PASSWORD_LEN = 8
 
 
 class Auth:
@@ -21,9 +27,13 @@ class Auth:
 
     def __init__(self, password: str | None, secret_file: Path) -> None:
         self.password = password or None
+        self._secret_file = secret_file
         self._secret = self._load_secret(secret_file)
         self._failures: dict[str, tuple[int, float]] = {}
         self._lock = threading.Lock()
+        # Forgotten password: one code at a time, kept as a hash, with its expiry and tries left.
+        self._reset: tuple[str, float, int] | None = None
+        self._last_reset_request = -RESET_COOLDOWN_S
 
     @property
     def enabled(self) -> bool:
@@ -81,3 +91,75 @@ class Auth:
                 count, _ = self._failures.get(client, (0, 0.0))
                 self._failures[client] = (count + 1, now or time.monotonic())
         return ok
+
+    # ---- forgotten password ------------------------------------------------------------------
+
+    def request_reset(self, now: float | None = None) -> str | None:
+        """The 8-digit one-time code: the one still valid if there is one, else a new one;
+        None when a new one was made less than a minute ago.
+
+        The code is never returned to the web page: the caller delivers it where only the owner
+        can read it (a file on the PC, the paired Telegram chats).
+        """
+        moment = now if now is not None else time.monotonic()
+        with self._lock:
+            if self._reset is not None and moment <= self._reset[1]:
+                return self._reset[0]  # asked again: the same code, so an earlier copy still works
+            if moment - self._last_reset_request < RESET_COOLDOWN_S:
+                return None
+            self._last_reset_request = moment
+            code = f"{secrets.randbelow(10**8):08d}"
+            self._reset = (code, moment + RESET_CODE_TTL_S, RESET_MAX_TRIES)
+            return code
+
+    def reset_password(
+        self, code: str, new_password: str, now: float | None = None
+    ) -> tuple[bool, str]:
+        """Check the one-time code and set `new_password`; every open session is closed.
+
+        Returns (ok, message in French). A wrong code uses one try; the code dies after
+        `RESET_MAX_TRIES` wrong tries or `RESET_CODE_TTL_S` seconds.
+        """
+        if len(new_password) < MIN_PASSWORD_LEN:
+            return (
+                False,
+                f"le nouveau mot de passe doit faire au moins {MIN_PASSWORD_LEN} caractères",
+            )
+        moment = now if now is not None else time.monotonic()
+        with self._lock:
+            if self._reset is None:
+                return False, "demandez d'abord un code"
+            expected, expires, tries = self._reset
+            if moment > expires:
+                self._reset = None
+                return False, "code expiré : demandez-en un nouveau"
+            typed = "".join(ch for ch in code if ch.isdigit())  # spaces or dashes when copied
+            if not hmac.compare_digest(expected.encode(), typed.encode()):
+                tries -= 1
+                self._reset = (expected, expires, tries) if tries > 0 else None
+                return (
+                    False,
+                    "code incorrect" if tries > 0 else "code incorrect : demandez-en un nouveau",
+                )
+            self._reset = None
+            self.password = new_password
+            self._failures.clear()
+            # A new signing key: every cookie issued with the old password stops working.
+            self._secret = secrets.token_bytes(32)
+            self._secret_file.write_text(self._secret.hex(), encoding="utf-8")
+        return True, "mot de passe changé"
+
+
+def save_password(password: str) -> bool:
+    """Keep the new password for the next start: this process and, on Windows, the user's
+    environment (where `tools/spectre-assistant.ps1` reads it). True when it was saved for good."""
+    os.environ[PASSWORD_ENV] = password
+    if sys.platform != "win32":
+        return False
+    import winreg  # pragma: no cover - Windows only
+
+    with winreg.OpenKey(  # pragma: no cover
+        winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_SET_VALUE
+    ) as key:
+        winreg.SetValueEx(key, PASSWORD_ENV, 0, winreg.REG_SZ, password)
+    return True  # pragma: no cover

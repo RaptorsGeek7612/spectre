@@ -5,6 +5,7 @@ import { closeCall, openCall } from "./call.js";
 import { loadTeam } from "./team.js";
 import { createAvatar } from "./avatars.js";
 import { openLookEditor } from "./looks.js";
+import { codeBlock, viewTask, vscodeLink } from "./codeview.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -241,13 +242,19 @@ async function loadCompany() {
   $("#company-capacity").textContent = `${data.ready.length} prête${data.ready.length > 1 ? "s" : ""} · ${data.active.length}/${data.parallel} mission${data.parallel > 1 ? "s" : ""} en parallèle`;
   $("#company-start").disabled = !data.ready.length;
   const label = Object.fromEntries(data.departments.map((d) => [d.key, d.label]));
+  boardData = data;
+  const byId = Object.fromEntries(data.tasks.map((t) => [t.id, t]));
   const columns = ["todo", "doing", "review", "blocked", "done"].map((status) => {
     const tasks = data.tasks.filter((t) => t.status === status);
-    return h("section", { class: "co-col", "data-status": status },
+    return h("section", { class: "co-col", "data-status": status,
+      ondragover: (e) => { if (dragged && canDrop(dragged, status)) { e.preventDefault(); e.currentTarget.classList.add("co-drop"); } },
+      ondragleave: (e) => e.currentTarget.classList.remove("co-drop"),
+      ondrop: (e) => { e.preventDefault(); e.currentTarget.classList.remove("co-drop"); const t = dragged; dragged = null; if (t) moveTask(t, status); } },
       h("h4", {}, TSTATUS[status], h("b", {}, tasks.length || "")),
-      ...tasks.map((t) => taskCard(t, label, data.ready.includes(t.id))));
+      ...tasks.map((t) => taskCard(t, label, data.ready.includes(t.id), data.waiting.includes(t.id), byId)));
   });
   $("#company-board").replaceChildren(...columns);
+  scheduleBoard();
   loadSaas().catch((err) => toast(err.message, "error"));
   loadDecisions().catch((err) => toast(err.message, "error"));
   delete $("#dev-config").dataset.filled;
@@ -420,7 +427,33 @@ $("#dev-form").addEventListener("submit", async (e) => {
   loadDev();
 });
 
-function taskCard(t, label, ready) {
+/* the board: drag a card to another column (like moving it by hand), live every 5 s */
+let boardData = null, dragged = null, boardTimer = null;
+const DROPS = { todo: ["blocked", "review", "done", "cancelled"], blocked: ["todo"], done: ["todo", "review", "blocked"] };
+function canDrop(t, status) {
+  if (status === t.status) return false;
+  if (status === "doing") return t.status === "todo" && boardData && boardData.ready.includes(t.id);
+  return (DROPS[status] || []).includes(t.status);
+}
+async function moveTask(t, status) {
+  try {
+    if (status === "doing") toast((await api("POST", `tasks/${t.id}/start`, {})).result, "ok", 7000);
+    else if (t.status === "review" && status === "todo") { openTask(t, "changes"); return; }
+    else await api("POST", `tasks/${t.id}`, { status });
+  } catch (err) { toast(err.message, "error", 7000); }
+  loadCompany();
+}
+function scheduleBoard() {
+  clearTimeout(boardTimer);
+  boardTimer = setTimeout(() => {
+    const view = document.querySelector('.as-view[data-view="company"]');
+    const busy = dragged || $("#task-detail").open || document.activeElement?.closest?.("#company-board");
+    if (view && !view.hidden && !document.hidden && !busy) loadCompany().catch(() => {});
+    else if (view && !view.hidden) scheduleBoard();
+  }, 5000);
+}
+
+function taskCard(t, label, ready, waiting, byId) {
   const act = (status) => async () => {
     try { await api("POST", `tasks/${t.id}`, { status }); } catch (err) { toast(err.message, "error"); }
     loadCompany();
@@ -431,17 +464,81 @@ function taskCard(t, label, ready) {
   };
   const buttons = [];
   if (t.status === "todo" && ready) buttons.push(["Lancer", start, "btn-primary"]);
-  if (t.status === "review") buttons.push(["Valider", act("done"), "btn-primary"], ["À refaire", act("todo"), ""]);
+  if (t.status === "review") buttons.push(["Valider", act("done"), "btn-primary"], ["Demander des changements", () => openTask(t, "changes"), ""]);
   if (t.status === "blocked") buttons.push(["Débloquer", act("todo"), ""]);
+  buttons.push(["Détails", () => openTask(t), "btn-ghost"]);
+  if (t.mission_id) buttons.push(["Voir le code", () => viewTask(t, $("#task-detail")), "btn-ghost"]);
   if (t.status === "todo" || t.status === "doing" || t.status === "review" || t.status === "blocked") buttons.push(["Annuler", act("cancelled"), "btn-ghost"]);
   const meta = [`#${t.id}`, label[t.department] || "sans département", ["", "urgent", "", "plus tard"][t.priority] || ""];
-  if (t.depends_on.length) meta.push(`après ${t.depends_on.map((d) => `#${d}`).join(", ")}`);
+  const waitsFor = t.depends_on.filter((d) => !byId[d] || byId[d].status !== "done");
+  if (t.depends_on.length) meta.push(waitsFor.length && t.status === "todo" ? `attend ${waitsFor.map((d) => `#${d}`).join(", ")}` : `après ${t.depends_on.map((d) => `#${d}`).join(", ")}`);
   if (t.mission_id) meta.push(`mission #${t.mission_id}`);
-  return h("article", { class: "card co-task", "data-status": t.status },
+  const badges = [];
+  if (waiting) badges.push(h("span", { class: "co-badge co-badge-you" }, "● attend ton oui"));
+  if (t.status === "todo" && ready) badges.push(h("span", { class: "co-badge" }, "prête"));
+  if (t.agent) badges.push(h("span", { class: "co-badge co-badge-agent" }, (boardData.agents.find((a) => a.key === t.agent) || {}).name || t.agent));
+  return h("article", { class: "card co-task", "data-status": t.status, draggable: t.status !== "doing" && t.status !== "cancelled" ? "true" : "false",
+    ondragstart: (e) => { dragged = t; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(t.id)); },
+    ondragend: () => { dragged = null; } },
     h("h3", {}, t.title),
     h("span", { class: "meta" }, meta.filter(Boolean).join(" · ")),
+    badges.length ? h("div", { class: "co-badges" }, ...badges) : null,
     t.note ? h("p", {}, t.note) : null,
-    buttons.length ? h("div", { class: "row" }, ...buttons.map(([text, fn, cls]) => h("button", { class: `btn ${cls}`, type: "button", onclick: fn }, h("span", {}, text)))) : null);
+    h("div", { class: "row" }, ...buttons.map(([text, fn, cls]) => h("button", { class: `btn ${cls}`, type: "button", onclick: fn }, h("span", {}, text)))));
+}
+
+/* the task's card in full: detail, history and comments, its mission's steps, files, review */
+const EVENT = { created: "créée", status: "statut", comment: "commentaire", changes: "changements demandés", agent: "confiée à" };
+async function openTask(t, focus = "") {
+  const dialog = $("#task-detail");
+  let card;
+  try { card = await api("GET", `tasks/${t.id}`); } catch (err) { toast(err.message, "error"); return; }
+  const task = card.task;
+  const reload = () => { openTask(task, ""); loadCompany(); };
+  const post = (path, payload, done) => async (e) => {
+    e.preventDefault();
+    try { toast((await api("POST", `tasks/${task.id}/${path}`, payload(e.target))).result, "ok", 6000); if (done) done(); else reload(); }
+    catch (err) { toast(err.message, "error", 7000); }
+  };
+  const agents = boardData ? boardData.agents : [];
+  const assign = h("select", { name: "agent", "aria-label": "Agent de la tâche", disabled: task.status === "doing",
+    onchange: async (e) => { try { toast((await api("POST", `tasks/${task.id}/assign`, { agent: e.target.value })).result, "ok"); } catch (err) { toast(err.message, "error"); } reload(); } },
+    h("option", { value: "", selected: !task.agent }, "L'agent du poste"), ...agents.map((a) => h("option", { value: a.key, selected: a.key === task.agent }, a.name)));
+  const changes = ["review", "done"].includes(task.status) ? h("form", { class: "co-form", onsubmit: post("changes", (f) => ({ text: f.elements.text.value }), () => { dialog.close(); loadCompany(); }) },
+    h("label", {}, h("span", { class: "label" }, "Demander des changements (la tâche repart à son agent)"),
+      h("textarea", { name: "text", rows: 3, required: true, maxlength: 2000, placeholder: "Ce qu'il faut corriger ou ajouter" })),
+    h("button", { class: "btn btn-primary", type: "submit" }, h("span", {}, "Renvoyer avec ces changements"))) : null;
+  const m = card.mission;
+  const steps = m && m.steps && m.steps.length ? h("ol", { class: "co-steps" }, ...m.steps.map((s) =>
+    h("li", { "data-ok": String(s.ok) }, h("strong", {}, `${s.ok ? "✓" : "✗"} ${s.title}`), h("span", { class: "meta" }, ` — ${s.agent}${s.note ? ` · ${s.note}` : ""}`)))) : null;
+  const files = card.files.length ? h("ul", { class: "co-files" }, ...card.files.map((f) => h("li", {},
+    h("button", { class: "btn btn-ghost", type: "button", onclick: async () => {
+      const box = dialog.querySelector(".co-file-view");
+      try { const data = await api("GET", `tasks/${task.id}/file?path=${encodeURIComponent(f.path)}`); box.replaceChildren(h("p", { class: "meta" }, f.path), codeBlock(data.text, data.lang)); }
+      catch (err) { toast(err.message, "error"); }
+    } }, h("span", {}, f.name)),
+    h("a", { class: "meta", href: vscodeLink(f.path) }, " ouvrir dans VS Code")))) : null;
+  dialog.replaceChildren(h("div", { class: "tm-detail co-detail" },
+    h("header", { class: "cv-top" }, h("div", {}, h("h3", { class: "tm-name" }, `#${task.id} ${task.title}`),
+      h("p", { class: "tm-dept" }, `${TSTATUS[task.status] || task.status} · priorité ${["", "urgente", "normale", "plus tard"][task.priority]}${card.blocked_by.length ? ` · attend ${card.blocked_by.map((d) => `#${d}`).join(", ")}` : ""}${card.waiting ? " · ● attend ton oui (onglet Validations)" : ""}`)),
+      h("button", { class: "icon-btn", type: "button", "aria-label": "Fermer", onclick: () => dialog.close() }, "✕")),
+    task.detail ? h("pre", { class: "tm-prompt" }, task.detail) : null,
+    h("label", { class: "co-assign" }, h("span", { class: "label" }, "Agent"), assign),
+    changes,
+    steps ? h("h4", {}, `Mission #${m.id} · ${m.status}`) : null, steps,
+    m && m.error ? h("p", { class: "tm-warn" }, m.error) : null,
+    m && m.report ? h("details", {}, h("summary", {}, "Rapport de la mission"), h("pre", { class: "tm-prompt" }, m.report)) : null,
+    files ? h("h4", {}, "Fichiers produits") : null, files, h("div", { class: "co-file-view" }),
+    task.mission_id ? h("button", { class: "btn", type: "button", onclick: () => viewTask(task, dialog) }, h("span", {}, "Voir le code en direct")) : null,
+    h("h4", {}, "Historique et commentaires"),
+    h("ol", { class: "co-events" }, ...card.events.map((ev) => h("li", { "data-kind": ev.kind },
+      h("span", { class: "meta" }, `${new Date(ev.ts).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })} · ${EVENT[ev.kind] || ev.kind}${ev.actor ? ` · ${ev.actor}` : ""}`),
+      ev.text ? h("p", {}, ev.text) : null))),
+    h("form", { class: "inline-form", onsubmit: post("comment", (f) => ({ text: f.elements.text.value })) },
+      h("input", { type: "text", name: "text", required: true, maxlength: 2000, placeholder: "Un commentaire (l'agent le lit s'il travaille dessus)", "aria-label": "Commentaire" }),
+      h("button", { class: "btn", type: "submit" }, h("span", {}, "Commenter")))));
+  if (!dialog.open) dialog.showModal();
+  if (focus === "changes") dialog.querySelector("textarea")?.focus();
 }
 $("#company-select").addEventListener("change", (e) => {
   companyId = Number(e.target.value) || null;
@@ -700,7 +797,72 @@ async function loadAgents() {
   $("#agents-redaction").replaceChildren(...data.redaction.map(agentCard));
   loadEngines().catch((err) => toast(err.message, "error"));
   loadTrust().catch((err) => toast(err.message, "error"));
+  loadMcp().catch((err) => toast(err.message, "error"));
 }
+/* ---- external MCP servers ---- */
+const MCP_LEVEL = { lecture: "lecture seule", ecriture: "écriture locale", action: "action (validation)" };
+async function loadMcp() {
+  const rows = await api("GET", "mcp");
+  $("#mcp-servers").replaceChildren(...(rows.length ? rows.map(mcpCard) : [h("p", { class: "empty-cards" }, "Aucun serveur MCP branché.")]));
+}
+function mcpCard(s) {
+  const out = h("p", { class: "meta" });
+  const call = (path, body, done) => async () => {
+    try { const r = await api("POST", `mcp/${encodeURIComponent(s.name)}${path}`, body); if (done) toast(done, "ok"); return r; }
+    catch (err) { toast(err.message, "error", 7000); }
+    finally { if (path !== "/test") loadMcp(); }
+  };
+  const test = async () => {
+    out.textContent = "Connexion…";
+    const r = await call("/test", {})();
+    if (!r) { out.textContent = ""; return; }
+    out.textContent = r.ok ? `${r.tools.length} outil${r.tools.length > 1 ? "s" : ""} : ${r.tools.map((t) => t.name).join(", ") || "aucun"}` : `Échec : ${r.error}`;
+  };
+  return h("article", { class: "card", "data-status": s.enabled ? "running" : "done" },
+    h("h3", {}, s.label !== s.name ? `${s.label} (${s.name})` : s.name),
+    h("span", { class: "meta" }, `${s.transport} · ${MCP_LEVEL[s.level] || s.level} · ${s.agents.length ? s.agents.join(", ") : "tous les agents"}${s.enabled ? "" : " · désactivé"}`),
+    h("p", {}, h("code", {}, s.target)),
+    s.description ? h("p", {}, s.description) : null,
+    s.auto.length ? h("p", { class: "meta" }, `Sans validation : ${s.auto.join(", ")}`) : null,
+    s.secrets.length ? h("p", { class: "meta" }, `Secrets (dans .env) : ${s.secrets.map((v) => `${v} ${s.missing.includes(v) ? "(à saisir)" : "✓"}`).join(", ")}`) : null,
+    ...s.secrets.map((v) => h("form", { class: "inline-form", autocomplete: "off", onsubmit: async (e) => {
+      e.preventDefault();
+      try { await api("POST", `mcp/${encodeURIComponent(s.name)}/secret`, { var: v, value: e.target.elements.value.value }); toast(`Secret ${v} enregistré. Clique sur « Tester ».`, "ok", 7000); }
+      catch (err) { toast(err.message, "error", 7000); }
+      loadMcp();
+    } }, h("input", { type: "password", name: "value", required: true, autocomplete: "off", placeholder: s.missing.includes(v) ? `Valeur de ${v} (clé, jeton…)` : `Remplacer ${v} (nouvelle valeur)`, "aria-label": `Valeur du secret ${v}` }),
+      h("button", { class: s.missing.includes(v) ? "btn btn-primary" : "btn", type: "submit" }, s.missing.includes(v) ? "Enregistrer le secret" : "Remplacer"))),
+    out,
+    h("form", { class: "inline-form", autocomplete: "off", onsubmit: async (e) => {
+      e.preventDefault();
+      try { await api("POST", `mcp/${encodeURIComponent(s.name)}/agents`, { agents: e.target.elements.agents.value }); toast(`Agents de ${s.name} mis à jour.`, "ok"); }
+      catch (err) { toast(err.message, "error", 7000); }
+      loadMcp();
+    } }, h("input", { type: "text", name: "agents", value: s.agents.join(", "), placeholder: "tous, ou ex. Kyra, Syfer", "aria-label": `Agents qui utilisent ${s.name}` }),
+      h("button", { class: "btn", type: "submit" }, "Changer les agents")),
+    h("div", { class: "row" },
+      h("button", { class: "btn", type: "button", onclick: test }, h("span", {}, "Tester")),
+      h("button", { class: "btn", type: "button", onclick: call("/toggle", { enabled: s.enabled ? "non" : "oui" }) }, h("span", {}, s.enabled ? "Désactiver" : "Activer")),
+      h("button", { class: "btn btn-ghost", type: "button", onclick: call("/delete", {}, `Serveur ${s.name} débranché.`) }, h("span", {}, "Débrancher"))));
+}
+$("#mcp-form").addEventListener("change", (e) => {
+  if (e.target.name !== "transport") return;
+  const http = e.target.value === "http";
+  e.currentTarget.querySelectorAll(".mcp-http").forEach((el) => { el.hidden = !http; });
+  e.currentTarget.querySelectorAll(".mcp-stdio").forEach((el) => { el.hidden = http; });
+});
+$("#mcp-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try {
+    const s = await api("POST", "mcp", data);
+    toast(`Serveur ${s.name} branché. Clique sur « Tester » pour voir ses outils.`, "ok", 7000);
+    e.target.reset();
+    e.target.querySelectorAll(".mcp-http").forEach((el) => { el.hidden = true; });
+    e.target.querySelectorAll(".mcp-stdio").forEach((el) => { el.hidden = false; });
+  } catch (err) { toast(err.message, "error", 9000); }
+  loadMcp();
+});
 /* ---- earned autonomy and what the AI costs ---- */
 const LEVEL_MARK = { apprenti: "○ apprenti", "confirmé": "◐ confirmé", expert: "● expert" };
 async function loadTrust() {
@@ -961,6 +1123,40 @@ function showPresence(people, unknown, spoof = 0) {
   $("#presence-line").textContent = parts.length ? `Présent : ${parts.join(", ")}` : "";
 }
 
+/* ---- VS Code and Chrome links ---- */
+async function loadLinks() {
+  const [code, browser] = await Promise.all([api("GET", "vscode").catch(() => ({ installed: false })), api("GET", "browser")]);
+  const toggle = $("#vscode-toggle");
+  toggle.textContent = code.connected ? "Débrancher Spectre de VS Code" : "Brancher Spectre dans VS Code";
+  toggle.disabled = !code.installed;
+  toggle.dataset.connected = code.connected ? "1" : "";
+  $("#vscode-state").textContent = !code.installed ? "VS Code introuvable pour cet utilisateur." : code.connected ? `Branché (${code.file}).` : "";
+  $("#browser-folder").textContent = browser.extension;
+  $("#browser-pages").replaceChildren(...(browser.pages.length ? browser.pages.slice(0, 12).map((p) => h("p", { class: "meta" },
+    `#${p.id} · ${new Date(p.ts).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })} · ${p.title || "(sans titre)"} · ${p.url} (${p.chars} car.)`)) : [h("p", { class: "meta" }, browser.ready ? "Aucune page reçue pour l'instant." : "Extension pas encore reliée : affiche la clé pour la créer.")]));
+}
+$("#vscode-toggle").addEventListener("click", async (e) => {
+  const action = e.currentTarget.dataset.connected ? "disconnect" : "connect";
+  try { toast((await api("POST", `vscode/${action}`, {})).result, "ok", 9000); } catch (err) { toast(err.message, "error", 8000); }
+  loadLinks();
+});
+const showKey = async (renew) => {
+  try {
+    const { token } = await api("POST", "browser/token", { renew });
+    const box = $("#browser-token");
+    box.textContent = token; box.hidden = false;
+    if (renew) toast("Nouvelle clé : colle-la dans les options de l'extension.", "ok", 7000);
+  } catch (err) { toast(err.message, "error"); }
+  loadLinks();
+};
+$("#browser-key").addEventListener("click", () => showKey(false));
+$("#browser-renew").addEventListener("click", () => { if (confirm("Changer la clé ? L'extension devra recevoir la nouvelle.")) showKey(true); });
+$("#browser-forget").addEventListener("click", async () => {
+  if (!confirm("Oublier toutes les pages reçues de Chrome ?")) return;
+  try { toast(`${(await api("POST", "browser/forget", {})).forgotten} page(s) oubliée(s).`, "ok"); } catch (err) { toast(err.message, "error"); }
+  loadLinks();
+});
+
 async function loadSettings() {
   const cfg = await api("GET", "config");
   const form = $("#settings-form");
@@ -1009,7 +1205,7 @@ function refreshCompany() {  // the board moves when missions finish: refresh it
   const view = document.querySelector('.as-view[data-view="company"]');
   if (view && !view.hidden) loadCompany().catch(() => {});
 }
-const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, meetings: loadMeetings, automation: loadAutomation, learning: loadLearning, agents: loadAgents, team: loadTeam, call: async () => openCall(), memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces()]) };
+const LOADERS = { talk: loadHistory, approvals: loadApprovals, missions: () => Promise.all([loadMissions(), fillAgentSelect()]), company: loadCompany, meetings: loadMeetings, automation: loadAutomation, learning: loadLearning, agents: loadAgents, team: loadTeam, call: async () => openCall(), memory: loadFacts, initiatives: loadInitiatives, audit: loadAudit, settings: () => Promise.all([loadSettings(), loadFaces(), loadLinks()]) };
 function show(view) {
   $$(".as-nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === view)));
   $$(".as-view").forEach((v) => { v.hidden = v.dataset.view !== view; });

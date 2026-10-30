@@ -11,6 +11,7 @@ own; otherwise the user (or Spectre, when asked) starts them.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import unicodedata
 from typing import Any
@@ -101,6 +102,7 @@ MANUAL = ("todo", "blocked", "done", "cancelled")  # what a person (or Spectre) 
 MAX_COMPANIES = 20
 MAX_TASKS = 200  # open tasks per company
 MAX_PLAN = 12
+MAX_COMMENT = 2000
 
 
 PLANNER = """\
@@ -288,6 +290,7 @@ class Companies:
                 stamp,
             ),
         )
+        self.log(tid, "created", title)
         return self.task(tid)
 
     def set_status(self, task_id: int | str, status: str, note: str = "") -> dict[str, Any]:
@@ -442,7 +445,160 @@ class Companies:
             raise CompanyError("le plan ne contient aucune tâche exploitable")
         return created
 
+    # ---- the card: history, comments, review with requested changes, reassignment ----------
+
+    def log(self, task_id: int, kind: str, text: str = "", actor: str = "") -> None:
+        """One line of a task's history (created, status, comment, changes, agent)."""
+        self.db.execute(
+            "INSERT INTO task_events(task_id, ts, kind, actor, text) VALUES(?, ?, ?, ?, ?)",
+            (task_id, now_iso(), kind, actor[:60], text.strip()[:MAX_COMMENT]),
+        )
+
+    def events(self, task_id: int | str) -> list[dict[str, Any]]:
+        task = self.task(task_id)
+        return self.db.all(
+            "SELECT ts, kind, actor, text FROM task_events WHERE task_id = ? ORDER BY id",
+            (task["id"],),
+        )
+
+    def comment(self, task_id: int | str, text: str, actor: str = "toi") -> dict[str, Any]:
+        """A comment on the card; a running mission reads it before its next step."""
+        task = self.task(task_id)
+        if not text.strip():
+            raise CompanyError("commentaire vide")
+        self.log(task["id"], "comment", text, actor)
+        if task["status"] == "doing" and task["mission_id"]:
+            # the mission may have just ended: the comment stays on the card
+            with contextlib.suppress(CompanyError):
+                steer_mission(self.db, task["mission_id"], f"Commentaire sur la tâche : {text}")
+        return self.task(task["id"])
+
+    def request_changes(self, task_id: int | str, text: str) -> dict[str, Any]:
+        """Send a task to be checked back to its agent, with what to change (it is ready
+        again: « Lancer » or the autopilot restarts it with the request in its detail)."""
+        task = self.task(task_id)
+        if task["status"] not in ("review", "done"):
+            raise CompanyError(
+                f"la tâche #{task['id']} est {STATUS_LABELS[task['status']]} : seule une tâche "
+                "à valider ou faite peut repartir avec des changements"
+            )
+        if not text.strip():
+            raise CompanyError("dis ce qu'il faut changer")
+        agent = task["agent"]
+        if task["mission_id"]:
+            from spectre.assistant.trust import Trust
+
+            trust = Trust(self.db)
+            done_by = trust.mission_agent(task["mission_id"])
+            trust.record(done_by, "task_redo", task["mission_id"])
+            agent = agent or self._stored_agent(done_by)  # back to whoever did it
+        detail = f"{task['detail']}\n\nChangements demandés ({now_iso()[:10]}) : {text.strip()}"
+        self._update(task["id"], status="todo", agent=agent, detail=detail.strip()[:8000])
+        self.log(task["id"], "changes", text, "toi")
+        return self.task(task["id"])
+
+    def assign(self, task_id: int | str, agent: str) -> dict[str, Any]:
+        """Give a task to another agent (or back to its post: empty)."""
+        task = self.task(task_id)
+        if task["status"] == "doing":
+            raise CompanyError(f"la tâche #{task['id']} est en cours : arrête d'abord sa mission")
+        key = self.agent_key(agent)
+        self._update(task["id"], agent=key)
+        self.log(task["id"], "agent", self.agent_label(key) if key else "celui du poste")
+        return self.task(task["id"])
+
+    def _waiting(self, mission_id: int) -> int:
+        """How many of a mission's requests still wait for the user's yes."""
+        asked = []
+        for row in self.db.all(
+            "SELECT detail FROM activity WHERE mission_id = ? AND kind = 'approval'",
+            (mission_id,),
+        ):
+            try:
+                asked.append(int(json.loads(row["detail"] or "{}").get("id", 0)))
+            except (ValueError, TypeError, AttributeError):
+                continue
+        if not asked:
+            return 0
+        marks = ",".join("?" * len(asked))
+        return len(
+            self.db.all(
+                f"SELECT id FROM approvals WHERE status = 'pending' AND id IN ({marks})",  # noqa: S608
+                tuple(asked),
+            )
+        )
+
+    def waiting_tasks(self, company: str | int) -> list[int]:
+        """The company's running tasks whose agent waits for the user (badge on the card)."""
+        return [
+            t["id"]
+            for t in self.tasks(company, open_only=True)
+            if t["status"] == "doing" and t["mission_id"] and self._waiting(t["mission_id"])
+        ]
+
+    def _stored_agent(self, key: str) -> str:
+        try:
+            return self.agent_key(key)
+        except CompanyError:
+            return ""
+
+    def card(self, task_id: int | str) -> dict[str, Any]:
+        """Everything the card shows: the task, its history, its mission's steps and the files
+        its agent wrote (for « Voir le code »)."""
+        task = self.task(task_id)
+        mission: dict[str, Any] = {}
+        files: list[dict[str, Any]] = []
+        waiting = 0
+        if task["mission_id"]:
+            row = self.db.one(
+                "SELECT id, status, steps, report, error, updated_at FROM missions WHERE id = ?",
+                (task["mission_id"],),
+            )
+            if row is not None:
+                steps = json.loads(row["steps"] or "[]")
+                mission = {
+                    "id": row["id"],
+                    "status": row["status"],
+                    "updated_at": row["updated_at"],
+                    "error": row["error"],
+                    "report": row["report"][:6000],
+                    "steps": [
+                        {
+                            "title": str(s.get("step") or ""),
+                            "agent": str(s.get("name") or s.get("key") or ""),
+                            "ok": bool(s.get("ok")),
+                            "note": str(s.get("note") or "")[:400],
+                        }
+                        for s in steps
+                        if isinstance(s, dict)
+                    ],
+                }
+            from spectre.assistant import codeview
+
+            files = codeview.files(self.db, mission=task["mission_id"])
+            waiting = self._waiting(task["mission_id"])
+        blockers = [d for d in task["depends_on"] if self.task(d)["status"] != "done"]
+        return {
+            "task": task,
+            "agent_label": self.agent_label(task["agent"]) if task["agent"] else "",
+            "events": self.events(task["id"]),
+            "mission": mission,
+            "files": files,
+            "waiting": waiting,
+            "blocked_by": blockers,
+        }
+
     def _update(self, task_id: int, **fields: Any) -> None:
+        if "status" in fields:
+            old = self.db.one("SELECT status FROM tasks WHERE id = ?", (task_id,))
+            if old is not None and old["status"] != fields["status"]:
+                self.log(
+                    task_id,
+                    "status",
+                    f"{STATUS_LABELS.get(old['status'], old['status'])} → "
+                    f"{STATUS_LABELS.get(fields['status'], fields['status'])}"
+                    + (f" — {fields['note']}" if fields.get("note") else ""),
+                )
         sets = ", ".join(f"{key} = ?" for key in fields)
         self.db.execute(
             f"UPDATE tasks SET {sets}, updated_at = ? WHERE id = ?",  # noqa: S608 - fixed keys
