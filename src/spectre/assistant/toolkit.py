@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -954,8 +955,9 @@ KITS: dict[str, Kit] = {
         lambda ctx, t, o: [
             _bin(("python", "py")) or "python",
             str(_grammalecte_cli()),
-            "-f",
+            "-ff",
             _local(ctx, t),
+            "-owe",
             "-off",
             "apos",
         ],
@@ -1430,6 +1432,36 @@ def describe(config: Any) -> list[dict[str, Any]]:
     return found
 
 
+def _grammalecte(command: list[str], runner: Callable[..., Any]) -> str:
+    """Grammalecte writes its findings to <file>.res.txt, never to the console: check a copy
+    in a temporary folder (the manuscript's folder stays untouched) and return what it found."""
+    source = Path(command[3])
+    if not source.is_file():
+        raise ActionError(f"fichier introuvable : {source}")
+    with tempfile.TemporaryDirectory() as tmp:
+        copy = Path(tmp) / f"texte{source.suffix or '.txt'}"
+        shutil.copyfile(source, copy)
+        try:
+            proc = runner(
+                [*command[:3], str(copy), *command[4:]],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=TIMEOUT_S,
+                check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise ActionError(f"Grammalecte a dépassé {int(TIMEOUT_S)} s") from exc
+        found = copy.with_suffix(".res.txt")
+        if proc.returncode != 0 or not found.is_file():
+            detail = ((proc.stderr or "") + (proc.stdout or "")).strip() or "pas de résultat"
+            raise ActionError(f"Grammalecte (code {proc.returncode}) : {detail[:400]}")
+        text = found.read_text(encoding="utf-8", errors="replace").strip()
+    return (text or "Aucune faute trouvée par Grammalecte.")[:MAX_READ_CHARS]
+
+
 def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> str:
     """Run one toolkit program and return its output (truncated)."""
     kit = KITS.get(name)
@@ -1451,6 +1483,8 @@ def run(ctx: ActionContext, name: str, target: str = "", options: str = "") -> s
         raise ActionError("pandoc : indique le fichier de sortie dans options (ex. sortie.docx)")
     command = kit.argv(ctx, target, options)
     runner = ctx.runner or subprocess.run
+    if name == "grammalecte":
+        return _grammalecte(command, runner)
     extra_env = kit.env(ctx, target, options) if kit.env is not None else {}
     try:
         proc = runner(

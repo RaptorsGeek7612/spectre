@@ -330,8 +330,23 @@ def test_designer_and_novelist_kits(kit_ctx: Any, monkeypatch: pytest.MonkeyPatc
         toolkit.run(ctx, "grammalecte", str(folder / "ch1.md"))
     grammar.parent.mkdir(parents=True)
     grammar.write_text("", encoding="utf-8")
-    toolkit.run(ctx, "grammalecte", str(folder / "ch1.md"))
-    assert ctx.runner.calls[-1][1] == str(grammar)
+    with pytest.raises(ActionError, match="introuvable"):
+        toolkit.run(ctx, "grammalecte", str(folder / "ch1.md"))
+    (folder / "ch1.md").write_text("Les enfant joue.", encoding="utf-8")
+    with pytest.raises(ActionError, match=r"code 0"):  # the runner writes no .res.txt
+        toolkit.run(ctx, "grammalecte", str(folder / "ch1.md"))
+    call = ctx.runner.calls[-1]
+    assert call[1:3] == [str(grammar), "-ff"] and call[3] != str(folder / "ch1.md")
+
+    def corrects(cmd: list[str], **kw: Any) -> Any:
+        import subprocess
+
+        Path(cmd[3]).with_suffix(".res.txt").write_text("« enfant » au pluriel", encoding="utf-8")
+        return subprocess.CompletedProcess(cmd, 0, "§ 1", "")
+
+    ctx.runner = corrects
+    assert toolkit.run(ctx, "grammalecte", str(folder / "ch1.md")) == "« enfant » au pluriel"
+    assert sorted(f.name for f in folder.iterdir() if f.is_file()) == ["ch1.md", "logo.png"]
     names = {k["name"]: k for k in toolkit.describe(None)}
     assert names["grammalecte"]["installed"] and "celya" in names["epub_verif"]["agents"]
 
