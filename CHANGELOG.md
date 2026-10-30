@@ -7,7 +7,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-30
+
 ### Added
+- **Mot de passe oublié** : lien sur l'écran de connexion ; un code de 8 chiffres (10 min,
+  5 essais, une demande par minute) est écrit dans `~/.spectre/webui/code-mot-de-passe.txt`
+  et envoyé aux conversations Telegram reliées, jamais à la page ; redemander renvoie le code
+  encore valable. Le nouveau mot de passe va dans l'environnement utilisateur Windows et la clé
+  de signature change : toutes les anciennes sessions sont fermées.
 - **Deux agentes sur Gemini** (`gemini:gemini-pro-latest` par défaut, changeable dans la page
   Équipe ; clé `GEMINI_API_KEY`) : **Charlotte**, graphiste (compétence `spectre-graphisme` ;
   outils `vectoriser` (VTracer), `palette` (ImageMagick), `mise_en_page` (Typst), et les outils
@@ -37,6 +44,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   motion-graphics, product-launch-video, faceless-explainer, music-to-video…) : listées dans
   le prompt avec leurs agents (Kyra, Charlotte, Célya, Gétro) et lues sur place
   (`competences.SHARED`) ; les descriptions YAML repliées (`description: >`) sont comprises.
+
+### Fixed
+- Grammalecte : sous Windows il écrit ses résultats dans `<fichier>.res.txt` et rien sur la
+  console ; l'outil vérifie une copie dans un dossier temporaire et renvoie ce fichier.
+- L'extension Chrome n'envoie plus les pages de Spectre lui-même.
 
 ## [0.25.0] - 2026-10-24
 
