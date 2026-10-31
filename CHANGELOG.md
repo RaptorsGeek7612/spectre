@@ -7,6 +7,21 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Changed
+- **Tableau des tâches façon Claude Kanban** (Entreprise) : en haut de la page, colonnes côte à côte
+  (défilement latéral, une colonne par écran sur le téléphone), une couleur par colonne (pastille,
+  compteur, cartes teintées, « En cours » qui pulse, lueur ambre quand une tâche attend ton oui),
+  badge coloré par agent, filtre par agent, « attend / bloque #n », indicateur « en direct »,
+  cartes compactes qui s'ouvrent d'un clic, menu « Déplacer » sur le téléphone (pas de glisser).
+- **Tâches faites** : une ligne chacune, les 5 plus récentes, le reste sur demande.
+
+### Fixed
+- **Conversation sur le téléphone** : la réponse de Spectre défile dans son cadre au lieu de
+  pousser le micro et la saisie hors de l'écran ; une fois effacée, elle ne prend plus de place.
+  Les réponses longues (rapports de mission) restent plus longtemps, ne s'effacent pas pendant
+  qu'on les lit, et « Lire en entier » les ouvre dans l'historique. Rapports des missions plus
+  hauts une fois ouverts.
+
 ## [0.26.0] - 2026-10-30
 
 ### Added

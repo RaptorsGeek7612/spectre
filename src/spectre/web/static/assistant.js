@@ -51,12 +51,31 @@ const SLEEP_HINT = REMOTE ? "Touche le micro pour me parler." : "Dis « Spectre 
 
 const orb = new Orb($("#orb"));
 const fadeTimers = {};
+// A caption fades, then takes no room at all, so the dock and the say field go back down. A long
+// answer (a mission report) stays longer, scrolls in place, never fades while it is touched, and
+// « Lire en entier » opens it in the history.
 function caption(id, text, ms) {
   const el = $(id);
   clearTimeout(fadeTimers[id]);
-  el.classList.remove("fading");
+  el.classList.remove("fading", "gone");
   el.textContent = text;
-  if (ms) fadeTimers[id] = setTimeout(() => el.classList.add("fading"), ms);
+  el.scrollTop = 0;
+  const long = text.length > 280;
+  el.classList.toggle("long", long);
+  if (id === "#said") $("#read-all").hidden = !long;
+  if (!ms) return;
+  const wait = long ? Math.min(120000, Math.max(ms, text.length * 50)) : ms;
+  const fade = () => {
+    if (el.matches(":hover, :focus-within") || el.dataset.touched) { fadeTimers[id] = setTimeout(fade, 3000); return; }
+    el.classList.add("fading");
+    fadeTimers[id] = setTimeout(() => { el.classList.add("gone"); if (id === "#said") $("#read-all").hidden = true; }, 700);
+  };
+  fadeTimers[id] = setTimeout(fade, wait);
+}
+for (const id of ["#said", "#heard"]) {
+  const el = $(id);
+  el.addEventListener("touchstart", () => { el.dataset.touched = "1"; }, { passive: true });
+  el.addEventListener("touchend", () => { setTimeout(() => { delete el.dataset.touched; }, 4000); }, { passive: true });
 }
 function setLevel(v) {
   orb.setLevel(v);
@@ -244,14 +263,27 @@ async function loadCompany() {
   const label = Object.fromEntries(data.departments.map((d) => [d.key, d.label]));
   boardData = data;
   const byId = Object.fromEntries(data.tasks.map((t) => [t.id, t]));
+  // who blocks whom, both ways, shown on the cards like Claude's task boards
+  blocks = {};
+  for (const t of data.tasks) for (const d of t.depends_on) (blocks[d] ||= []).push(t.id);
+  const owners = [...new Set(data.tasks.map((t) => t.agent).filter(Boolean))];
+  if (boardOwner && !owners.includes(boardOwner)) boardOwner = "";
+  const agentName = (k) => (data.agents.find((a) => a.key === k) || {}).name || k;
+  $("#company-board-bar").replaceChildren(
+    h("label", { class: "co-filter" }, h("span", { class: "label" }, "Agent"),
+      h("select", { "aria-label": "Filtrer le tableau par agent", onchange: (e) => { boardOwner = e.target.value; loadCompany().catch(() => {}); } },
+        h("option", { value: "", selected: !boardOwner }, "Tous"),
+        ...owners.map((k) => h("option", { value: k, selected: k === boardOwner }, agentName(k))))),
+    h("span", { class: "co-live", title: "Le tableau se met à jour tout seul" }, h("i", { "aria-hidden": "true" }), "en direct"),
+    ...(data.waiting.length ? [h("span", { class: "co-badge co-badge-you" }, `● ${data.waiting.length} attend${data.waiting.length > 1 ? "ent" : ""} ton oui`)] : []));
   const columns = ["todo", "doing", "review", "blocked", "done"].map((status) => {
-    const tasks = data.tasks.filter((t) => t.status === status);
+    const tasks = data.tasks.filter((t) => t.status === status && (!boardOwner || t.agent === boardOwner));
     return h("section", { class: "co-col", "data-status": status,
       ondragover: (e) => { if (dragged && canDrop(dragged, status)) { e.preventDefault(); e.currentTarget.classList.add("co-drop"); } },
       ondragleave: (e) => e.currentTarget.classList.remove("co-drop"),
       ondrop: (e) => { e.preventDefault(); e.currentTarget.classList.remove("co-drop"); const t = dragged; dragged = null; if (t) moveTask(t, status); } },
-      h("h4", {}, TSTATUS[status], h("b", {}, tasks.length || "")),
-      ...tasks.map((t) => taskCard(t, label, data.ready.includes(t.id), data.waiting.includes(t.id), byId)));
+      h("h4", {}, h("i", { class: "co-dot", "aria-hidden": "true" }), h("span", {}, TSTATUS[status]), h("b", { class: "co-count" }, tasks.length)),
+      ...(status === "done" ? doneList(tasks) : tasks.map((t) => taskCard(t, label, data.ready.includes(t.id), data.waiting.includes(t.id), byId))));
   });
   $("#company-board").replaceChildren(...columns);
   scheduleBoard();
@@ -428,7 +460,14 @@ $("#dev-form").addEventListener("submit", async (e) => {
 });
 
 /* the board: drag a card to another column (like moving it by hand), live every 5 s */
-let boardData = null, dragged = null, boardTimer = null;
+let boardData = null, dragged = null, boardTimer = null, boardOwner = "", blocks = {};
+// each agent keeps its colour on the board (owner badges), taken from the interface's spectrum
+const AGENT_HUES = ["--l486", "--l405", "--l546", "--l615", "--l436", "--l589", "--l656"];
+function agentHue(key) {
+  let n = 0;
+  for (const c of String(key)) n = (n * 31 + c.charCodeAt(0)) >>> 0;
+  return `var(${AGENT_HUES[n % AGENT_HUES.length]})`;
+}
 const DROPS = { todo: ["blocked", "review", "done", "cancelled"], blocked: ["todo"], done: ["todo", "review", "blocked"] };
 function canDrop(t, status) {
   if (status === t.status) return false;
@@ -451,6 +490,34 @@ function scheduleBoard() {
     if (view && !view.hidden && !document.hidden && !busy) loadCompany().catch(() => {});
     else if (view && !view.hidden) scheduleBoard();
   }, 5000);
+}
+
+/* finished tasks take little room: one line each, the most recent first, the rest on demand */
+const DONE_SHOWN = 5;
+let doneAll = false;
+function doneList(tasks) {
+  if (!tasks.length) return [];
+  const recent = [...tasks].sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+  const shown = doneAll ? recent : recent.slice(0, DONE_SHOWN);
+  const rows = shown.map((t) => h("li", {}, h("button", { class: "co-done-row", type: "button", draggable: "true", title: t.title,
+    ondragstart: (e) => { dragged = t; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(t.id)); },
+    ondragend: () => { dragged = null; }, onclick: () => openTask(t) },
+  h("span", { class: "co-done-check", "aria-hidden": "true" }, "✓"), h("span", { class: "co-done-title" }, t.title),
+  h("span", { class: "meta" }, `#${t.id}${t.updated_at ? ` · ${new Date(t.updated_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}` : ""}`))));
+  const more = recent.length > DONE_SHOWN ? h("button", { class: "btn btn-ghost co-done-more", type: "button",
+    onclick: () => { doneAll = !doneAll; loadCompany().catch(() => {}); } },
+  h("span", {}, doneAll ? "Replier" : `Voir les ${recent.length - DONE_SHOWN} plus anciennes`)) : null;
+  return [h("ul", { class: "co-done" }, ...rows), more];
+}
+
+/* on a phone there is no drag and drop: the same moves from a menu on the card */
+const COARSE = matchMedia("(pointer: coarse)");
+function moveMenu(t) {
+  const targets = ["todo", "doing", "review", "blocked", "done"].filter((s) => canDrop(t, s));
+  if (!targets.length) return null;
+  return h("select", { class: "co-move", "aria-label": `Déplacer la tâche #${t.id}`,
+    onchange: (e) => { const to = e.target.value; e.target.value = ""; if (to) moveTask(t, to); } },
+  h("option", { value: "" }, "Déplacer…"), ...targets.map((s) => h("option", { value: s }, `→ ${TSTATUS[s]}`)));
 }
 
 function taskCard(t, label, ready, waiting, byId) {
@@ -476,15 +543,18 @@ function taskCard(t, label, ready, waiting, byId) {
   const badges = [];
   if (waiting) badges.push(h("span", { class: "co-badge co-badge-you" }, "● attend ton oui"));
   if (t.status === "todo" && ready) badges.push(h("span", { class: "co-badge" }, "prête"));
-  if (t.agent) badges.push(h("span", { class: "co-badge co-badge-agent" }, (boardData.agents.find((a) => a.key === t.agent) || {}).name || t.agent));
-  return h("article", { class: "card co-task", "data-status": t.status, draggable: t.status !== "doing" && t.status !== "cancelled" ? "true" : "false",
+  if (t.agent) badges.push(h("span", { class: "co-badge co-badge-agent", style: `--agent: ${agentHue(t.agent)}` }, (boardData.agents.find((a) => a.key === t.agent) || {}).name || t.agent));
+  if (blocks[t.id] && t.status !== "done") badges.push(h("span", { class: "co-badge co-badge-blocks" }, `bloque ${blocks[t.id].map((d) => `#${d}`).join(", ")}`));
+  return h("article", { class: "card co-task", "data-status": t.status, "data-waiting": waiting ? "true" : null, "data-priority": String(t.priority), draggable: t.status !== "doing" && t.status !== "cancelled" ? "true" : "false",
     ondragstart: (e) => { dragged = t; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(t.id)); },
-    ondragend: () => { dragged = null; } },
+    ondragend: () => { dragged = null; },
+    onclick: (e) => { if (!e.target.closest("button, select, a")) openTask(t); } },
     h("h3", {}, t.title),
     h("span", { class: "meta" }, meta.filter(Boolean).join(" · ")),
     badges.length ? h("div", { class: "co-badges" }, ...badges) : null,
     t.note ? h("p", {}, t.note) : null,
-    h("div", { class: "row" }, ...buttons.map(([text, fn, cls]) => h("button", { class: `btn ${cls}`, type: "button", onclick: fn }, h("span", {}, text)))));
+    h("div", { class: "row" }, ...buttons.map(([text, fn, cls]) => h("button", { class: `btn ${cls}`, type: "button", onclick: fn }, h("span", {}, text))),
+      COARSE.matches ? moveMenu(t) : null));
 }
 
 /* the task's card in full: detail, history and comments, its mission's steps, files, review */
@@ -1420,6 +1490,11 @@ function connect() {
 }
 
 /* ---- wiring ---- */
+$("#read-all").addEventListener("click", () => {
+  const panel = $("#history");
+  panel.hidden = false;
+  loadHistory().then(() => { const last = $("#transcript").lastElementChild; if (last) last.scrollIntoView({ block: "start" }); }).catch(() => {});
+});
 $("#as-nav").addEventListener("click", (e) => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
 document.addEventListener("click", (e) => {
   const a = e.target.closest("[data-action]")?.dataset.action;
