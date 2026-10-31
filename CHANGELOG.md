@@ -7,6 +7,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Monty, expert en cryptographie** (sur Mistral AI, via Vibe et le compte Le Chat) : primitives,
+  protocoles (TLS, SSH, OpenPGP, age, Signal, MLS), PKI, gestion des clés, post-quantique
+  (ML-KEM, ML-DSA, SLH-DSA, FN-DSA et HQC à venir, hybridation, CBOM), audit de la crypto dans
+  le code et sur les serveurs, cryptanalyse pédagogique ; compétence `spectre-cryptographie`
+  (état des normes et de la veille fin 2026, dates non confirmées signalées comme telles).
+- Outils de Monty : `algos_crypto`, `certificat`, `certificat_lint`, `asn1`, `empreinte`,
+  `cle_test` (clés de TEST dans le workspace, post-quantiques comprises), `gpg_verif`,
+  `age_chiffrer`, `sslyze` (distant : validation), plus Semgrep, Gitleaks et l'outil
+  `crypto_maths` (PGCD, inverse et puissance modulaires, primalité, petite factorisation,
+  entropie, anniversaire, force brute). Installés : OpenSSL 4.1, GnuPG 2.5, age 1.3, step 0.31,
+  SSLyze.
+
 ## [0.26.1] - 2026-11-01
 
 ### Changed

@@ -54,6 +54,7 @@ NEEDS = {
     "lexy": Need("jeux, paris, bourse et crypto", tools=2, reasoning=1),
     "charlotte": Need("graphisme", tools=2, vision=2),
     "celya": Need("écriture romanesque", tools=1, reasoning=2, context=2),
+    "monty": Need("cryptographie", tools=2, code=2, reasoning=3),
 }
 DEFAULT_NEED = Need("agent personnalisé", tools=2, reasoning=1)
 

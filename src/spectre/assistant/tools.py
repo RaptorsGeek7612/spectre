@@ -864,6 +864,12 @@ def _science(ctx: ActionContext, operation: str, expression: str) -> str:
     return toolkit.science(operation, expression)
 
 
+def _crypto_maths(ctx: ActionContext, operation: str, values: list[str]) -> str:
+    from spectre.assistant import toolkit
+
+    return toolkit.crypto_maths(operation, [str(v) for v in values])
+
+
 def _betting(ctx: ActionContext, operation: str, values: list[float]) -> str:
     from spectre.assistant import toolkit
 
@@ -1880,13 +1886,27 @@ TOOLS: dict[str, Tool] = {
         ),
         Tool(
             "science",
-            "Calcul scientifique symbolique (Ysyss). operation : calculer (évaluer), simplifier, "
-            "resoudre (équation en x), deriver, integrer. expression : la formule, x comme "
-            "variable (ex. x**2 - 4, sin(x), sqrt(2)*pi).",
+            "Calcul scientifique symbolique (Ysyss, Monty). operation : calculer (évaluer), "
+            "simplifier, resoudre (équation en x), deriver, integrer. expression : la formule, "
+            "x comme variable (ex. x**2 - 4, sin(x), sqrt(2)*pi).",
             Level.READ,
             "read",
             _science,
-            agents=("ysyss",),
+            agents=("ysyss", "monty"),
+        ),
+        Tool(
+            "crypto_maths",
+            "Calculs de cryptographie (Monty). operation : pgcd (deux entiers), inverse (a, "
+            "module), puissance (base, exposant, module), premier (un entier), factoriser (un "
+            "entier de 80 bits au plus), entropie (taille de l'alphabet, longueur), "
+            "anniversaire (bits de l'empreinte, nombre d'éléments → probabilité de collision), "
+            "force_brute (bits de sécurité, essais par seconde → durée). values : les nombres, "
+            "en texte (décimal ou 0x…) pour garder les grands entiers exacts. Jamais une clé "
+            "réelle de l'utilisateur.",
+            Level.READ,
+            "read",
+            _crypto_maths,
+            agents=("monty",),
         ),
         Tool(
             "paris",

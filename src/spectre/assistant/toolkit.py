@@ -71,6 +71,8 @@ def _bin(names: tuple[str, ...]) -> str | None:
         Path.home() / "AppData" / "Local" / "Programs" / "Microsoft VS Code" / "bin",
         Path("C:/Program Files/Calibre2"),
         Path("C:/Program Files/FontForgeBuilds/bin"),
+        Path("C:/Program Files/OpenSSL-Win64/bin"),
+        Path("C:/Program Files/GnuPG/bin"),
         # Chromium (open source) as installed by Playwright: Kyra renders her HTML designs
         *sorted(
             (Path.home() / "AppData" / "Local" / "ms-playwright").glob("chromium-*/chrome-win*"),
@@ -413,6 +415,115 @@ def _epubcheck_jar() -> Path:
     return found or Path.home() / "Apps" / "epubcheck" / "epubcheck.jar"
 
 
+# ---- Monty: OpenSSL 4 (certificates, digests, post-quantum test keys), GnuPG, age, SSLyze ----
+OPENSSL_WIN = Path("C:/Program Files/OpenSSL-Win64/bin")
+DIGESTS = ("sha256", "sha384", "sha512", "sha3-256", "sha3-512", "blake2b512", "sha1", "md5")
+# test key algorithm -> genpkey arguments (OpenSSL >= 3.5 has the post-quantum ones built in)
+TEST_KEYS = {
+    "ml-kem-512": ["-algorithm", "ML-KEM-512"],
+    "ml-kem-768": ["-algorithm", "ML-KEM-768"],
+    "ml-kem-1024": ["-algorithm", "ML-KEM-1024"],
+    "ml-dsa-44": ["-algorithm", "ML-DSA-44"],
+    "ml-dsa-65": ["-algorithm", "ML-DSA-65"],
+    "ml-dsa-87": ["-algorithm", "ML-DSA-87"],
+    "slh-dsa-sha2-128s": ["-algorithm", "SLH-DSA-SHA2-128s"],
+    "slh-dsa-shake-128f": ["-algorithm", "SLH-DSA-SHAKE-128f"],
+    "ed25519": ["-algorithm", "ED25519"],
+    "x25519": ["-algorithm", "X25519"],
+    "ed448": ["-algorithm", "ED448"],
+    "x448": ["-algorithm", "X448"],
+    "ec-p256": ["-algorithm", "EC", "-pkeyopt", "ec_paramgen_curve:P-256"],
+    "ec-p384": ["-algorithm", "EC", "-pkeyopt", "ec_paramgen_curve:P-384"],
+    "rsa-3072": ["-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:3072"],
+    "rsa-4096": ["-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:4096"],
+}
+HOST = re.compile(r"^(https?://)?[A-Za-z0-9][A-Za-z0-9.-]*(:\d{1,5})?/?$")
+AGE_RECIPIENT = re.compile(r"^(age1[0-9a-z]{20,}|ssh-ed25519 [A-Za-z0-9+/=]+)$")
+
+
+def _openssl() -> str:
+    """The Windows OpenSSL (4.x, post-quantum); Git's own copy only as a fallback."""
+    own = OPENSSL_WIN / "openssl.exe"
+    return str(own) if own.is_file() else _bin(("openssl",)) or "openssl"
+
+
+def _host(target: str) -> str:
+    """A server to audit: a host name or address, an optional port (no path, no options)."""
+    raw = target.strip()
+    if not HOST.match(raw):
+        raise ActionError("cible : un nom de serveur, ex. exemple.fr ou exemple.fr:443")
+    return raw.split("://")[-1].rstrip("/")
+
+
+def _digest_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    algo = options.strip().lower() or "sha256"
+    if algo not in DIGESTS:
+        raise ActionError(f"empreinte : options = un algorithme parmi {', '.join(DIGESTS)}")
+    return [_openssl(), "dgst", f"-{algo}", _local(ctx, target)]
+
+
+def _pem(path: str) -> bool:
+    try:
+        with open(path, "rb") as fh:
+            return b"-----BEGIN" in fh.read(4096)
+    except OSError:
+        return True
+
+
+def _asn1_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    path = _local(ctx, target)
+    form = [] if _pem(path) else ["-inform", "DER"]
+    return [_openssl(), "asn1parse", *form, "-in", path, "-i"]
+
+
+def _test_key(options: str) -> str:
+    algo = options.strip().lower() or "ml-kem-768"
+    if algo not in TEST_KEYS:
+        raise ActionError(f"cle_test : options = un algorithme parmi {', '.join(TEST_KEYS)}")
+    return algo
+
+
+def _test_key_out(ctx: ActionContext, target: str, options: str) -> Path:
+    """Test keys live in the workspace, named TEST so nobody takes them for real ones."""
+    name = re.sub(r"[^A-Za-z0-9_-]", "", target.strip())[:40] or "cle"
+    return ctx.workspace / "crypto-test" / f"TEST-{_test_key(options)}-{name}.pem"
+
+
+def _test_key_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    out = _test_key_out(ctx, target, options)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    return [_openssl(), "genpkey", *TEST_KEYS[_test_key(options)], "-out", str(out)]
+
+
+def _gpg_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    signed = _local(ctx, target)
+    if options.strip():
+        signature = _local(ctx, options)
+    else:
+        found = [
+            f"{signed}{ext}" for ext in (".asc", ".sig", ".gpg") if Path(f"{signed}{ext}").is_file()
+        ]
+        if not found:
+            raise ActionError("gpg_verif : options = le fichier de signature (.asc ou .sig)")
+        signature = found[0]
+    return [_bin(("gpg",)) or "gpg", "--batch", "--verify", signature, signed]
+
+
+def _age_out(ctx: ActionContext, target: str, options: str) -> Path:
+    source = resolve_path(ctx, target)
+    return resolve_path(ctx, str(source.with_name(f"{source.name}.age")))
+
+
+def _age_argv(ctx: ActionContext, target: str, options: str) -> list[str]:
+    recipient = options.strip()
+    if not AGE_RECIPIENT.match(recipient):
+        raise ActionError(
+            "age_chiffrer : options = la clé PUBLIQUE du destinataire (age1… ou ssh-ed25519 …)"
+        )
+    out = _age_out(ctx, target, options)
+    return [_bin(("age",)) or "age", "-r", recipient, "-o", str(out), _local(ctx, target)]
+
+
 def _ebook_out(ctx: ActionContext, target: str, options: str) -> Path:
     kind = options.strip().lower().lstrip(".") or "epub"
     if kind not in ("epub", "azw3", "pdf", "docx", "odt", "txt", "mobi"):
@@ -423,7 +534,7 @@ def _ebook_out(ctx: ActionContext, target: str, options: str) -> Path:
 KITS: dict[str, Kit] = {
     "gitleaks": Kit(
         "Gitleaks (fuite de secrets)",
-        ("mistral",),
+        ("mistral", "monty"),
         Level.READ,
         "scan",
         lambda ctx, t, o: [
@@ -455,7 +566,7 @@ KITS: dict[str, Kit] = {
     ),
     "semgrep": Kit(
         "Semgrep (analyse de code, SAST)",
-        ("mistral", "cursor"),
+        ("mistral", "cursor", "monty"),
         Level.READ,
         "scan",
         lambda ctx, t, o: [
@@ -990,6 +1101,85 @@ KITS: dict[str, Kit] = {
         output=_ebook_out,
         timeout=900.0,
     ),
+    # ---- Monty, cryptography
+    "algos_crypto": Kit(
+        "OpenSSL (algorithmes disponibles ici : KEM et signatures, post-quantique compris)",
+        ("monty",),
+        Level.READ,
+        "read",
+        lambda ctx, t, o: [_openssl(), "list", "-kem-algorithms", "-signature-algorithms"],
+        ("openssl",),
+        needs_target=False,
+    ),
+    "certificat": Kit(
+        "OpenSSL (lire un certificat X.509 : émetteur, validité, algorithmes, extensions)",
+        ("monty", "mistral"),
+        Level.READ,
+        "read",
+        lambda ctx, t, o: [_openssl(), "x509", "-in", _local(ctx, t), "-noout", "-text"],
+        ("openssl",),
+    ),
+    "certificat_lint": Kit(
+        "step (contrôle d'un certificat selon les règles des autorités de certification)",
+        ("monty",),
+        Level.READ,
+        "read",
+        lambda ctx, t, o: [_bin(("step",)) or "step", "certificate", "lint", _local(ctx, t)],
+        ("step",),
+    ),
+    "asn1": Kit(
+        "OpenSSL (structure ASN.1 d'une clé publique, d'un certificat ou d'une signature)",
+        ("monty",),
+        Level.READ,
+        "read",
+        _asn1_argv,
+        ("openssl",),
+    ),
+    "empreinte": Kit(
+        "OpenSSL (empreinte d'un fichier : sha256, sha3-256, blake2b512…)",
+        ("monty", "mistral"),
+        Level.READ,
+        "read",
+        _digest_argv,
+        ("openssl",),
+    ),
+    "cle_test": Kit(
+        "OpenSSL (clé de TEST dans le workspace : ML-KEM, ML-DSA, SLH-DSA, Ed25519, EC, RSA)",
+        ("monty",),
+        Level.WRITE,
+        "convert",
+        _test_key_argv,
+        ("openssl",),
+        needs_target=False,
+        output=_test_key_out,
+    ),
+    "gpg_verif": Kit(
+        "GnuPG (vérifier la signature OpenPGP d'un fichier)",
+        ("monty", "mistral"),
+        Level.READ,
+        "read",
+        _gpg_argv,
+        ("gpg",),
+    ),
+    "age_chiffrer": Kit(
+        "age (chiffrer un fichier pour la clé publique d'un destinataire)",
+        ("monty",),
+        Level.WRITE,
+        "convert",
+        _age_argv,
+        ("age",),
+        output=_age_out,
+    ),
+    "sslyze": Kit(
+        "SSLyze (configuration TLS d'un serveur autorisé)",
+        ("monty", "mistral"),
+        Level.EXTERNAL,
+        "scan_remote",
+        lambda ctx, t, o: [*_uv_tool("sslyze", "sslyze"), _host(t)],
+        ("sslyze",),
+        remote=True,
+        timeout=600.0,
+    ),
 }
 
 # Pure financial maths (numpy-financial), for Clarke and Simon: no subprocess, no files.
@@ -1025,7 +1215,7 @@ def finance(operation: str, values: list[float]) -> str:
 
 
 # Symbolic and numeric maths (SymPy), for Ysyss: no subprocess, no files.
-SCIENCE_AGENTS = ("ysyss",)
+SCIENCE_AGENTS = ("ysyss", "monty")
 SCIENCE_OPS = {
     "calculer": "évaluer une expression (ex. sqrt(2)*pi)",
     "simplifier": "simplifier une expression",
@@ -1056,6 +1246,85 @@ def science(operation: str, expression: str) -> str:
     except (sp.SympifyError, ValueError, TypeError, NotImplementedError) as exc:
         raise ActionError(f"expression invalide : {exc}") from exc
     raise ActionError(f"opération inconnue : {operation} (au choix : {', '.join(SCIENCE_OPS)})")
+
+
+# Number theory and security sizing, for Monty: bounded, no subprocess, no files.
+CRYPTO_AGENTS = ("monty",)
+CRYPTO_OPS = {
+    "pgcd": "PGCD de deux entiers (ex. deux modules RSA qui partagent un facteur)",
+    "inverse": "inverse modulaire — a, puis le module n",
+    "puissance": "exponentiation modulaire — base, exposant, module",
+    "premier": "test de primalité d'un entier",
+    "factoriser": "factorisation d'un entier de 80 bits au plus (exercices)",
+    "entropie": "entropie d'un secret aléatoire — taille de l'alphabet, longueur",
+    "anniversaire": "probabilité de collision — bits de l'empreinte, nombre d'éléments",
+    "force_brute": "durée d'une recherche exhaustive — bits de sécurité, essais par seconde",
+}
+MAX_INT_DIGITS = 2000  # big enough for RSA-4096 and beyond, small enough to stay instant
+
+
+def _ints(raw: list[str], count: int, op: str) -> list[int]:
+    if len(raw) != count:
+        raise ActionError(f"{op} : {count} nombre(s) attendu(s)")
+    try:
+        nums = [int(str(v).strip().replace(" ", ""), 0) for v in raw]
+    except ValueError as exc:
+        raise ActionError(f"{op} : des entiers (décimal ou 0x…)") from exc
+    if any(len(str(abs(n))) > MAX_INT_DIGITS for n in nums):
+        raise ActionError(f"{op} : nombre trop grand")
+    return nums
+
+
+def crypto_maths(operation: str, values: list[str]) -> str:
+    """One bounded number-theory or sizing computation (SymPy for primes); never a key."""
+    import math
+
+    import sympy as sp
+
+    op = operation.strip().lower()
+    if op == "pgcd":
+        a, b = _ints(values, 2, op)
+        g = math.gcd(a, b)
+        return f"PGCD = {g}" + (" (facteur commun : les deux modules sont cassés)" if g > 1 else "")
+    if op == "inverse":
+        a, n = _ints(values, 2, op)
+        try:
+            return f"{a}⁻¹ mod {n} = {pow(a, -1, n)}"
+        except ValueError as exc:
+            raise ActionError("pas d'inverse : a et n ne sont pas premiers entre eux") from exc
+    if op == "puissance":
+        b, e, n = _ints(values, 3, op)
+        if n <= 0 or e < 0:
+            raise ActionError("puissance : module > 0 et exposant ≥ 0")
+        return f"{b}^{e} mod {n} = {pow(b, e, n)}"
+    if op == "premier":
+        (n,) = _ints(values, 1, op)
+        return f"{n} est {'premier' if sp.isprime(n) else 'composé'} ({n.bit_length()} bits)"
+    if op == "factoriser":
+        (n,) = _ints(values, 1, op)
+        if n.bit_length() > 80 or n < 2:
+            raise ActionError(
+                "factoriser : un entier de 2 à 80 bits (au-delà, c'est le but de RSA)"
+            )
+        parts = sp.factorint(n)
+        return f"{n} = " + " × ".join(f"{p}^{k}" if k > 1 else str(p) for p, k in parts.items())
+    try:
+        nums = [float(str(v).replace(",", ".")) for v in values]
+    except ValueError as exc:
+        raise ActionError(f"{op} : des nombres") from exc
+    if op == "entropie" and len(nums) == 2 and nums[0] >= 2 and nums[1] >= 1:
+        bits = nums[1] * math.log2(nums[0])
+        return f"{bits:.1f} bits d'entropie (si chaque caractère est tiré au hasard)"
+    if op == "anniversaire" and len(nums) == 2 and 1 <= nums[0] <= 1024 and nums[1] >= 1:
+        space = 2.0 ** nums[0]
+        p = -math.expm1(-nums[1] * (nums[1] - 1) / (2 * space))
+        return f"collision : {p:.3g} ; 50 % vers {math.sqrt(2 * space * math.log(2)):.3g} éléments"
+    if op == "force_brute" and len(nums) == 2 and 1 <= nums[0] <= 1024 and nums[1] > 0:
+        years = 2.0 ** (nums[0] - 1) / nums[1] / 31_557_600
+        return f"en moyenne {years:.3g} ans (moitié de l'espace de 2^{nums[0]:g})"
+    if op in CRYPTO_OPS:
+        raise ActionError(f"{op} : {CRYPTO_OPS[op]}")
+    raise ActionError(f"opération inconnue : {operation} (au choix : {', '.join(CRYPTO_OPS)})")
 
 
 # Betting and probability maths, for Lexy: no network, no promise of gain.

@@ -67,6 +67,7 @@ DEFAULT_VOICES = {
     "lexy": ("jessica", "vif"),
     "charlotte": ("siwis", "vif"),
     "celya": ("jessica", "pose"),
+    "monty": ("pierre", "pose"),
 }
 
 
@@ -287,6 +288,7 @@ def agent_tools(
         toolkit.FINANCE_AGENTS: ("finance", "Calculs financiers"),
         toolkit.SCIENCE_AGENTS: ("science", "Calcul scientifique (SymPy)"),
         toolkit.BETTING_AGENTS: ("paris", "Maths des paris et probabilités"),
+        toolkit.CRYPTO_AGENTS: ("crypto_maths", "Calculs de cryptographie"),
     }
     if root is not None:
         from spectre.assistant import mcp_clients

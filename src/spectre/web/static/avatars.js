@@ -20,6 +20,7 @@ export const LOOKS = {
   lexy: { g: "f", skin: "#f2d3bc", shade: "#cba588", hair: "#d8b84a", eyes: "#5a7a8a", lips: "#c85a68", outfit: "#39323f", shirt: "#f2e7ea", accent: "#f03ccf", style: "bob", beard: "", jewel: true, bg: "#46323a" },
   charlotte: { g: "f", skin: "#f3d6c2", shade: "#cfa58a", hair: "#b4471f", eyes: "#6a6a3a", lips: "#c95a50", outfit: "#151517", shirt: "#26262a", accent: "#ff7a45", style: "bob", beard: "", jewel: true, bg: "#4a2c22" },
   celya: { g: "f", skin: "#dbb393", shade: "#b28768", hair: "#1f1612", eyes: "#4a3020", lips: "#b0625a", outfit: "#e6dccb", shirt: "#f4efe6", accent: "#3ecf8e", style: "long", beard: "", jewel: true, bg: "#1f3d33" },
+  monty: { g: "m", skin: "#c8a07a", shade: "#9c7652", hair: "#2a2522", eyes: "#2e2219", lips: "#9a5f50", outfit: "#33363b", shirt: "#4a4e55", accent: "#2bb3a8", style: "short", beard: "short", glasses: "round", bg: "#1b3236" },
 };
 const CREATED = [
   { g: "m", skin: "#d8b08f", shade: "#b0835f", hair: "#3a2a1e", eyes: "#3b5a40", lips: "#a96a58", outfit: "#2c3e50", shirt: "#e6e6e6", accent: "#8bd450", style: "side", beard: "", bg: "#2a3d36" },
