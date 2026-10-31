@@ -7,6 +7,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-11-01
+
 ### Added
 - **Monty, expert en cryptographie** (sur Mistral AI, via Vibe et le compte Le Chat) : primitives,
   protocoles (TLS, SSH, OpenPGP, age, Signal, MLS), PKI, gestion des clés, post-quantique
@@ -19,8 +21,6 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   `crypto_maths` (PGCD, inverse et puissance modulaires, primalité, petite factorisation,
   entropie, anniversaire, force brute). Installés : OpenSSL 4.1, GnuPG 2.5, age 1.3, step 0.31,
   SSLyze.
-
-## [0.26.1] - 2026-11-01
 
 ### Changed
 - **Tableau des tâches façon Claude Kanban** (Entreprise) : en haut de la page, colonnes côte à côte
