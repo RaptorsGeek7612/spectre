@@ -90,7 +90,8 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   agents par Spectre `agent_tools.py` (fiches JSON, jamais de code) ; serveurs MCP externes
   `mcp_clients.py` (fiches JSON, client MCP stdio/HTTP, appels via le portail, secrets en `${NOM}`) ;
   code en direct des agents `codeview.py` (bouton « View » de l'Équipe, `static/codeview.js`) ;
-  pages ouvertes dans Chrome `browser_pages.py` (extension `tools/chrome-extension`,
+  vidéos lues `videos.py` (outil `video` : YouTube et sites de yt-dlp avec Deno, ou fichier
+  local ; sous-titres, sinon Whisper ; images dans `pieces-jointes/videos`) ; pages ouvertes dans Chrome `browser_pages.py` (extension `tools/chrome-extension`,
   `POST /browser/page` avec sa clé) ; Spectre dans VS Code `vscode.py` (mcp.json utilisateur) ;
   compétences vidéo de Claude Code partagées par agent (`competences.SHARED`) ; pièces jointes
   `spectre/attachments.py` (conversation : `workspace/pieces-jointes`, Rédaction : texte extrait) ;

@@ -7,6 +7,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Spectre lit les vidéos** (outil `video`, pour lui et tous ses agents) : YouTube et les autres
+  sites connus de yt-dlp (PeerTube, Internet Archive, Dailymotion, X, TikTok, replays…), ou un
+  fichier vidéo/son du PC. Titre, chaîne, date, durée, vues, chapitres, description, puis ce qui
+  est dit : sous-titres de la vidéo (manuels d'abord, sinon automatiques dans la langue
+  d'origine), à défaut transcription Whisper sur le PC (45 min, 4 h avec `long`), repères
+  [mm:ss] ; option `images` (8 images que le cerveau peut regarder). Lecture gardée dans
+  `workspace/videos`, son et vidéo de travail effacés. Installés : yt-dlp (avec yt-dlp-ejs et
+  curl-cffi, mis à jour chaque semaine), Deno (exigé par YouTube).
+
 ## [0.26.1] - 2026-11-01
 
 ### Added
