@@ -7,6 +7,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-11-01
+
 ### Changed
 - **Tableau des tâches façon Claude Kanban** (Entreprise) : en haut de la page, colonnes côte à côte
   (défilement latéral, une colonne par écran sur le téléphone), une couleur par colonne (pastille,
@@ -21,6 +23,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   Les réponses longues (rapports de mission) restent plus longtemps, ne s'effacent pas pendant
   qu'on les lit, et « Lire en entier » les ouvre dans l'historique. Rapports des missions plus
   hauts une fois ouverts.
+
+### Security
+- **En-têtes web** (scan OWASP ZAP en local, 0 échec) : `Permissions-Policy`,
+  `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, en-tête `Server` sans version.
 
 ## [0.26.0] - 2026-10-30
 
