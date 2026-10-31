@@ -105,6 +105,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def version_string(self) -> str:
         return self.server_version  # no version numbers for whoever probes the server
+
     protocol_version = "HTTP/1.1"
 
     @property
