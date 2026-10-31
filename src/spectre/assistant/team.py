@@ -86,6 +86,9 @@ def hosted_label(engine: str) -> str:
     """« DeepSeek · deepseek-v4-pro » for Simon's engine, « Claude · sonnet » for a CLI one."""
     provider, model = split_ref(engine)
     names = {"deepseek": "DeepSeek", "openrouter": "OpenRouter", "lmstudio": "LM Studio"}
+    clis = {"mistral": "Mistral · Vibe", "chatgpt": "OpenAI · Codex"}  # an agent on another CLI
+    if not provider and model in clis:
+        return clis[model]
     return (
         f"{names.get(provider, provider.capitalize())} · {model}"
         if provider
