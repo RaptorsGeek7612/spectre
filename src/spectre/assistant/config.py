@@ -25,6 +25,7 @@ AGENT_NAMES = {
     "lexy": "Lexy",  # betting, investing, crypto (a woman)
     "charlotte": "Charlotte",  # graphic designer (a woman, on Gemini)
     "celya": "Célya",  # novelist (a woman, on Gemini)
+    "monty": "Monty",  # cryptography expert (on Mistral AI)
     "opus": "Spectre",  # Spectre itself, when it runs the steps too
 }
 
@@ -43,6 +44,7 @@ AGENT_TOOLS = {
     "lexy": "Claude",
     "charlotte": "Gemini",
     "celya": "Gemini",
+    "monty": "Vibe",
 }
 
 # Their department in the team page and the video call
@@ -60,6 +62,7 @@ AGENT_DEPARTMENTS = {
     "lexy": "Jeux, paris et investissements",
     "charlotte": "Graphisme et identité visuelle",
     "celya": "Écriture romanesque et édition",
+    "monty": "Cryptographie",
 }
 
 # Another name the user may give an engine: the tool rather than the account
@@ -103,6 +106,11 @@ AGENT_ROLES = {
     "celya": "Romancière : romans, nouvelles, scénarios de fiction, personnages, intrigue, "
     "style et réécriture ; elle prépare aussi le manuscrit et l'édition (EPUB, PDF, "
     "correction) avec novelWriter, LanguageTool, Pandoc, Typst, Calibre et Sigil (sur Gemini).",
+    "monty": "Expert en cryptographie : algorithmes et protocoles (TLS, SSH, PKI, OpenPGP, "
+    "Signal), post-quantique (ML-KEM, ML-DSA, SLH-DSA, migration hybride), audit d'usage de la "
+    "crypto dans le code, certificats, gestion des clés, cryptanalyse sur un périmètre "
+    "autorisé ; il travaille avec OpenSSL 4, GnuPG, age, step et SSLyze (sur Mistral "
+    "AI, via Vibe et ton compte Le Chat).",
 }
 AGENT_ORDER = (
     "opus",
@@ -118,6 +126,7 @@ AGENT_ORDER = (
     "lexy",
     "charlotte",
     "celya",
+    "monty",
 )
 EXTERNAL_AGENTS = ("chatgpt", "mistral", "cursor", "antigravity")  # their own CLI
 HOSTED_AGENTS = (
@@ -127,6 +136,7 @@ HOSTED_AGENTS = (
     "lexy",
     "charlotte",
     "celya",
+    "monty",
 )  # on a model (`AGENT_DEFAULT_ENGINES`), changeable
 
 AGENT_CHOICES = ("claude", *AGENT_NAMES)  # what a mission may ask for ("claude" = the setting)

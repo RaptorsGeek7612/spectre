@@ -7,6 +7,40 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-11-01
+
+### Added
+- **Monty, expert en cryptographie** (sur Mistral AI, via Vibe et le compte Le Chat) : primitives,
+  protocoles (TLS, SSH, OpenPGP, age, Signal, MLS), PKI, gestion des clés, post-quantique
+  (ML-KEM, ML-DSA, SLH-DSA, FN-DSA et HQC à venir, hybridation, CBOM), audit de la crypto dans
+  le code et sur les serveurs, cryptanalyse pédagogique ; compétence `spectre-cryptographie`
+  (état des normes et de la veille fin 2026, dates non confirmées signalées comme telles).
+- Outils de Monty : `algos_crypto`, `certificat`, `certificat_lint`, `asn1`, `empreinte`,
+  `cle_test` (clés de TEST dans le workspace, post-quantiques comprises), `gpg_verif`,
+  `age_chiffrer`, `sslyze` (distant : validation), plus Semgrep, Gitleaks et l'outil
+  `crypto_maths` (PGCD, inverse et puissance modulaires, primalité, petite factorisation,
+  entropie, anniversaire, force brute). Installés : OpenSSL 4.1, GnuPG 2.5, age 1.3, step 0.31,
+  SSLyze.
+
+### Changed
+- **Tableau des tâches façon Claude Kanban** (Entreprise) : en haut de la page, colonnes côte à côte
+  (défilement latéral, une colonne par écran sur le téléphone), une couleur par colonne (pastille,
+  compteur, cartes teintées, « En cours » qui pulse, lueur ambre quand une tâche attend ton oui),
+  badge coloré par agent, filtre par agent, « attend / bloque #n », indicateur « en direct »,
+  cartes compactes qui s'ouvrent d'un clic, menu « Déplacer » sur le téléphone (pas de glisser).
+- **Tâches faites** : une ligne chacune, les 5 plus récentes, le reste sur demande.
+
+### Fixed
+- **Conversation sur le téléphone** : la réponse de Spectre défile dans son cadre au lieu de
+  pousser le micro et la saisie hors de l'écran ; une fois effacée, elle ne prend plus de place.
+  Les réponses longues (rapports de mission) restent plus longtemps, ne s'effacent pas pendant
+  qu'on les lit, et « Lire en entier » les ouvre dans l'historique. Rapports des missions plus
+  hauts une fois ouverts.
+
+### Security
+- **En-têtes web** (scan OWASP ZAP en local, 0 échec) : `Permissions-Policy`,
+  `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, en-tête `Server` sans version.
+
 ## [0.26.0] - 2026-10-30
 
 ### Added

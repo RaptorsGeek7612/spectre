@@ -130,6 +130,7 @@
         <p class="signal"><span class="label">Signal</span><span class="signal-bar"><i id="signal-fill"></i></span><b id="signal-value">0,0 %</b></p>
         <p class="heard" id="heard"></p>
         <p class="said" id="said"></p>
+        <button class="btn btn-ghost read-all" type="button" id="read-all" hidden><span>Lire en entier</span></button>
       </div>
       <video class="cam-preview" id="cam-preview" muted playsinline hidden aria-label="Ce que voit la caméra du téléphone"></video>
       <nav class="dock" aria-label="Commandes">
@@ -186,6 +187,22 @@
         <div><button class="btn" type="submit">Créer l'entreprise</button></div>
       </form>
       <div id="company-body" hidden>
+        <h3 class="as-h as-h-sub">Tableau des tâches</h3>
+        <form class="inline-form" id="company-plan" autocomplete="off">
+          <input type="text" name="objective" placeholder="Un objectif à découper, ex. « Lancer la bêta payante en décembre »" aria-label="Objectif">
+          <button class="btn btn-primary" type="submit">Découper en tâches</button>
+        </form>
+        <form class="inline-form" id="company-task" autocomplete="off">
+          <input type="text" name="title" required placeholder="Nouvelle tâche, ex. « Étude des prix des concurrents »" aria-label="Titre de la tâche">
+          <select name="department" id="company-task-dept" aria-label="Département"></select>
+          <select name="priority" aria-label="Priorité"><option value="1">Urgent</option><option value="2" selected>Normal</option><option value="3">Plus tard</option></select>
+          <button class="btn" type="submit">Ajouter</button>
+        </form>
+        <div class="co-actions"><button class="btn btn-primary" type="button" id="company-start">Lancer les tâches prêtes</button><span class="meta" id="company-capacity"></span></div>
+        <p class="meta">Glisse une carte d’une colonne à l’autre pour la déplacer (vers « En cours » : la lancer) ; sur le téléphone, fais défiler les colonnes de côté et utilise « Déplacer ». Une tâche à valider renvoyée « À faire » repart à son agent avec tes changements. Le tableau se met à jour tout seul.</p>
+        <div id="company-board-bar" class="co-bar"></div>
+        <div id="company-board" class="co-board"></div>
+        <dialog id="task-detail" class="tm-dialog"></dialog>
         <h3 class="as-h as-h-sub">Tableau de bord</h3>
         <div id="saas-status" class="sa-status"></div>
         <div id="saas-tiles" class="sa-tiles"></div>
@@ -255,21 +272,6 @@
         <div id="dev-jobs" class="cards"></div>
         <h3 class="as-h as-h-sub">Organigramme</h3>
         <div id="company-posts" class="co-posts"></div>
-        <h3 class="as-h as-h-sub">Faire avancer l'entreprise</h3>
-        <form class="inline-form" id="company-plan" autocomplete="off">
-          <input type="text" name="objective" placeholder="Un objectif à découper, ex. « Lancer la bêta payante en décembre »" aria-label="Objectif">
-          <button class="btn btn-primary" type="submit">Découper en tâches</button>
-        </form>
-        <form class="inline-form" id="company-task" autocomplete="off">
-          <input type="text" name="title" required placeholder="Nouvelle tâche, ex. « Étude des prix des concurrents »" aria-label="Titre de la tâche">
-          <select name="department" id="company-task-dept" aria-label="Département"></select>
-          <select name="priority" aria-label="Priorité"><option value="1">Urgent</option><option value="2" selected>Normal</option><option value="3">Plus tard</option></select>
-          <button class="btn" type="submit">Ajouter</button>
-        </form>
-        <div class="co-actions"><button class="btn btn-primary" type="button" id="company-start">Lancer les tâches prêtes</button><span class="meta" id="company-capacity"></span></div>
-        <p class="meta">Glisse une carte d’une colonne à l’autre pour la déplacer (vers « En cours » : la lancer). Une tâche à valider renvoyée « À faire » repart à son agent avec tes changements. Le tableau se met à jour tout seul.</p>
-        <div id="company-board" class="co-board"></div>
-        <dialog id="task-detail" class="tm-dialog"></dialog>
       </div>
     </section>
 

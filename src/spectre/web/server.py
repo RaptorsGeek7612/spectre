@@ -64,6 +64,13 @@ SECURITY_HEADERS = {
         "script-src 'self'; connect-src 'self'; font-src 'self'; media-src 'self' blob:; "
         "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     ),
+    # the microphone and camera serve the voice and the visio, on Spectre's own pages only
+    "Permissions-Policy": (
+        "camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), serial=(), "
+        "bluetooth=(), hid=(), midi=()"
+    ),
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
 }
 
 
@@ -94,7 +101,11 @@ class App:
 class Handler(BaseHTTPRequestHandler):
     """Routes every request; `server.app` carries the shared state."""
 
-    server_version = f"Spectre/{__version__}"
+    server_version = "Spectre"
+
+    def version_string(self) -> str:
+        return self.server_version  # no version numbers for whoever probes the server
+
     protocol_version = "HTTP/1.1"
 
     @property

@@ -708,7 +708,7 @@ def test_mcp_server_hides_spectre_skills_from_agents() -> None:
 def test_api_team_and_call(api: Client, service: AssistantService) -> None:  # noqa: F811
     _day(service.db)
     status, data = api.json("GET", "/api/assistant/team")
-    assert status == 200 and len(data["agents"]) == 13 and "siwis" in data["voices"]
+    assert status == 200 and len(data["agents"]) == 14 and "siwis" in data["voices"]
     status, data = api.json("POST", "/api/assistant/team/cursor", {"engine": "sonnet"})
     assert status == 200 and {a["key"]: a for a in data["agents"]}["cursor"]["moved"] is True
     assert api.json("POST", "/api/assistant/team/simon", {"engine": "cursor"})[0] == 400

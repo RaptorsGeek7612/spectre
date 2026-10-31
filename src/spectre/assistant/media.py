@@ -353,6 +353,7 @@ PORTRAIT_WHO = {
     "lexy": "sharp woman in her late 20s, fair skin, blonde bob hair, blue-grey eyes, small earrings, dark modern blazer, confident analytical look",  # noqa: E501
     "charlotte": "stylish creative woman in her early 30s, light skin with freckles, short asymmetric copper-red hair, hazel eyes, black turtleneck, small geometric earrings, keen artistic look",  # noqa: E501
     "celya": "dreamy literary woman in her 30s, warm beige skin, long dark curly hair, brown eyes, cream knit sweater, delicate necklace, soft thoughtful smile",  # noqa: E501
+    "monty": "focused man in his 40s, olive skin, short dark hair greying at the temples, trimmed beard, dark eyes, thin round glasses, charcoal turtleneck, calm analytical look",  # noqa: E501
 }
 
 
@@ -372,6 +373,7 @@ PORTRAIT_BG = {
     "lexy": "plum magenta",
     "charlotte": "vivid coral orange",
     "celya": "deep emerald green",
+    "monty": "dark steel teal",
 }
 
 

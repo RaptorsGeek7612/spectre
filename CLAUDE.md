@@ -46,7 +46,10 @@ toolkit nmap/subfinder/httpx/trufflehog), `spectre-retro-ingenierie` (Syfer : r�
 sur la méthode REA, github.com/morluto/rea ; outil toolkit `retro` = inspections statiques de
 REA 6.7.0, installé par `npm install -g rea-agents@6.7.0 --ignore-scripts`, lancé par `node`
 et jamais par `rea.cmd`), `spectre-rust` (tous les agents : Rust, outil toolkit `cargo`), `spectre-graphisme`
-(Charlotte, graphiste), `spectre-roman` (Célya, romancière), `spectre-amelioration` (s'améliorer, lui et ses
+(Charlotte, graphiste), `spectre-roman` (Célya, romancière), `spectre-cryptographie` (Monty :
+primitives, protocoles, PKI, post-quantique, audit ; outils toolkit `algos_crypto`, `certificat`,
+`certificat_lint`, `asn1`, `empreinte`, `cle_test`, `gpg_verif`, `age_chiffrer`, `sslyze` et l'outil
+`crypto_maths`), `spectre-amelioration` (s'améliorer, lui et ses
 agents : toujours le plus sûr, stable et fiable, vérifié avant de proposer). Skills **labo** (Docker à `C:\Users\sherp\labs`) : `labs-biometrie`, `labs-securite` (cibles autorisées), `labs-media` — à
 charger **d'office** dès qu'une mission touche biométrie, sécu réseau/web autorisée ou multimédia.
 
@@ -73,7 +76,7 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   `engines.py`, un moteur par rôle (`config.ROLES`). Agents dans `config.AGENT_*` : hébergés
   (`HOSTED_AGENTS`, moteur par défaut dans `AGENT_DEFAULT_ENGINES` de `spectre/config.py`) =
   Simon (DeepSeek), Shelby, Ysyss, Lexy (Claude Sonnet), Charlotte (graphiste) et Célya
-  (romancière) sur Gemini ; `agent_engines` déplace un agent. Les
+  (romancière) sur Gemini, Monty (cryptographie) sur Mistral (Vibe) ; `agent_engines` déplace un agent. Les
   CLI externes n'ont que les outils MCP de Spectre.
 - **Carte des modules** (`assistant/`) : missions `missions.py` (prompt WORKER, `SPECIALTIES`,
   `mission_parallel`) ; entreprises/tâches `company.py` ; automatisation `routines.py` +

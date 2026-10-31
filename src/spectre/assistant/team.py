@@ -67,6 +67,7 @@ DEFAULT_VOICES = {
     "lexy": ("jessica", "vif"),
     "charlotte": ("siwis", "vif"),
     "celya": ("jessica", "pose"),
+    "monty": ("pierre", "pose"),
 }
 
 
@@ -85,6 +86,9 @@ def hosted_label(engine: str) -> str:
     """« DeepSeek · deepseek-v4-pro » for Simon's engine, « Claude · sonnet » for a CLI one."""
     provider, model = split_ref(engine)
     names = {"deepseek": "DeepSeek", "openrouter": "OpenRouter", "lmstudio": "LM Studio"}
+    clis = {"mistral": "Mistral · Vibe", "chatgpt": "OpenAI · Codex"}  # an agent on another CLI
+    if not provider and model in clis:
+        return clis[model]
     return (
         f"{names.get(provider, provider.capitalize())} · {model}"
         if provider
@@ -287,6 +291,7 @@ def agent_tools(
         toolkit.FINANCE_AGENTS: ("finance", "Calculs financiers"),
         toolkit.SCIENCE_AGENTS: ("science", "Calcul scientifique (SymPy)"),
         toolkit.BETTING_AGENTS: ("paris", "Maths des paris et probabilités"),
+        toolkit.CRYPTO_AGENTS: ("crypto_maths", "Calculs de cryptographie"),
     }
     if root is not None:
         from spectre.assistant import mcp_clients

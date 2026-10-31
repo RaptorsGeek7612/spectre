@@ -50,6 +50,7 @@ AGENT_DEFAULT_ENGINES: Final[dict[str, str]] = {
     "lexy": "sonnet",
     "charlotte": "gemini:gemini-pro-latest",  # the user chose Gemini for these two
     "celya": "gemini:gemini-pro-latest",
+    "monty": "mistral",  # the user chose Mistral AI (Vibe, the Le Chat account)
 }
 
 ASSISTANT_MODELS: Final[dict[str, str]] = {

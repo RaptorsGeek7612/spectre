@@ -377,6 +377,9 @@ def test_static_files(client: Client) -> None:
     assert status == 200 and b"<title>Spectre</title>" in body
     assert headers["content-type"].startswith("text/html")
     assert "default-src 'self'" in headers["content-security-policy"]
+    assert "microphone=(self)" in headers["permissions-policy"]
+    assert headers["cross-origin-opener-policy"] == "same-origin"
+    assert headers["server"] == "Spectre"  # no version for whoever probes the server
     for path, ctype in [
         ("/app.js", "text/javascript"),
         ("/app.css", "text/css"),

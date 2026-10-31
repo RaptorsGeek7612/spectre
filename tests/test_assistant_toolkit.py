@@ -173,7 +173,7 @@ def test_missing_binary_is_reported(ctx: Any, monkeypatch: pytest.MonkeyPatch) -
 
 def test_describe_lists_tools_and_installs(monkeypatch: pytest.MonkeyPatch) -> None:
     rows = {r["name"]: r for r in toolkit.describe(AssistantConfig())}
-    assert rows["gitleaks"]["agents"] == ["mistral"] and rows["gitleaks"]["installed"]
+    assert rows["gitleaks"]["agents"] == ["mistral", "monty"] and rows["gitleaks"]["installed"]
     assert rows["languagetool"]["agents"] == [] and rows["nuclei"]["category"] == "scan_remote"
     monkeypatch.setattr(toolkit, "_bin", lambda names: None)
     assert not toolkit.describe(AssistantConfig())[0]["installed"]
