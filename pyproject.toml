@@ -24,7 +24,7 @@ dependencies = [
     "mcp>=2.3",
     "numpy>=2.0",
     "cryptography>=43",
-    "pypdf>=5",  # text of attached PDFs (writing requests)
+    "pypdf>=6.21.4",  # text of attached PDFs (writing requests)
 ]
 
 [project.optional-dependencies]
