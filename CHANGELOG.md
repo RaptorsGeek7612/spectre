@@ -7,6 +7,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-11-01
+
+### Security
+- Dépendances mises à jour (regroupe les 9 PR Dependabot) : **17 alertes corrigées** — certifi
+  2026.10.23 (critique), pypdf 6.21.4 (3 élevées), filelock 4.2.6 (13).
+- Aussi : langchain-core 1.7.3, langchain-anthropic 1.7.7, langgraph 1.2.19, ccxt 4.5.91,
+  onnxruntime 1.31.1, holidays 0.107 ; outils pytest 9.2, ruff 0.17.3, mypy 2.4.1 ; CI setup-uv
+  10.3.2, foundry-toolchain 1.9.2.
+
 ## [0.27.0] - 2026-11-01
 
 ### Added
