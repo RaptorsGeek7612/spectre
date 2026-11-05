@@ -152,8 +152,8 @@ class Messenger:
             try:
                 self.run_once()
                 self.error = ""
-            except (OSError, ValueError, KeyError, RuntimeError) as exc:
-                self.error = str(exc)[:200]
+            except Exception as exc:  # noqa: BLE001 - the loop must never die: retry later
+                self.error = str(exc)[:200] or type(exc).__name__
                 self._stop.wait(15)
                 continue
             if self.poll_s:
@@ -412,9 +412,13 @@ class _SyncSocket:  # pragma: no cover - real network
     """websockets' sync client, with `recv(timeout)` raising TimeoutError and errors as OSError."""
 
     def __init__(self, url: str) -> None:
+        from websockets.exceptions import WebSocketException
         from websockets.sync.client import connect
 
-        self._ws = connect(url, open_timeout=20, max_size=2**22, user_agent_header=USER_AGENT)
+        try:
+            self._ws = connect(url, open_timeout=20, max_size=2**22, user_agent_header=USER_AGENT)
+        except WebSocketException as exc:  # refused handshake, bad status…
+            raise ConnectionError(str(exc)) from exc
 
     def recv(self, timeout: float) -> str | None:
         from websockets.exceptions import ConnectionClosed

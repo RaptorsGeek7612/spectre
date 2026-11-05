@@ -7,6 +7,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.28.1] - 2026-11-05
+
+### Fixed
+- Messageries : une erreur imprévue de connexion (refus de la poignée de main WebSocket de
+  Discord, etc.) n'arrête plus la boucle d'une messagerie pour de bon ; elle réessaie 15 s plus
+  tard et garde l'erreur affichée sur sa fiche.
+
 ## [0.28.0] - 2026-11-05
 
 ### Added
