@@ -5,7 +5,8 @@ there). When every command it contains is a known read-only cmdlet and nothing e
 state (no method call, assignment, file redirection, env:/cert: drive, dynamic command), it runs
 right away in a fresh headless `pwsh`. Anything else is CRITICAL: the user validates it, then it
 runs in the visible PowerShell console shared with the user, through the open-source
-PowerShell.MCP module (yotsuda/PowerShell.MCP, MIT), or headless if the module is missing.
+PowerShell.MCP module (yotsuda/PowerShell.MCP, MIT), or headless if the module is missing or
+Windows refuses to start its proxy (Smart App Control).
 """
 
 from __future__ import annotations
@@ -23,8 +24,11 @@ from typing import Any
 
 PWSH_TIMEOUT_S = 120.0  # headless runs (read-only commands, fallback)
 CONSOLE_TIMEOUT_S = 300.0  # approved commands in the shared console
+APPROVED_TIMEOUT_S = 1200.0  # approved commands run headless (a batch of documents takes minutes)
 CLASSIFY_TIMEOUT_S = 30.0
 MAX_OUTPUT_CHARS = 20_000
+POLICY_BLOCKED = 4551  # ERROR_SYSTEM_INTEGRITY_POLICY_VIOLATION: Windows refused to start the file
+BLOCKED_NOTE = "(console visible bloquée par Windows : commande exécutée sans fenêtre)\n"
 
 READ_VERBS = frozenset(
     {"get", "test", "measure", "select", "where", "sort", "format", "group", "compare"}
@@ -87,6 +91,10 @@ foreach ($node in $ast.FindAll({ $true }, $true)) {
 
 class PowerShellError(Exception):
     """PowerShell could not run the command; the message is shown to the user and the brain."""
+
+
+class ConsoleBlocked(PowerShellError):
+    """Windows refused to start the proxy, so nothing ran: the command can safely run elsewhere."""
 
 
 def find_pwsh() -> str | None:  # pragma: no cover - depends on the machine
@@ -250,7 +258,10 @@ def run_in_console(command: str, proxy: str, timeout: float = CONSOLE_TIMEOUT_S)
     if worker.is_alive():
         raise PowerShellError(f"la console PowerShell ne répond pas (> {int(timeout)} s)")
     if "err" in box:
-        raise PowerShellError(f"console PowerShell indisponible : {box['err']}")
+        message = f"console PowerShell indisponible : {box['err']}"
+        if getattr(box["err"], "winerror", None) == POLICY_BLOCKED:
+            raise ConsoleBlocked(message)
+        raise PowerShellError(message)  # it may have started: never run the command a second time
     return str(box.get("out") or "(aucune sortie)")[:MAX_OUTPUT_CHARS]
 
 
@@ -259,5 +270,8 @@ def run(command: str, *, read_only: bool, runner: Any = None) -> str:
         return run_headless(command, runner)
     proxy = find_proxy()
     if proxy is None or runner is not None:
-        return run_headless(command, runner)
-    return run_in_console(command, proxy)
+        return run_headless(command, runner, APPROVED_TIMEOUT_S)
+    try:
+        return run_in_console(command, proxy)
+    except ConsoleBlocked:
+        return BLOCKED_NOTE + run_headless(command, timeout=APPROVED_TIMEOUT_S)

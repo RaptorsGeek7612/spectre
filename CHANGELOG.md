@@ -7,6 +7,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Fixed
+- PowerShell : quand Smart App Control refuse de lancer le proxy de la console partagée
+  (`WinError 4551`), une commande validée n'échoue plus : elle s'exécute sans fenêtre, et le
+  résultat le signale. Seul ce refus déclenche le repli, pour ne jamais lancer une commande deux
+  fois. Les commandes validées exécutées sans fenêtre ont désormais 20 minutes au lieu de 2.
+
 ## [0.28.1] - 2026-11-05
 
 ### Fixed

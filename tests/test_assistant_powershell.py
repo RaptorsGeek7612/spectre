@@ -149,6 +149,62 @@ def test_run_in_console(monkeypatch: pytest.MonkeyPatch) -> None:
         powershell.run_in_console("hostname", "proxy.exe")
 
 
+class PolicyBlocked(OSError):
+    """What starting the proxy raises under Smart App Control (`winerror`: Windows only)."""
+
+    winerror = powershell.POLICY_BLOCKED
+
+
+def test_blocked_console_runs_headless_with_a_longer_delay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def blocked(proxy: str, command: str, timeout: float) -> str:
+        raise PolicyBlocked("bloqué")
+
+    calls: list[tuple[str, float]] = []
+
+    def headless(command: str, runner: Any = None, timeout: float = 0.0) -> str:
+        calls.append((command, timeout))
+        return "fait"
+
+    monkeypatch.setattr(powershell, "_console_session", blocked)
+    monkeypatch.setattr(powershell, "find_proxy", lambda: "proxy.exe")
+    monkeypatch.setattr(powershell, "run_headless", headless)
+    assert powershell.run("hostname", read_only=False) == powershell.BLOCKED_NOTE + "fait"
+    assert calls == [("hostname", powershell.APPROVED_TIMEOUT_S)]
+
+
+def test_other_console_failures_never_run_the_command_twice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def broken(proxy: str, command: str, timeout: float) -> str:
+        raise OSError("coupure en cours de commande")
+
+    def headless(*_: Any, **__: Any) -> str:
+        raise AssertionError("la commande a peut-être déjà tourné")
+
+    monkeypatch.setattr(powershell, "_console_session", broken)
+    monkeypatch.setattr(powershell, "find_proxy", lambda: "proxy.exe")
+    monkeypatch.setattr(powershell, "run_headless", headless)
+    with pytest.raises(powershell.PowerShellError, match="indisponible"):
+        powershell.run("hostname", read_only=False)
+
+
+def test_approved_command_without_proxy_gets_the_longer_delay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    delays: list[float] = []
+
+    def runner(args: list[str], **kwargs: Any) -> SimpleNamespace:
+        delays.append(kwargs["timeout"])
+        return SimpleNamespace(stdout="ok", stderr="", returncode=0)
+
+    monkeypatch.setattr(powershell, "find_proxy", lambda: None)
+    assert powershell.run("hostname", read_only=False, runner=runner) == "ok"
+    assert powershell.run("hostname", read_only=True, runner=runner) == "ok"
+    assert delays == [powershell.APPROVED_TIMEOUT_S, powershell.PWSH_TIMEOUT_S]
+
+
 def test_console_result_text() -> None:
     result = SimpleNamespace(content=[SimpleNamespace(text="a"), SimpleNamespace(text="b")])
     assert powershell._text(result) == "a\nb"
