@@ -760,6 +760,7 @@ async function loadAutomation() {
   $("#routines").replaceChildren(...(routines.length ? routines.map(routineCard) : [h("p", { class: "empty-cards" }, "Aucune routine. Programme-en une ici ou demande-la à Spectre.")]));
   $("#webhooks").replaceChildren(...(hooks.length ? hooks.map(webhookCard) : [h("p", { class: "empty-cards" }, "Aucun webhook.")]));
   renderTelegram(tg);
+  try { renderMessengers(await api("GET", "messengers")); } catch { /* older server */ }
   loadPush().catch(() => {});
 }
 function routineCard(r) {
@@ -792,6 +793,48 @@ function webhookCard(w) {
     w.events.length ? h("p", { class: "meta" }, `Événements : ${w.events.join(", ")}`) : null,
     h("div", { class: "row" }, h("button", { class: "btn btn-ghost", type: "button", onclick: remove }, h("span", {}, "Supprimer"))));
 }
+function renderMessengers(list) {
+  $("#messengers").replaceChildren(...list.map(messengerCard));
+}
+function messengerCard(m) {
+  const card = h("div", { class: "card tg-card", id: `msg-${m.name}` });
+  const redraw = (next) => card.replaceWith(messengerCard(next));
+  const act = async (path, payload) => {
+    try { redraw(await api("POST", `messengers/${m.name}/${path}`, payload || {})); }
+    catch (err) { toast(err.message, "error", 7000); }
+  };
+  const rows = [h("h4", {}, m.label), h("p", { class: "meta" }, m.guide)];
+  if (m.configured) {
+    rows.push(h("p", {}, m.running ? "Actif." : "Arrêté.", m.error ? ` Erreur : ${m.error}` : ""));
+    rows.push(h("p", { class: "meta" }, m.contacts.length ? `Reconnu : ${m.contacts.map((c) => c.name || c.id).join(", ")}` : "Aucune conversation jumelée."));
+  } else if (m.name === "signal") {
+    rows.push(h("p", { class: "meta" }, m.cli ? "signal-cli est prêt." : "signal-cli n'est pas encore installé sur ce PC."));
+  }
+  if (m.webhook) rows.push(h("p", { class: "tg-code" }, "Webhook : ", h("code", {}, `https://<adresse publique>${m.webhook}`), " · jeton de vérification : ", h("code", {}, m.verify_token)));
+  if (m.qr) {
+    const qr = h("div", { class: "tg-qr", role: "img", "aria-label": `QR code de jumelage ${m.label}` });
+    qr.innerHTML = m.qr;  // SVG drawn by Spectre itself
+    rows.push(qr);
+  }
+  if (m.link) rows.push(h("p", { class: "tg-code" }, m.name === "signal" ? "Scanne ce QR dans Signal (Appareils liés)." : h("a", { href: m.link, target: "_blank", rel: "noopener" }, "Ouvrir le lien de jumelage")));
+  if (m.code) rows.push(h("p", { class: "tg-code" }, "Code à envoyer : ", h("code", {}, `Spectre ${m.code}`), " (valable 10 minutes)"));
+  const buttons = [];
+  if (m.configured || m.name === "signal") buttons.push(h("button", { class: "btn btn-primary", type: "button", onclick: () => act("pair") }, h("span", {}, m.name === "signal" ? (m.configured ? "Relier à nouveau" : "Lier Signal") : "Jumeler")));
+  for (const c of m.contacts) buttons.push(h("button", { class: "btn btn-ghost", type: "button", onclick: () => act("unlink", { id: c.id }) }, h("span", {}, `Oublier ${c.name || c.id}`)));
+  if (buttons.length) rows.push(h("div", { class: "row" }, ...buttons));
+  if (m.fields.length) {
+    const form = h("form", { class: "inline-form msg-form", autocomplete: "off", onsubmit: (e) => {
+      e.preventDefault();
+      const values = {};
+      for (const f of m.fields) values[f.env] = e.target.elements[f.env].value;
+      act("setup", { values });
+    } }, ...m.fields.map((f) => h("input", { type: f.secret ? "password" : "text", name: f.env, autocomplete: "off", "aria-label": f.label, placeholder: f.set ? `${f.label} (déjà réglé)` : f.label })),
+    h("button", { class: "btn", type: "submit" }, m.configured ? "Remplacer" : "Enregistrer"));
+    rows.push(form);
+  }
+  card.replaceChildren(...rows);
+  return card;
+}
 function renderTelegram(tg) {
   const box = $("#telegram");
   const rows = [];
@@ -800,7 +843,14 @@ function renderTelegram(tg) {
   } else {
     rows.push(h("p", {}, tg.running ? `Bot actif${tg.username ? ` : @${tg.username}` : ""}.` : "Bot arrêté.", tg.error ? ` Erreur : ${tg.error}` : ""));
     rows.push(h("p", { class: "meta" }, tg.chats.length ? `Conversations reconnues : ${tg.chats.map((c) => c.name || c.id).join(", ")}` : "Aucune conversation jumelée."));
-    if (tg.code) rows.push(h("p", { class: "tg-code" }, "Envoie au bot : ", h("code", {}, `/start ${tg.code}`), " (valable 10 minutes)"));
+    if (tg.code) {
+      if (tg.qr) {
+        const qr = h("div", { class: "tg-qr", role: "img", "aria-label": "QR code de jumelage Telegram" });
+        qr.innerHTML = tg.qr;  // SVG drawn by Spectre itself from the bot's link
+        rows.push(qr, h("p", { class: "tg-code" }, "Scanne avec ton téléphone (ou ", h("a", { href: tg.link, target: "_blank", rel: "noopener" }, "ouvre le lien"), "), puis touche « Démarrer » dans Telegram."));
+      }
+      rows.push(h("p", { class: "tg-code" }, tg.qr ? "Sinon, envoie au bot : " : "Envoie au bot : ", h("code", {}, `/start ${tg.code}`), " (valable 10 minutes)"));
+    }
     rows.push(h("div", { class: "row" },
       h("button", { class: "btn btn-primary", type: "button", onclick: async () => { try { renderTelegram(await api("POST", "telegram/pair", {})); } catch (err) { toast(err.message, "error"); } } }, h("span", {}, "Jumeler une conversation")),
       ...tg.chats.map((c) => h("button", { class: "btn btn-ghost", type: "button", onclick: async () => { renderTelegram(await api("POST", "telegram/unlink", { chat_id: c.id })); } }, h("span", {}, `Oublier ${c.name || c.id}`)))));
@@ -1449,6 +1499,79 @@ async function sendFrame() {
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden && cam.stream) stopCamera(); });
 
+/* ---- tools live: each tool opens here while it works (Spectre's and its agents') ---- */
+const toolsLive = {
+  cards: new Map(), running: 0, closeTimer: 0, KEEP: 60,
+  pinned: localStorage.getItem("spectre-tools-pin") === "1",
+  muted: localStorage.getItem("spectre-tools-mute") === "1",
+};
+function toolsLiveCounts() {
+  const n = toolsLive.running ? String(toolsLive.running) : "";
+  $("#tools-live-count").textContent = n; $("#tools-live-fab-count").textContent = n;
+}
+function toolsLiveShow(open) {
+  const panel = $("#tools-live");
+  panel.hidden = !open;
+  $("#tools-live-open").hidden = open;
+  clearTimeout(toolsLive.closeTimer);
+}
+function toolsLiveLater() {
+  clearTimeout(toolsLive.closeTimer);
+  if (toolsLive.pinned || toolsLive.running) return;
+  toolsLive.closeTimer = setTimeout(() => toolsLiveShow(false), 12000);
+}
+function toolCard(d) {
+  const state = d.status === "running" ? "en cours…" : d.status === "fail" ? `échec · ${d.seconds} s` : `fini · ${d.seconds} s`;
+  const card = h("li", { class: "tool-card", "data-status": d.status },
+    h("div", { class: "tool-line" },
+      h("span", { class: "tool-who" }, d.who || "Spectre"),
+      h("span", { class: "tool-name" }, d.tool),
+      h("span", { class: "tool-state" }, (d.mission ? `mission #${d.mission} · ` : "") + state)),
+    d.target ? h("div", { class: "tool-target" }, d.target) : null);
+  const args = d.args && Object.keys(d.args).length ? JSON.stringify(d.args, null, 1) : "";
+  if (args || d.result) {
+    const box = h("details", { open: d.status === "fail" || undefined },
+      h("summary", {}, d.result ? "Ce qu'il a fait" : "Paramètres"),
+      args ? h("pre", {}, args) : null,
+      d.result ? h("pre", {}, d.result) : null);
+    card.append(box);
+  }
+  return card;
+}
+function onTool(d) {
+  const old = toolsLive.cards.get(d.id);
+  const card = toolCard(d);
+  if (old) { if (old.dataset.status === "running" && d.status !== "running") toolsLive.running--; old.replaceWith(card); }
+  else {
+    if (d.status === "running") toolsLive.running++;
+    $("#tools-live-list").prepend(card);
+    const all = $("#tools-live-list").children;
+    while (all.length > toolsLive.KEEP) { const last = all[all.length - 1]; toolsLive.cards.forEach((v, k) => { if (v === last) toolsLive.cards.delete(k); }); last.remove(); }
+  }
+  toolsLive.running = Math.max(0, toolsLive.running);
+  toolsLive.cards.set(d.id, card);
+  toolsLiveCounts();
+  if (!toolsLive.muted) toolsLiveShow(true);
+  toolsLiveLater();
+}
+function initToolsLive() {
+  const pin = $("#tools-live-pin"), mute = $("#tools-live-mute");
+  if (!pin) return;
+  pin.setAttribute("aria-pressed", String(toolsLive.pinned));
+  mute.setAttribute("aria-pressed", String(toolsLive.muted));
+  pin.addEventListener("click", () => {
+    toolsLive.pinned = !toolsLive.pinned; localStorage.setItem("spectre-tools-pin", toolsLive.pinned ? "1" : "0");
+    pin.setAttribute("aria-pressed", String(toolsLive.pinned)); toolsLiveLater();
+  });
+  mute.addEventListener("click", () => {
+    toolsLive.muted = !toolsLive.muted; localStorage.setItem("spectre-tools-mute", toolsLive.muted ? "1" : "0");
+    mute.setAttribute("aria-pressed", String(toolsLive.muted));
+  });
+  $("#tools-live-close").addEventListener("click", () => toolsLiveShow(false));
+  $("#tools-live-open").addEventListener("click", () => { toolsLiveShow(true); toolsLiveLater(); });
+}
+initToolsLive();
+
 /* ---- live events ---- */
 function connect() {
   const es = new EventSource("/api/assistant/events");
@@ -1469,6 +1592,7 @@ function connect() {
   });
   es.addEventListener("approval", () => { loadApprovals(); toast("Spectre attend ta validation pour une action.", "warn", 6000); });
   es.addEventListener("approval_done", () => loadApprovals());
+  es.addEventListener("tool", (e) => onTool(JSON.parse(e.data)));
   es.addEventListener("initiative", (e) => {
     const d = JSON.parse(e.data);
     toast(`${d.title}${d.body ? ` — ${d.body}` : ""}`, "ok", 8000);

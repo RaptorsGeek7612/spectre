@@ -244,6 +244,7 @@ class AssistantConfig:
     laya_url: str = ""  # a laya-serve address; empty = the local `laya` package
     brain_timeout_s: float = 300.0
     city: str = "Paris"
+    timezone: str = "Europe/Paris"  # IANA zone of the clock Spectre is given (empty = system)
     briefing_hour: int = 8
     consolidation_hour: int = 3
     auto_max_level: int = 2  # actions above this level need your approval
@@ -262,6 +263,7 @@ class AssistantConfig:
     speak_initiatives: bool = True
     befriend_per_day: int = 2  # times a day Spectre comes to talk to you on its own (0 = never)
     befriend_hours: str = "10-21"  # when it may: from hour to hour
+    desktop_watch: bool = True  # note the programs the user opens (local, desktop_apps)
     camera: bool = False  # face recognition of enrolled people (opt-in, nothing leaves the PC)
     camera_index: int = 0
 

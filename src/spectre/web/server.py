@@ -231,6 +231,20 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 self._json(status, {"ok": status == 200, "result": message})
                 return
+            if path == "/whatsapp/webhook" and self.app.assistant:
+                # Meta's webhook: GET checks the verify token, POST is signed with the app secret
+                if method == "GET":
+                    flat = {k: v[0] for k, v in query.items() if v}
+                    status, challenge = self.app.assistant.whatsapp_verify(flat)
+                    self._send(status, challenge.encode("utf-8"), "text/plain; charset=utf-8")
+                elif method == "POST":
+                    status = self.app.assistant.whatsapp_receive(
+                        dict(self.headers), self._raw_body()
+                    )
+                    self._json(status, {"ok": status == 200})
+                else:
+                    self._error(HTTPStatus.METHOD_NOT_ALLOWED, "méthode non autorisée")
+                return
             if path == "/browser/page" and method == "POST" and self.app.assistant:
                 # Spectre's Chrome extension: its own key instead of the session cookie
                 status, message = self.app.assistant.browser_page(

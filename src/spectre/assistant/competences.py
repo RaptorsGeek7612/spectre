@@ -3,7 +3,8 @@
 The brain runs in its own workspace with only Spectre's tools, so it cannot load Claude Code
 skills by itself. Its system prompt lists the competences (name and when to use them) and the
 `competence` tool returns one in full, on demand. The development skills of the repository
-(conventions, builder, tester, devops, reviewer) are for the people who code Spectre, not for it.
+(conventions, builder, tester, devops, reviewer and the architecture, security, AI, voice,
+memory, agents, DevOps and MCP skills) are for the people who code Spectre, not for it.
 
 The video skills installed for Claude Code itself (`~/.claude/skills`: HyperFrames, motion
 graphics, explainers…) are shared too, each with the agents whose trade it is (`SHARED`); they
@@ -25,6 +26,47 @@ DEV_ONLY = frozenset(
         "spectre-tester",
         "spectre-devops",
         "spectre-reviewer",
+        # the skills for building Spectre (cahier des charges « IA personnelle »)
+        "software-architect",
+        "system-design",
+        "technical-specification",
+        "database-architect",
+        "api-architect",
+        "distributed-systems",
+        "security-architecture",
+        "ai-security",
+        "scalability",
+        "python-backend",
+        "fastapi-backend",
+        "typescript-engineering",
+        "react-frontend",
+        "frontend-backend-integration",
+        "async-task-processing",
+        "llm-provider-adapters",
+        "ollama-integration",
+        "lm-studio-integration",
+        "model-routing",
+        "llm-evaluation-cost",
+        "speech-to-text",
+        "text-to-speech",
+        "real-time-audio",
+        "multimodal-vision",
+        "memory-architecture",
+        "memory-retrieval",
+        "temporal-awareness",
+        "agent-design",
+        "agent-orchestration",
+        "agent-governance",
+        "application-security",
+        "prompt-injection-defense",
+        "identity-secrets-access",
+        "testing-engineering",
+        "ci-cd-devops",
+        "observability",
+        "backup-recovery",
+        "mcp-client-integration",
+        "mcp-server-development",
+        "integrations-governance",
     }
 )
 SHARED_ENV = "SPECTRE_SHARED_SKILLS_DIR"

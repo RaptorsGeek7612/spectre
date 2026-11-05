@@ -429,3 +429,49 @@ body[data-voice="listening"] .dock-mic { background: color-mix(in oklab, var(--l
 .ag-form textarea { padding: 8px 10px; resize: vertical; }
 @media (max-width: 600px) { .ag-form { grid-template-columns: 1fr; } }
 @media (max-width: 899px) { .co-col, .co-col[data-status="done"] { flex: 0 0 min(84vw, 340px); } .co-task .row .btn, .co-task .co-move { min-height: 38px; } }
+
+/* ---- tools live: every tool Spectre or an agent uses opens here as it runs ---- */
+.tools-live {
+  position: fixed; z-index: 55; right: 18px; bottom: 70px;
+  width: min(440px, calc(100vw - 36px)); max-height: min(70vh, 640px);
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  background: var(--plate); border: 1px solid var(--hair-2); box-shadow: var(--shadow);
+  animation: toast-in 0.3s var(--out);
+}
+.tools-live[hidden] { display: none; }
+.tools-live-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--hair); }
+.tools-live-title { flex: 1; font-size: 0.76rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--bone); }
+.tools-live-btn { min-height: 30px; padding: 0 8px; border: 1px solid var(--hair); background: none; color: var(--ash); font: inherit; font-size: 0.72rem; cursor: pointer; }
+.tools-live-btn:hover, .tools-live-btn[aria-pressed="true"] { color: var(--bone); border-color: var(--l589); }
+.tools-live-list { margin: 0; padding: 6px; list-style: none; overflow-y: auto; display: grid; gap: 6px; align-content: start; }
+.tool-card { --tick: var(--l486); position: relative; padding: 8px 10px 8px 16px; background: var(--plate-2); border: 1px solid var(--hair); }
+.tool-card::before { content: ""; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background: var(--tick); }
+.tool-card[data-status="running"] { --tick: var(--l589); }
+.tool-card[data-status="running"]::before { animation: tool-pulse 1s ease-in-out infinite alternate; }
+.tool-card[data-status="ok"] { --tick: var(--l546); }
+.tool-card[data-status="fail"] { --tick: var(--danger); }
+.tool-line { display: flex; gap: 8px; align-items: baseline; font-size: 0.82rem; }
+.tool-who { color: var(--l405); font-weight: 600; }
+.tool-name { color: var(--bone); font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; }
+.tool-state { margin-left: auto; color: var(--dim); font-size: 0.72rem; white-space: nowrap; }
+.tool-target { margin-top: 2px; color: var(--ash); font-size: 0.76rem; overflow-wrap: anywhere; }
+.tool-card details { margin-top: 4px; }
+.tool-card summary { cursor: pointer; color: var(--dim); font-size: 0.72rem; }
+.tool-card pre { margin: 4px 0 0; max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.72rem; color: var(--ash); }
+.tools-live-fab { position: fixed; z-index: 54; right: 18px; bottom: 18px; min-height: 40px; padding: 0 14px; border: 1px solid var(--hair-2); background: var(--plate); color: var(--ash); font: inherit; font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; box-shadow: var(--shadow); }
+.tools-live-fab:hover { color: var(--bone); border-color: var(--l589); }
+.toasts { bottom: 70px; }
+@keyframes tool-pulse { from { opacity: 0.35; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .tools-live { animation: none; }
+  .tool-card[data-status="running"]::before { animation: none; }
+}
+
+/* ---- Telegram pairing QR code ---- */
+.tg-qr { width: 200px; max-width: 60vw; padding: 10px; background: #fff; margin: 8px 0; }
+.tg-qr svg { display: block; width: 100%; height: auto; }
+
+/* ---- other messaging apps ---- */
+.msg-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.msg-grid h4 { margin: 0; }
+.msg-form { display: grid; gap: 6px; }

@@ -1,6 +1,6 @@
 ---
 name: spectre-langage
-description: Le français parlé d'aujourd'hui selon les âges — argot des jeunes (Gen Alpha, Gen Z : mèmes TikTok, verlan, emprunts à l'arabe, au nouchi, à l'anglais), parler des trentenaires/quadragénaires et des plus âgés, abréviations des réseaux — et l'art de varier ses répliques et ses salutations selon l'heure. À charger dès que l'utilisateur emploie une expression d'argot ou de réseau social, demande ce qu'un mot veut dire, parle de ses enfants, ados ou amis plus jeunes ou plus âgés, ou quand Spectre doit saluer, relancer une conversation ou adapter son registre.
+description: "Le français parlé d'aujourd'hui selon les âges — argot des jeunes (Gen Alpha, Gen Z : mèmes TikTok, verlan, emprunts à l'arabe, au nouchi, à l'anglais), parler des trentenaires/quadragénaires et des plus âgés, abréviations des réseaux — et l'art de varier ses répliques et ses salutations selon l'heure. À charger dès que l'utilisateur emploie une expression d'argot ou de réseau social, demande ce qu'un mot veut dire, parle de ses enfants, ados ou amis plus jeunes ou plus âgés, ou quand Spectre doit saluer, relancer une conversation ou adapter son registre."
 ---
 
 # spectre-langage — parler comme les gens d'aujourd'hui, sans singer personne

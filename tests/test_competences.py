@@ -98,3 +98,13 @@ def test_real_competences_are_well_formed() -> None:
     } <= names
     for name in names:
         assert len(competences.read(name)) > 200
+
+
+def test_dev_skills_stay_out_of_spectres_catalogue() -> None:
+    """Every development skill of the repository exists and is hidden from Spectre's brain."""
+    root = competences.skills_dir()
+    for name in competences.DEV_ONLY:
+        assert (root / name / "SKILL.md").is_file(), name
+    names = {c.name for c in competences.available(root)}
+    assert not names & competences.DEV_ONLY
+    assert "spectre-memoire" in names

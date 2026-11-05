@@ -364,6 +364,14 @@ def handle(
             handler._json(200, service.telegram_token(str(body().get("token", ""))))
         case "POST", ["telegram", "pair"]:
             handler._json(200, service.telegram_pair())
+        case "GET", ["messengers"]:
+            handler._json(200, service.messengers_status())
+        case "POST", ["messengers", name, "setup"]:
+            handler._json(200, service.messenger_setup(name, dict(body().get("values") or {})))
+        case "POST", ["messengers", name, "pair"]:
+            handler._json(200, service.messenger_pair(name))
+        case "POST", ["messengers", name, "unlink"]:
+            handler._json(200, service.messenger_unlink(name, str(body().get("id", ""))))
         case "POST", ["telegram", "unlink"]:
             handler._json(200, service.telegram_unlink(int(body().get("chat_id", 0))))
         case "GET", ["models"]:

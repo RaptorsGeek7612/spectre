@@ -32,6 +32,7 @@ from spectre.assistant.governance import Gate, Level
 from spectre.assistant.learning import Learning
 from spectre.assistant.meeting import REQUEST_KV, MeetingError, Meetings, Recorder
 from spectre.assistant.memory import Memory
+from spectre.assistant.messengers import Messenger, Signal, WhatsApp, all_messengers
 from spectre.assistant.missions import MissionEngine
 from spectre.assistant.proactive import Proactive
 from spectre.assistant.providers import ProviderError, Providers, split_ref
@@ -94,6 +95,7 @@ class AssistantService:
         self.missions.learning_model = self.config.learning_model
         self.missions.earned_autonomy = self.config.earned_autonomy
         self.telegram = Telegram(root, self.db, self._telegram_reply)
+        self.messengers = all_messengers(root, self.db, self._remote_reply)
         self.recorder = Recorder(
             Meetings(self.db), self._meeting_stt, self._meeting_mic, self._meeting_done
         )
@@ -116,7 +118,9 @@ class AssistantService:
         self._seen = {
             "approvals": self._max_id("approvals"),
             "initiatives": self._max_id("initiatives"),
+            "activity": self._max_id("activity"),
         }
+        self._tools_running: set[int] = set()  # tool calls shown as running, awaiting their end
 
     # ---- lifecycle -----------------------------------------------------------------------
 
@@ -126,13 +130,21 @@ class AssistantService:
             self.missions.start()
             self.proactive.start()
             self.telegram.start()
+            for messenger in self.messengers.values():
+                messenger.start()
             threading.Thread(target=self._watch, name="spectre-watch", daemon=True).start()
+            if self.config.desktop_watch:
+                threading.Thread(
+                    target=self._watch_desktop, name="spectre-desktop", daemon=True
+                ).start()
 
     def stop(self) -> None:
         self._stop.set()
         self.missions.stop()
         self.proactive.stop()
         self.telegram.stop()
+        for messenger in self.messengers.values():
+            messenger.stop()
         if self.recorder.recording:
             self.recorder.stop_event.set()
         if self.voice is not None:
@@ -183,9 +195,15 @@ class AssistantService:
             threading.Thread(target=self.push.send, args=(title, body), daemon=True).start()
 
     def _to_telegram(self, text: str) -> None:
-        """Also send it to the paired Telegram chats (in the background: never blocks)."""
-        if self.config.telegram_notify and self.telegram.chats():
+        """Also send it to the paired Telegram chats and messaging contacts (in the
+        background: never blocks)."""
+        if not self.config.telegram_notify:
+            return
+        if self.telegram.chats():
             threading.Thread(target=self.telegram.broadcast, args=(text,), daemon=True).start()
+        for messenger in self.messengers.values():
+            if messenger.configured and messenger.contacts():
+                threading.Thread(target=messenger.broadcast, args=(text,), daemon=True).start()
 
     def _announce(self, kind: str, title: str, body: str) -> None:
         if kind == "lien":
@@ -235,6 +253,7 @@ class AssistantService:
         """Publish approvals/initiatives created elsewhere (e.g. by the MCP tool process)."""
         self.reload_config()
         self._meeting_request()
+        self.poll_tools()
         for table, kind in (("approvals", "approval"), ("initiatives", "initiative_row")):
             rows = self.db.all(
                 f"SELECT * FROM {table} WHERE id > ? ORDER BY id",  # noqa: S608 - fixed names
@@ -253,9 +272,43 @@ class AssistantService:
                         f"{row['reason']}.\nRéponds /approve {row['id']} ou /deny {row['id']}."
                     )
 
+    def poll_tools(self) -> None:
+        """Publish every tool call as it starts and ends, Spectre's and its agents' alike (the
+        CLI agents' calls are written by their MCP process): the page opens them live."""
+        from spectre.assistant import activity
+
+        rows = self.db.all(
+            "SELECT * FROM activity WHERE kind = 'tool' AND id > ? ORDER BY id LIMIT 200",
+            (self._seen["activity"],),
+        )
+        if self._tools_running:
+            marks = ",".join("?" * len(self._tools_running))
+            rows += self.db.all(
+                f"SELECT * FROM activity WHERE id IN ({marks}) AND status != 'running'",  # noqa: S608
+                tuple(sorted(self._tools_running)),
+            )
+        for row in rows:
+            self._seen["activity"] = max(self._seen["activity"], row["id"])
+            if row["status"] == "running":
+                self._tools_running.add(row["id"])
+            else:
+                self._tools_running.discard(row["id"])
+            self.publish({"type": "tool", **activity.live(row)})
+
     def _watch(self) -> None:  # pragma: no cover - thread wrapper
         while not self._stop.wait(1.5):
             self.poll_changes()
+
+    def _watch_desktop(self) -> None:  # pragma: no cover - needs a real Windows desktop
+        """Every few seconds, the programs the user opened or closed (desktop_apps)."""
+        from spectre.assistant import desktop
+
+        watcher = desktop.Desktop(self.db)
+        while not self._stop.wait(5.0):
+            try:
+                watcher.observe(front=desktop.front_window())
+            except (OSError, AttributeError, ValueError):
+                continue
 
     # ---- conversation ----------------------------------------------------------------------
 
@@ -575,13 +628,17 @@ class AssistantService:
 
     def _telegram_reply(self, text: str, chat_id: int) -> str:
         """A message from a paired Telegram chat: a command, or a turn with the brain."""
+        return self._remote_reply(text, "telegram")
+
+    def _remote_reply(self, text: str, channel: str) -> str:
+        """A message from a paired chat (Telegram, WhatsApp, Signal, Discord, Reddit)."""
         command, _, rest = text.partition(" ")
         command = command.lower().split("@")[0]
         try:
             if command in ("/approve", "/valider") and rest.strip().lstrip("#").isdigit():
                 return f"Validé : {self.approve(int(rest.strip().lstrip('#')))}"
             if command in ("/deny", "/refuser") and rest.strip().lstrip("#").isdigit():
-                self.deny(int(rest.strip().lstrip("#")), "refusé depuis Telegram")
+                self.deny(int(rest.strip().lstrip("#")), f"refusé depuis {channel}")
                 return "Refusé."
         except (KeyError, ValueError) as exc:
             return f"Impossible : {exc}"
@@ -591,7 +648,7 @@ class AssistantService:
                 f"Cerveau : {s['brain_label']}. Validations en attente : {s['pending_approvals']}. "
                 f"Missions en cours : {s['missions_running']}."
             )
-        return self.chat(text, "telegram")
+        return self.chat(text, channel)
 
     def telegram_status(self) -> Event:
         return self.telegram.status() | {"notify": self.config.telegram_notify}
@@ -608,8 +665,54 @@ class AssistantService:
     def telegram_pair(self) -> Event:
         if not self.telegram.token:
             raise ValueError("ajoute d'abord le jeton du bot (donné par @BotFather)")
-        code = self.telegram.pairing_code()
-        return self.telegram_status() | {"code": code}
+        if not self.telegram.username:  # the @name makes the QR code's link
+            with contextlib.suppress(OSError, ValueError, KeyError):
+                self.telegram.connect()
+        self.telegram.pairing_code()
+        return self.telegram_status()
+
+    # ---- other messaging apps (messengers.py) ----------------------------------------------
+
+    def _messenger(self, name: str) -> Messenger:
+        if name not in self.messengers:
+            raise KeyError(f"messagerie inconnue : {name}")
+        return self.messengers[name]
+
+    def messengers_status(self) -> list[Event]:
+        return [m.status() for m in self.messengers.values()]
+
+    def messenger_setup(self, name: str, values: dict[str, Any]) -> Event:
+        """Save an app's settings (in the assistant's .env, never shown back) and start it."""
+        messenger = self._messenger(name)
+        messenger.setup(values)
+        messenger.restart()
+        self.gate.record(f"{name}_setup", {}, Level.CRITICAL, "external_send", "user", "réglages")
+        return messenger.status()
+
+    def messenger_pair(self, name: str) -> Event:
+        messenger = self._messenger(name)
+        if isinstance(messenger, Signal):
+            messenger.start_link()
+            return messenger.status()
+        if not messenger.configured:
+            raise ValueError(f"règle d'abord {messenger.label} (voir le guide)")
+        with contextlib.suppress(OSError, ValueError, KeyError, RuntimeError):
+            messenger.connect()  # the bot's name or number makes the QR code's link
+        messenger.pairing_code()
+        return messenger.status()
+
+    def messenger_unlink(self, name: str, contact_id: str) -> Event:
+        messenger = self._messenger(name)
+        messenger.unlink(contact_id)
+        return messenger.status()
+
+    def whatsapp_verify(self, query: dict[str, str]) -> tuple[int, str]:
+        whatsapp = self.messengers["whatsapp"]
+        return whatsapp.verify(query) if isinstance(whatsapp, WhatsApp) else (404, "")
+
+    def whatsapp_receive(self, headers: dict[str, str], body: bytes) -> int:
+        whatsapp = self.messengers["whatsapp"]
+        return whatsapp.receive(headers, body) if isinstance(whatsapp, WhatsApp) else 404
 
     def telegram_unlink(self, chat_id: int) -> Event:
         self.telegram.unlink(chat_id)

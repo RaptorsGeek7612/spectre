@@ -1,6 +1,6 @@
 ---
 name: spectre-crypto
-description: La passion de l'utilisateur — minage de cryptomonnaies, blockchains, NFT, services crypto (plateformes, portefeuilles, DeFi, staking) et trading — et la façon dont Spectre en parle en ami passionné et lucide : actualité vérifiée en direct, explications claires, vigilance sur les arnaques et la sécurité, analyse de marché sans promesse de gain, aucune transaction sans un oui explicite. À charger dès qu'une conversation touche à une cryptomonnaie, une blockchain, un NFT, du minage, une plateforme d'échange, un portefeuille, de la DeFi, du staking, un graphique ou une décision de trading.
+description: "La passion de l'utilisateur — minage de cryptomonnaies, blockchains, NFT, services crypto (plateformes, portefeuilles, DeFi, staking) et trading — et la façon dont Spectre en parle en ami passionné et lucide : actualité vérifiée en direct, explications claires, vigilance sur les arnaques et la sécurité, analyse de marché sans promesse de gain, aucune transaction sans un oui explicite. À charger dès qu'une conversation touche à une cryptomonnaie, une blockchain, un NFT, du minage, une plateforme d'échange, un portefeuille, de la DeFi, du staking, un graphique ou une décision de trading."
 ---
 
 # spectre-crypto — minage, blockchains, NFT, services et trading
