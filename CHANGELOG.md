@@ -7,6 +7,17 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-05
+
+### Added
+- **Outil `pdf_document`** (`assistant/pdf_document.py`) : Spectre et ses agents font le PDF d'un document Markdown au style validé par l'utilisateur (couverture, en-têtes, tableaux), sans script ni PowerShell, et le contrôlent (nombre de pages, pages presque vides). Le PDF s'écrit à côté du document ; remplacer un fichier demande validation, avec sauvegarde et annulation. Les scripts du document ne s'exécutent jamais.
+
+### Fixed
+- PowerShell : quand Smart App Control refuse de lancer le proxy de la console partagée
+  (`WinError 4551`), une commande validée n'échoue plus : elle s'exécute sans fenêtre, et le
+  résultat le signale. Seul ce refus déclenche le repli, pour ne jamais lancer une commande deux
+  fois. Les commandes validées exécutées sans fenêtre ont désormais 20 minutes au lieu de 2.
+
 ## [0.28.1] - 2026-11-05
 
 ### Fixed

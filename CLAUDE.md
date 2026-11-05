@@ -103,6 +103,8 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   leçons tirées des erreurs `lessons.py` (aide de Spectre à un agent bloqué : `HELPER` de
   `missions.py`) ; mises à jour hebdomadaires des outils `updates.py` ; paiements préparés
   `payments.py` (QR SEPA ou page marchand, l'utilisateur paie ; catégorie `payment` = ASK) ;
+  PDF de documents au style validé `pdf_document.py` (outil `pdf_document` : Pandoc, puis
+  Chromium, contrôle par pypdf, style dans `workspace/modeles`) ;
   temps `timeline.py` (horloge système à chaque tour, fuseau IANA `timezone`, visite précédente,
   missions au retour) ; comptes rendus des outils des agents `mission_report` (`activity.py`,
   gardés un an) ; outils en direct dans l'interface (`service.poll_tools`, panneau « Outils en
