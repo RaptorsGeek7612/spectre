@@ -1,6 +1,6 @@
 ---
 name: spectre-rust
-description: La maîtrise du Rust pour Spectre et tous ses agents — ownership, emprunts et durées de vie, types et traits, gestion des erreurs (Result, ?, thiserror/anyhow), collections et itérateurs, génériques, concurrence (threads, Send/Sync, canaux) et async (Tokio), unsafe et FFI, macros, modules, crates et workspaces, tests, benchmarks, documentation, outillage (cargo, clippy, rustfmt, rust-analyzer, cargo-audit) et l'écosystème stable (serde, clap, reqwest, axum, sqlx, tracing, rayon). À charger dès qu'une demande touche du Rust : écrire, relire, corriger, expliquer, porter du code vers Rust, choisir une crate, comprendre une erreur du compilateur ou du borrow checker.
+description: "La maîtrise du Rust pour Spectre et tous ses agents — ownership, emprunts et durées de vie, types et traits, gestion des erreurs (Result, ?, thiserror/anyhow), collections et itérateurs, génériques, concurrence (threads, Send/Sync, canaux) et async (Tokio), unsafe et FFI, macros, modules, crates et workspaces, tests, benchmarks, documentation, outillage (cargo, clippy, rustfmt, rust-analyzer, cargo-audit) et l'écosystème stable (serde, clap, reqwest, axum, sqlx, tracing, rayon). À charger dès qu'une demande touche du Rust : écrire, relire, corriger, expliquer, porter du code vers Rust, choisir une crate, comprendre une erreur du compilateur ou du borrow checker."
 ---
 
 # spectre-rust — écrire du Rust juste, sûr et idiomatique

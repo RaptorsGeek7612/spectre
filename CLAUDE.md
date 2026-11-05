@@ -14,6 +14,11 @@ les vérifie (job `test`).
   `docs/PDR-produit.md` (périmètre par version), `CHANGELOG.md` (historique détaillé).
 - Skills du **pipeline de dev** : charger `spectre-conventions` en premier, puis `spectre-builder`,
   `spectre-tester`, `spectre-devops`, `spectre-reviewer` selon le rôle.
+- Cahier « IA personnelle » : `docs/conformite-ia-personnelle.md` (exigences, état, écarts). 40
+  skills de dev par domaine (`software-architect`, `temporal-awareness`, `agent-governance`,
+  `prompt-injection-defense`, `mcp-client-integration`…, cachées au cerveau via
+  `competences.DEV_ONLY`), 10 sous-agents `.claude/agents/` (périmètres dans
+  `spectre-conventions`), règles `.claude/rules/`, refus dans `.claude/settings.json`.
 
 ## Skills du cerveau de Spectre (`.claude/skills/*`)
 `assistant/competences.py` les liste dans le prompt système (hors skills de dev) ; l'outil
@@ -98,6 +103,10 @@ forge fmt --check ; forge build ; forge test   # partie Foundry
   leçons tirées des erreurs `lessons.py` (aide de Spectre à un agent bloqué : `HELPER` de
   `missions.py`) ; mises à jour hebdomadaires des outils `updates.py` ; paiements préparés
   `payments.py` (QR SEPA ou page marchand, l'utilisateur paie ; catégorie `payment` = ASK) ;
+  temps `timeline.py` (horloge système à chaque tour, fuseau IANA `timezone`, visite précédente,
+  missions au retour) ; comptes rendus des outils des agents `mission_report` (`activity.py`,
+  gardés un an) ; outils en direct dans l'interface (`service.poll_tools`, panneau « Outils en
+  direct ») ; logiciels ouverts par l'utilisateur `desktop.py` (`desktop_apps`, `desktop_watch`) ;
   mémoire `memory.py` (150 faits / 45 000 car. dans le prompt, `compact` la nuit : sauvegarde,
   fusions vérifiées, rien d'effacé, règles et confidences verrouillées, `restore`).
   `voice/engines.py` et `winapi.py` hors couverture (matériel).

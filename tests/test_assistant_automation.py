@@ -485,6 +485,8 @@ def test_telegram_pairing_and_chat(db: Database, tmp_path: Path) -> None:  # noq
     )
     assert tg.connect() == "spectre_bot"
     code = tg.pairing_code(now=1000.0)
+    assert tg.pair_link(code) == f"https://t.me/spectre_bot?start={code}"
+    assert tg.pair_link("") == ""
     bot.updates = [
         update(1, 42, "salut"),  # not paired: ignored, no answer
         update(2, 7, f"/start {code}", kind="group"),  # groups are never served
@@ -502,6 +504,9 @@ def test_telegram_pairing_and_chat(db: Database, tmp_path: Path) -> None:  # noq
     assert texts[1] == (42, "écho : Quelle heure ?") and texts[2][1].startswith("Écris-moi")
     assert tg.pending_code(now=1000.0) == ""  # used once
     assert tg.pairing_code(now=0.0) and tg.pending_code(now=10_000.0) == ""  # expired
+    fresh = tg.pairing_code()  # valid now: the status carries the link and its QR code
+    shown = tg.status()
+    assert shown["link"] == tg.pair_link(fresh) and shown["qr"].startswith("<svg")
     bot.sent.clear()
     assert tg.broadcast("x" * 4500) == 1
     assert [len(t) for _, t in bot.texts()] == [4000, 500]

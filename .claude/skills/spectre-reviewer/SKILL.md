@@ -8,8 +8,11 @@ description: Review the Spectre repo against its cahier des charges and PDRs —
 Charge d'abord `spectre-conventions`. Tu es en **lecture seule** : tu peux lancer les commandes de vérification, pas modifier les fichiers.
 
 ## Checklist
-1. **Exécution** : `uv sync`, `uv run ruff format --check .`, `uv run ruff check .`, `uv run mypy src`, `uv run pytest -m "not live" --cov=spectre`. Note les résultats réels.
-2. **Conformité** : chaque exigence F1–F10 / NF1–NF9 de `docs/cahier-des-charges.md` → OK / KO / partiel, avec preuve `fichier:ligne`.
+1. **Exécution** : `uv run --no-sync ruff format --check .`, `uv run ruff check .`, `.venv/Scripts/python.exe -m mypy --no-native-parser src`, `uv run --no-sync pytest -m "not live" --cov=spectre`. Note les résultats réels.
+2. **Conformité** : chaque exigence F1–F10 / NF1–NF9 de `docs/cahier-des-charges.md` et chaque
+   ligne de `docs/conformite-ia-personnelle.md` → OK / KO / partiel, avec preuve `fichier:ligne`.
+   Pour l'assistant : portail respecté, catégories ASK (paiement, inscription), dates UTC,
+   injection de prompt (`prompt-injection-defense`).
 3. **API Claude** :
    - IDs exacts et uniquement dans `config.py`.
    - Aucun `temperature`/`top_p`/`top_k` possible vers `claude-sonnet-5-5`/`claude-opus-5-5`, y compris via surcharge env.

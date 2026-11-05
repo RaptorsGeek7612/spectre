@@ -83,7 +83,8 @@ def test_comes_over_and_remembers_what_it_asked(db: Database, tmp_path: Path) ->
     assert prompt.startswith("[Tu étais venu vers l'utilisateur en lui disant : « Tu joues")
     assert prompt.endswith("Oui, de la guitare")
     Brain(db, brain_cli, pro.config).ask("Et toi ?")  # type: ignore[arg-type]
-    assert brain_cli.calls[1]["prompt"] == "Et toi ?"  # read once
+    assert brain_cli.calls[1]["prompt"].endswith("]\nEt toi ?")  # read once: no opener again
+    assert "Tu étais venu" not in brain_cli.calls[1]["prompt"]
 
 
 @pytest.mark.parametrize(

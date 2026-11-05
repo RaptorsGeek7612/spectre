@@ -7,6 +7,45 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- **Messageries jumelées par QR code** : Telegram (lien `t.me/<bot>?start=<code>` en QR) ;
+  nouveau `assistant/messengers.py` pour WhatsApp (Cloud API officielle, webhook signé
+  `/whatsapp/webhook`, lien `wa.me`), Signal (signal-cli lié comme appareil, « Note à soi »
+  seulement, textes par stdin), Discord (bot, Gateway, messages privés seulement) et Reddit
+  (messages privés, OAuth « script », relevé chaque minute). Seuls les contacts jumelés sont
+  servis ; secrets dans le `.env`, jamais réaffichés ; notifications et validations envoyées
+  aussi aux contacts jumelés. Dépendance `websockets`.
+- **Gestionnaire temporel** (`assistant/timeline.py`, réglage `timezone`, IANA, défaut
+  `Europe/Paris`) : à chaque tour, la date, l'heure, le jour et le fuseau viennent de l'horloge du
+  système (plus seulement au premier message du jour, la session reprise gardant son prompt) ; au
+  premier message d'une nouvelle visite, Spectre sait quand a eu lieu la conversation précédente,
+  combien de temps s'est écoulé, et l'état des missions (en cours, interrompues par un
+  redémarrage, terminées avec leur durée, échouées avec leur erreur, routines programmées).
+- **Missions interrompues** : un redémarrage note `mission_interrupted` avant de remettre la
+  mission en file (`MissionEngine.recover`).
+- **Comptes rendus des outils des agents** : outil `mission_report` (Spectre seul) — chaque étape,
+  sa vérification, le compte rendu final et le compte rendu de chaque outil utilisé (paramètres,
+  résultat, durée, échec), filtrable par agent ou outil, par pages ; le rapport de fin de mission
+  inclut la liste des outils utilisés. Ces comptes rendus sont gardés un an (30 jours hors mission).
+- **Ce que l'utilisateur ouvre lui-même** : outil `desktop_apps` (Spectre seul) — logiciels
+  ouverts, fenêtre au premier plan, historique ouvert/fermé, observé sur le PC toutes les 5 s
+  (réglage `desktop_watch`) ; fenêtres privées et gestionnaires de mots de passe jamais vus. Le
+  cerveau sait désormais qu'il voit aussi les pages de Chrome (`browser_pages`).
+- **Outils en direct** : chaque outil utilisé par Spectre ou un agent (y compris depuis les CLI
+  d'agents) s'ouvre dans un panneau de l'interface pendant qu'il travaille (qui, quel outil, sur
+  quoi, en cours / fini / échec, paramètres et résultat) ; boutons Épingler, Discret, Fermer.
+- **Outillage Claude Code du projet** (cahier « IA personnelle ») : 40 skills de développement
+  (architecture, backend/frontend, IA et LLM, voix et multimodal, mémoire et temps, multi-agents,
+  sécurité, DevOps, MCP), 10 sous-agents dans `.claude/agents/` avec périmètres disjoints,
+  règles `.claude/rules/`, `.claude/settings.json` (refus de lire `.env`, de `uv sync` nu, des
+  push forcés et des fusions de PR), matrice `docs/conformite-ia-personnelle.md`.
+
+### Fixed
+- En-têtes YAML invalides dans 5 skills (`spectre-crypto`, `spectre-langage`, `spectre-roman`,
+  `spectre-rust`, `spectre-savoirs`) : description non citée contenant « : ».
+- Skills du pipeline de dev (`spectre-conventions`, `-builder`, `-tester`, `-devops`,
+  `-reviewer`) remis à jour : ils dataient de la v0.1 et recommandaient `uv sync` nu.
+
 ## [0.27.1] - 2026-11-01
 
 ### Security

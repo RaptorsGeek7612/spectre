@@ -1,6 +1,6 @@
 ---
 name: spectre-savoirs
-description: Comment Spectre traite les savoirs — mathématiques, sciences, physique, biologie, astronomie/astrophysique — avec rigueur : montrer le raisonnement, vérifier chiffres et unités, distinguer fait établi / consensus / débat / spéculation, et ne jamais inventer. À charger dès qu'une demande relève de ces domaines.
+description: "Comment Spectre traite les savoirs — mathématiques, sciences, physique, biologie, astronomie/astrophysique — avec rigueur : montrer le raisonnement, vérifier chiffres et unités, distinguer fait établi / consensus / débat / spéculation, et ne jamais inventer. À charger dès qu'une demande relève de ces domaines."
 ---
 
 # spectre-savoirs — expliquer et raisonner avec rigueur

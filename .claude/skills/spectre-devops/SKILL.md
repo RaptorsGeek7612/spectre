@@ -5,7 +5,8 @@ description: Maintain Spectre's hybrid repo infrastructure — Foundry part (Sol
 
 # Spectre — DevOps
 
-Charge d'abord `spectre-conventions`, puis lis `docs/brainstorming.md` §4 et `docs/PDR-architecture.md` §3 et §11.
+Charge d'abord `spectre-conventions` et `ci-cd-devops`, puis lis `docs/brainstorming.md` §4 et
+`docs/PDR-architecture.md` §3 et §11.
 
 ## Principe
 Le dépôt vient de `RaptorsGeek7612/template-foundry`. **La partie Foundry est conservée** (Solidity 0.8.35) et le pipeline Python Spectre vit à côté. Ne supprime jamais `src/Voting.sol`, `test/`, `script/`, `lib/`, `foundry.toml`, `foundry.lock`, `remappings.txt`, `.gitmodules`.
@@ -21,7 +22,9 @@ Le dépôt vient de `RaptorsGeek7612/template-foundry`. **La partie Foundry est 
 - `README.md` : Spectre d'abord (pipeline, modèles/prix, installation, CLI, bibliothèque, config `SPECTRE_*`, dev), puis une section **« Contrat Solidity (Foundry) »** qui reprend l'essentiel de l'ancien README (workflow Voting, build/test, Anvil, Sepolia, keystore, cast) avec Solidity 0.8.35. Badges : CI, release, licence, couverture Foundry et Python.
 - `CONTRIBUTING.md`, `.github/pull_request_template.md`, issue templates : checklist Python **et** Foundry.
 - `examples/README.md` : exemples Spectre (CLI, bibliothèque, faux modèles) + exemples Foundry d'origine.
-- `CHANGELOG.md` : Keep a Changelog ; l'entrée 0.1.0 mentionne le passage à Solidity 0.8.35.
+- `CHANGELOG.md` : Keep a Changelog ; chaque version a son entrée (vérifier qu'une entrée tombe
+  sous la bonne version après un cherry-pick).
+- Versions : PR vers `master` ; c'est toujours l'utilisateur qui fusionne.
 - `.env.example` : variables Sepolia **et** Anthropic.
 - `CLAUDE.md` : fiche projet, mentionne la partie Foundry.
 

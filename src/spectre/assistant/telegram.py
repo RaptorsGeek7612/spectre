@@ -232,12 +232,23 @@ class Telegram:
                 continue
         return sent
 
+    def pair_link(self, code: str) -> str:
+        """The link that pairs in one tap (or one scan of its QR code): Telegram opens the bot
+        and sends `/start CODE` itself. Empty while the bot's @name is unknown."""
+        return f"https://t.me/{self.username}?start={code}" if self.username and code else ""
+
     def status(self) -> dict[str, Any]:
+        from spectre.assistant import qrcode
+
+        code = self.pending_code()
+        link = self.pair_link(code)
         return {
             "configured": bool(self.token),
             "running": self.running,
             "username": self.username,
             "error": self.error,
             "chats": self.chats(),
-            "code": self.pending_code(),
+            "code": code,
+            "link": link,
+            "qr": qrcode.svg(link) if link else "",
         }

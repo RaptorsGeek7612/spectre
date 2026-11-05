@@ -379,9 +379,16 @@ class MissionEngine:
     # ---- lifecycle -----------------------------------------------------------------------
 
     def start(self) -> None:
-        self.db.execute("UPDATE missions SET status = 'queued' WHERE status = 'running'")
+        self.recover()
         self._thread = threading.Thread(target=self._loop, name="spectre-missions", daemon=True)
         self._thread.start()
+
+    def recover(self) -> None:
+        """Queue again the missions a restart stopped, each noted as interrupted."""
+        for row in self.db.all("SELECT id FROM missions WHERE status = 'running'"):
+            # stopped by a restart: noted, so that Spectre tells it apart from a fresh one
+            self.db.log_event("mission_interrupted", "system", "", mission=row["id"])
+        self.db.execute("UPDATE missions SET status = 'queued' WHERE status = 'running'")
 
     def stop(self) -> None:
         self._stop.set()
@@ -648,6 +655,9 @@ class MissionEngine:
             f"{'OK' if d['ok'] else 'NON'} — {d['note']}"
             for i, d in enumerate(done)
         )
+        used = activity.tools_summary(self.db, row["id"])  # what the agents' tools did
+        if used:
+            summary = f"{summary}\n\n{used}"
         report = self._call(
             self.lead_model, f"Objectif : {row['goal']}\n\n{summary}", REPORTER
         ).text

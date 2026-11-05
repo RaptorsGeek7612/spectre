@@ -333,6 +333,10 @@
 
       <h3 class="as-h as-h-sub">Telegram</h3>
       <div id="telegram" class="card tg-card"></div>
+
+      <h3 class="as-h as-h-sub">Autres messageries</h3>
+      <p class="meta">Chaque messagerie se jumelle par QR code. Seules les conversations jumelées sont servies ; les jetons restent sur ce PC.</p>
+      <div id="messengers" class="msg-grid"></div>
     </section>
 
     <section class="as-view" data-view="learning" hidden>
@@ -500,6 +504,17 @@
     </div>
   </form>
 </dialog>
+<aside id="tools-live" class="tools-live" hidden aria-label="Outils en direct">
+  <header class="tools-live-head">
+    <span class="tools-live-title">Outils en direct</span>
+    <span id="tools-live-count" class="count"></span>
+    <button type="button" id="tools-live-pin" class="tools-live-btn" aria-pressed="false" title="Garder ouvert">Épingler</button>
+    <button type="button" id="tools-live-mute" class="tools-live-btn" aria-pressed="false" title="Ne plus ouvrir tout seul">Discret</button>
+    <button type="button" id="tools-live-close" class="tools-live-btn" title="Fermer">✕</button>
+  </header>
+  <ol id="tools-live-list" class="tools-live-list" aria-live="polite"></ol>
+</aside>
+<button type="button" id="tools-live-open" class="tools-live-fab" title="Outils en direct">Outils <span id="tools-live-fab-count" class="count"></span></button>
 <div id="toasts" class="toasts" aria-live="polite"></div>
 <script src="assistant.js" type="module"></script>
 </body>
