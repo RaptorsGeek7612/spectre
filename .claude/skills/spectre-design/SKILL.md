@@ -119,9 +119,12 @@ surprend : c'est ce qui fait la différence.
    réserves, la suite possible.
 
 ## 8. Exports et passage au développement
+**Documents en PDF.** Pour un `.md`, un lot compris, utilise `pdf_document`, un appel par document : ni script, ni PowerShell, ni validation tant que rien n'est remplacé. Le style vient de `workspace/modeles/pdf-olivier-final.css` : pour le changer, modifie ce fichier et rien d'autre. Par défaut le PDF s'écrit à côté du `.md` en `<nom>-design.pdf`. L'outil rend le nombre de pages et signale les pages presque vides : lis ce compte rendu, et dis à l'utilisateur ce que tu as contrôlé. Il ne regarde pas le rendu : un document avec captures ou images, ou écrit en plusieurs parties, se traite à part. Sur un lot, fais d'abord un essai sur un document et attends le oui ; ne supprime jamais les anciens PDF sans son oui, après qu'il a vu le résultat.
+
 | Besoin | Outil (libre) |
 |---|---|
-| PDF imprimable ou à envoyer | `toolkit` `maquette_pdf` (Chromium) |
+| PDF d'un document Markdown (rapport, note, démarche), au style validé par l'utilisateur | outil `pdf_document` |
+| PDF d'une maquette HTML imprimable ou à envoyer | `toolkit` `maquette_pdf` (Chromium) |
 | Capture PNG, visuel pour réseau | `maquette_png` (paysage, story, fil, carre), puis `image_format` |
 | Logo, pictos, affiche vectorielle | SVG → `vectoriel` (Inkscape ; options = pdf ou png) |
 | Présentation PowerPoint éditable | `pandoc` (Markdown → .pptx), retouche LibreOffice Impress |

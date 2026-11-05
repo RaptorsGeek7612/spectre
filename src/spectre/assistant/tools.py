@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from spectre.assistant import actions, activity, competences, powershell, runctx
+from spectre.assistant import actions, activity, competences, pdf_document, powershell, runctx
 from spectre.assistant.actions import ActionContext, ActionError
 from spectre.assistant.company import (
     DEPARTMENTS,
@@ -1299,6 +1299,16 @@ def _lab_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
     return (Level.WRITE, "lab")
 
 
+def _pdf_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
+    try:
+        path = pdf_document.destination_of(
+            ctx, str(args.get("source", "")), str(args.get("destination", ""))
+        )
+    except ActionError:
+        return Level.WRITE, "write_file"
+    return _write_risk(ctx, {"path": str(path)})
+
+
 def _powershell_risk(ctx: ActionContext, args: dict[str, Any]) -> tuple[Level, str]:
     # lecture seule (cmdlets Get-/Test-... sans effet de bord) -> tout de suite ; le reste
     # peut tout faire sur le PC -> niveau critique, toujours la validation de l'utilisateur
@@ -1401,6 +1411,18 @@ TOOLS: dict[str, Tool] = {
             "write_file",
             actions.write_file,
             _write_risk,
+        ),
+        Tool(
+            "pdf_document",
+            "Faire le PDF d'un document Markdown au style validé par l'utilisateur "
+            "(couverture, en-têtes, tableaux), puis le contrôler : nombre de pages, pages "
+            "vides. source = le .md ; destination = le .pdf (par défaut <nom>-design.pdf "
+            "à côté du .md ; remplacer demande validation) ; section = la rubrique de la "
+            "couverture.",
+            Level.WRITE,
+            "write_file",
+            pdf_document.make,
+            _pdf_risk,
         ),
         Tool(
             "move_file",
