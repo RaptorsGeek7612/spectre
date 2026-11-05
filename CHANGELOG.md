@@ -7,6 +7,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-05
+
 ### Added
 - **Messageries jumelées par QR code** : Telegram (lien `t.me/<bot>?start=<code>` en QR) ;
   nouveau `assistant/messengers.py` pour WhatsApp (Cloud API officielle, webhook signé
