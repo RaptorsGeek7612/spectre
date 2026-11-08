@@ -20,7 +20,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from spectre import __version__
@@ -36,8 +36,10 @@ from spectre.config import (
 from spectre.errors import ConfigurationError
 from spectre.web.auth import COOKIE_NAME, PASSWORD_ENV, SESSION_TTL_S, Auth, save_password
 from spectre.web.export import to_markdown, to_share_html
-from spectre.web.pipeline import Event, clean_overrides, stream_run
 from spectre.web.store import Store, title_from
+
+if TYPE_CHECKING:
+    from spectre.web.pipeline import Event
 
 # Explicit types: on Windows the registry can map .js to text/plain, which breaks ES modules.
 _TYPES = {
@@ -337,6 +339,8 @@ class Handler(BaseHTTPRequestHandler):
             case "GET", ["presets"]:
                 self._json(200, store.get_presets())
             case "POST", ["presets"]:
+                from spectre.web.pipeline import clean_overrides  # loads the LLM stack
+
                 body = self._body()
                 overrides = clean_overrides(body.get("overrides") or {})
                 load_specs({**os.environ, **overrides})  # validates values
@@ -494,6 +498,10 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("la demande est vide")
         if len(request) > 100_000:
             raise ValueError("demande trop longue (100 000 caractères maximum)")
+        # The pipeline loads LangChain and the Anthropic SDK: only when a run is asked for, so
+        # the assistant starts faster.
+        from spectre.web.pipeline import clean_overrides, stream_run
+
         demo = bool(body.get("demo"))
         preset = str(body.get("preset") or "Standard")
         overrides = clean_overrides(body.get("overrides") or {})

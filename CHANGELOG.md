@@ -7,6 +7,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.29.1] - 2026-11-08
+
+### Changed
+- Démarrage plus rapide : la fenêtre de Spectre s'ouvre en 4,5 s environ au lieu de 12,7 s
+  (mesuré sur ce PC). La voix et la caméra se chargent en arrière-plan pendant que la page
+  répond déjà ; le pipeline (LangGraph, LangChain, SDK Anthropic) n'est chargé qu'à sa
+  première utilisation (`spectre.run`, `build_graph` et `SpectreResult` restent importables
+  depuis `spectre`) ; le lanceur vérifie que le port est ouvert en 0,3 s avant d'interroger
+  Spectre, au lieu d'attendre 2 s à chaque essai pendant le démarrage.
+
 ## [0.29.0] - 2026-11-05
 
 ### Added

@@ -6,6 +6,11 @@ $log = Join-Path $env:USERPROFILE ".spectre\assistant\spectre.log"
 $url = "http://127.0.0.1:8765/assistant.html"
 
 function Test-Spectre {
+    # A closed port makes Windows retry the connection for ~2 s: check it is open first (300 ms).
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    try { if (-not $tcp.ConnectAsync("127.0.0.1", 8765).Wait(300)) { return $false } }
+    catch { return $false }
+    finally { $tcp.Dispose() }
     try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 "http://127.0.0.1:8765/api/status" | Out-Null; return $true }
     catch { return $false }
 }
