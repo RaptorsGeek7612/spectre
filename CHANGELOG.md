@@ -7,6 +7,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.29.2] - 2026-11-08
+
+### Fixed
+- Signal : signal-cli recopiait sa bibliothèque native (~25 Mo) dans le dossier temporaire de
+  Windows à chaque lancement, sans jamais l'effacer. Spectre le lançant toutes les ~20 s, le
+  disque se remplissait d'environ 100 Go par jour (261 Go en trois jours). signal-cli a
+  désormais son propre dossier temporaire (`~/.spectre/assistant/signal-tmp`), dont Spectre
+  efface les copies de plus de 10 minutes avant chaque lancement (une copie encore utilisée est
+  laissée pour la fois suivante).
+
 ## [0.29.1] - 2026-11-08
 
 ### Changed

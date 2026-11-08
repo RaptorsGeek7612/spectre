@@ -6,6 +6,8 @@ import hashlib
 import hmac
 import io
 import json
+import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +22,7 @@ from spectre.assistant.messengers import (
     Signal,
     WhatsApp,
     all_messengers,
+    sweep_signal_tmp,
 )
 from spectre.assistant.service import AssistantService
 from tests.test_assistant_agents import db  # noqa: F401 - fixture
@@ -349,6 +352,43 @@ def test_signal_link_and_note_to_self(
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     with pytest.raises(ValueError, match="introuvable"):
         Signal(tmp_path, db, echo, environ={"SIGNAL_CLI": ""}).start_link()
+
+
+def test_signal_tmp_is_swept(
+    db: Database,  # noqa: F811
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    folder = tmp_path / "t"
+    assert sweep_signal_tmp(folder) == 0  # not created yet
+    folder.mkdir()
+    old_dir = folder / "libsignal123"
+    old_dir.mkdir()
+    (old_dir / "signal_jni.dll").write_bytes(b"x")
+    old_file = folder / "libsignal456.dll"
+    old_file.write_bytes(b"x")
+    fresh = folder / "libsignal789"
+    fresh.mkdir()
+    other = folder / "garde.txt"
+    other.write_text("x", encoding="utf-8")
+    past = time.time() - 3600
+    for path in (old_dir, old_file, other):
+        os.utime(path, (past, past))
+    assert sweep_signal_tmp(folder) == 2
+    assert sorted(p.name for p in folder.iterdir()) == ["garde.txt", "libsignal789"]
+
+    def locked(_: Path) -> None:
+        raise PermissionError("en cours d'usage")
+
+    os.utime(fresh, (past, past))
+    monkeypatch.setattr("shutil.rmtree", locked)
+    assert sweep_signal_tmp(folder) == 0 and fresh.exists()  # skipped, not an error
+
+    monkeypatch.setenv("SIGNAL_CLI_OPTS", "-Xmx256m")
+    s = Signal(tmp_path, db, echo)
+    env = s.java_env()
+    assert s.tmp_dir.is_dir()
+    assert env["SIGNAL_CLI_OPTS"] == f'-Xmx256m "-Djava.io.tmpdir={s.tmp_dir}"'
 
 
 def test_all_messengers(db: Database, tmp_path: Path) -> None:  # noqa: F811

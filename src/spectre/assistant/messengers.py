@@ -721,7 +721,7 @@ Runner = Callable[[list[str], str, float], tuple[int, str, str]]  # (args, stdin
 
 
 def run_cli(
-    args: list[str], stdin: str, timeout: float
+    args: list[str], stdin: str, timeout: float, env: dict[str, str] | None = None
 ) -> tuple[int, str, str]:  # pragma: no cover
     done = subprocess.run(  # noqa: S603 - fixed program, no shell, text through stdin
         args,
@@ -731,8 +731,37 @@ def run_cli(
         encoding="utf-8",
         timeout=timeout,
         check=False,
+        env=env,
     )
     return done.returncode, done.stdout, done.stderr
+
+
+SIGNAL_TMP_MAX_AGE_S = 600.0
+
+
+def sweep_signal_tmp(folder: Path, *, max_age_s: float = SIGNAL_TMP_MAX_AGE_S) -> int:
+    """Remove the copies of libsignal's native library that signal-cli leaves behind.
+
+    Each signal-cli start extracts its ~25 MB DLL into the Java temporary folder and never
+    removes it (Windows keeps it locked until the JVM exits). Spectre runs `receive` every
+    ~20 s, so without this sweep the copies filled the disk (hundreds of GB in a few days).
+    Only `libsignal*` entries older than `max_age_s` go; one still in use is skipped."""
+    removed = 0
+    if not folder.is_dir():
+        return 0
+    limit = time.time() - max_age_s
+    for entry in folder.iterdir():
+        try:
+            if not entry.name.startswith("libsignal") or entry.stat().st_mtime > limit:
+                continue
+            if entry.is_dir() and not entry.is_symlink():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
+            removed += 1
+        except OSError:
+            continue  # still loaded by a running signal-cli: next sweep
+    return removed
 
 
 class Signal(Messenger):
@@ -757,12 +786,14 @@ class Signal(Messenger):
         db: Database,
         reply: Reply,
         *,
-        runner: Runner = run_cli,
+        runner: Runner | None = None,
         popen: Callable[..., Any] = subprocess.Popen,
         environ: dict[str, str] | None = None,
     ) -> None:
         super().__init__(root, db, reply, environ=environ)
-        self.runner = runner
+        self.runner: Runner = runner or (
+            lambda args, stdin, timeout: run_cli(args, stdin, timeout, env=self.java_env())
+        )
         self.popen = popen
         self.link_uri = ""
         self._linking: Any = None
@@ -795,6 +826,20 @@ class Signal(Messenger):
         self.stop()
         self.db.set_kv("signal_account", "")
 
+    @property
+    def tmp_dir(self) -> Path:
+        return self.root / "signal-tmp"
+
+    def java_env(self) -> dict[str, str]:
+        """signal-cli's environment: its own Java temporary folder, swept of the native
+        library copies of earlier runs (see `sweep_signal_tmp`)."""
+        self.tmp_dir.mkdir(parents=True, exist_ok=True)
+        sweep_signal_tmp(self.tmp_dir)
+        env = dict(os.environ)
+        opts = env.get("SIGNAL_CLI_OPTS", "")
+        env["SIGNAL_CLI_OPTS"] = f'{opts} "-Djava.io.tmpdir={self.tmp_dir}"'.strip()
+        return env
+
     def _base(self) -> list[str]:
         return [self.cli(), "--config", str(self.data_dir)]
 
@@ -813,6 +858,7 @@ class Signal(Messenger):
             stdin=subprocess.DEVNULL,
             text=True,
             encoding="utf-8",
+            env=self.java_env(),
         )
         self._linking = process
         self.link_uri = ""
