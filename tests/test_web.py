@@ -19,6 +19,7 @@ from langchain_anthropic import ChatAnthropic
 
 from spectre.errors import ConfigurationError, MissingAPIKeyError, SpectreError
 from spectre.web import auth as auth_mod
+from spectre.web import pipeline as pipeline_mod
 from spectre.web import server as server_mod
 from spectre.web.auth import Auth
 from spectre.web.demo import DEMO_REQUEST, DemoChatModel, demo_text
@@ -723,7 +724,7 @@ def test_unexpected_crash_marks_run_cancelled(
         raise RuntimeError("bug")
         yield {}  # pragma: no cover
 
-    monkeypatch.setattr(server_mod, "stream_run", exploding)
+    monkeypatch.setattr(pipeline_mod, "stream_run", exploding)  # imported when a run starts
     monkeypatch.setenv("SPECTRE_WEBUI_LOG", "1")  # also exercises request logging
     with _serve(tmp_path) as client:
         status, _, _ = client.request("POST", "/api/run", {"request": "x", "demo": True})

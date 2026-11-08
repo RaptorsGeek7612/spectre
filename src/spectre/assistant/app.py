@@ -142,16 +142,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     url = f"http://127.0.0.1:{args.port}/assistant.html"
     print(f"Spectre est prêt : {url}", flush=True)
-    if args.voice:  # pragma: no cover - needs audio devices
-        try:
-            print(start_voice(service), flush=True)
-        except Exception as exc:  # noqa: BLE001 - the UI still works without voice
-            print(f"Voix indisponible : {exc}", file=sys.stderr, flush=True)
-    if args.camera or config.camera:  # pragma: no cover - needs a webcam
-        try:
-            print(start_camera(service), flush=True)
-        except Exception as exc:  # noqa: BLE001 - the assistant still works without it
-            print(f"Caméra indisponible : {exc}", file=sys.stderr, flush=True)
+
+    def start_devices() -> None:  # pragma: no cover - needs audio devices and a webcam
+        if args.voice:
+            try:
+                print(start_voice(service), flush=True)
+            except Exception as exc:  # noqa: BLE001 - the UI still works without voice
+                print(f"Voix indisponible : {exc}", file=sys.stderr, flush=True)
+        if args.camera or config.camera:
+            try:
+                print(start_camera(service), flush=True)
+            except Exception as exc:  # noqa: BLE001 - the assistant still works without it
+                print(f"Caméra indisponible : {exc}", file=sys.stderr, flush=True)
+
+    # Voice and camera take seconds to load: load them while the page already answers, so
+    # the window opens at once instead of waiting for the models.
+    threading.Thread(target=start_devices, name="spectre-devices", daemon=True).start()
     if not args.no_browser and args.host in LOCAL_HOSTS:
         webbrowser.open(url)
     try:
