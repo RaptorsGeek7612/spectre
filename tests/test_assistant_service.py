@@ -791,3 +791,83 @@ def test_api_mcp_secret(api: Client, service: AssistantService) -> None:
     assert api.json("POST", path, {"var": "NOPE", "value": "x"})[0] == 400
     audit = service.db.one("SELECT args FROM audit WHERE tool = 'mcp_server_secret'")
     assert "s3cr3t" not in audit["args"]
+
+
+def _feed(detector: UtteranceDetector, blocks: list[bytes]) -> int:
+    """How many blocks the detector took before ending the turn (-1: never ended)."""
+    for i, block in enumerate(blocks, 1):
+        if detector.feed(block):
+            return i
+    return -1
+
+
+def test_detector_smart_turn_ends_a_finished_sentence_at_once() -> None:
+    asked: list[int] = []
+
+    def finished(pcm: bytes) -> bool:
+        asked.append(len(pcm))
+        return True
+
+    detector = UtteranceDetector(turn=finished)
+    assert _feed(detector, [LOUD] * 5 + [QUIET] * 30) == 8  # 0.3 s of pause, not 1.8 s
+    assert len(asked) == 1 and detector.verdicts == [True]
+
+
+def test_detector_smart_turn_waits_for_a_thinking_pause() -> None:
+    answers = iter([False, True])
+    detector = UtteranceDetector(turn=lambda pcm: next(answers))
+    # "je voudrais que tu…" (unfinished, 1 s of thinking), then the rest
+    blocks = [LOUD] * 5 + [QUIET] * 10 + [LOUD] * 5 + [QUIET] * 30
+    assert _feed(detector, blocks) == 23  # asked once per pause
+    assert detector.verdicts == [False, True]
+    # never finished: gives up after turn_cap_s (2.5 s) of quiet
+    stubborn = UtteranceDetector(turn=lambda pcm: False)
+    assert _feed(stubborn, [LOUD] * 5 + [QUIET] * 40) == 30
+
+
+def test_detector_falls_back_when_the_models_fail() -> None:
+    def broken(_: bytes) -> bool:
+        raise RuntimeError("onnx")
+
+    detector = UtteranceDetector(turn=broken, vad=broken)
+    assert _feed(detector, _utterance()) == 23  # the plain 1.8 s pause
+    assert detector.turn is None and detector.vad is None
+
+
+def test_detector_vad_ignores_loud_noise() -> None:
+    detector = UtteranceDetector(vad=lambda block: False, wait_s=1.0)
+    assert _feed(detector, [LOUD] * 20) == 10  # a fan, a door: never speech
+    assert not detector.heard_speech
+
+
+def test_voice_loop_uses_the_vad_and_turn_models() -> None:
+    resets: list[int] = []
+    vad = SimpleNamespace(reset=lambda: resets.append(1), speech=lambda block: block == LOUD)
+    turn = SimpleNamespace(done=lambda pcm: True)
+    voice, tts, _ = _loop([WAKE, *[LOUD] * 5, *[QUIET] * 4], FakeSTT("quelle heure"))
+    voice.vad, voice.turn = vad, turn
+    detector = voice._detector(8.0)
+    assert resets and detector.vad is not None and detector.turn is not None
+    voice.run()
+    assert tts.spoken == ["Tu as dit quelle heure."]  # answered after 0.3 s of pause
+
+
+def test_remote_turn(api: Client, service: AssistantService) -> None:
+    pcm = b"\x00\x10" * SAMPLE_RATE
+    assert service.remote_turn(pcm) == {"done": None}  # no voice
+    voice = PhoneVoice()
+    service.attach_voice(voice)
+    assert service.remote_turn(pcm) == {"done": None}  # no Smart Turn loaded
+    voice.turn = SimpleNamespace(done=lambda pcm: False)  # type: ignore[attr-defined]
+    assert service.remote_turn(b"\x00" * 100) == {"done": None}  # too short
+    assert service.remote_turn(pcm) == {"done": False}
+
+    def broken(_: bytes) -> bool:
+        raise RuntimeError("onnx")
+
+    voice.turn = SimpleNamespace(done=broken)  # type: ignore[attr-defined]
+    assert service.remote_turn(pcm) == {"done": None}
+    voice.turn = SimpleNamespace(done=lambda pcm: True)  # type: ignore[attr-defined]
+    headers = {"Content-Type": "application/octet-stream"}
+    status, _, body = api.request("POST", "/api/assistant/turn", raw=pcm, headers=headers)
+    assert status == 200 and json.loads(body) == {"done": True}

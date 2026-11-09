@@ -40,6 +40,19 @@ class Barge(Protocol):
     def heard(self, block: bytes) -> str: ...  # the word, or ""
 
 
+class VAD(Protocol):
+    """Tells a voice from noise, block by block (Silero)."""
+
+    def reset(self) -> None: ...
+    def speech(self, block: bytes) -> bool: ...
+
+
+class Turn(Protocol):
+    """Has the speaker finished? (Smart Turn, from the audio so far)."""
+
+    def done(self, pcm: bytes) -> bool: ...
+
+
 class STT(Protocol):
     def transcribe(self, pcm: bytes) -> str: ...
 
@@ -67,6 +80,8 @@ class VoiceLoop:
         follow_up_s: float = 6.0,
         ack: str = "",  # optional filler while the brain thinks; off, users found it grating
         barge: Barge | None = None,
+        vad: VAD | None = None,
+        turn: Turn | None = None,
     ) -> None:
         self.mic, self.wake, self.stt, self.tts = mic, wake, stt, tts
         self.reply = reply
@@ -75,6 +90,8 @@ class VoiceLoop:
         self.follow_up_s = follow_up_s
         self.ack = ack
         self.barge = barge
+        self.vad = vad
+        self.turn = turn
         self.stop = threading.Event()
         self.interrupt = threading.Event()
         self.barged = False  # the user cut Spectre off during its last sentence
@@ -116,7 +133,7 @@ class VoiceLoop:
             if self.play is not None:
                 self.play(chime(), SAMPLE_RATE)
             self._set("listening", "")
-            detector = UtteranceDetector(wait_s=8.0 if first else self.follow_up_s)
+            detector = self._detector(8.0 if first else self.follow_up_s)
             for block in blocks:
                 if detector.feed(block):
                     break
@@ -136,12 +153,22 @@ class VoiceLoop:
                 self._speak(answer)
             first = False
 
+    def _detector(self, wait_s: float) -> UtteranceDetector:
+        """Listens for one utterance, with the voice and end-of-turn models when loaded."""
+        if self.vad is not None:
+            self.vad.reset()
+        return UtteranceDetector(
+            wait_s=wait_s,
+            vad=self.vad.speech if self.vad is not None else None,
+            turn=self.turn.done if self.turn is not None else None,
+        )
+
     def _rest_of(self, text: str, blocks: Iterable[bytes]) -> str:
         """The user paused mid-sentence ("je voudrais que tu…"): keep listening, without a
         chime, and add what comes next, until the sentence ends or nothing more is said."""
         while text and looks_unfinished(text) and not self.stop.is_set():
             self._set("listening", "")
-            more = UtteranceDetector(wait_s=CONTINUE_S)
+            more = self._detector(CONTINUE_S)
             for block in blocks:
                 if more.feed(block):
                     break

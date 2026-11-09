@@ -15,8 +15,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   l'arrête et il écoute aussitôt (seul son nom compte : « stop », « attends », « pardon »
   étaient reconnus à tort dans sa propre voix). Sur le téléphone, toucher le micro ou parler
   par-dessus lui (seulement quand le navigateur annule l'écho).
+- Voix : fin de phrase « intelligente », comme les assistants vocaux du marché. Smart Turn
+  v3.2 (Pipecat, BSD-2, 8 Mo, téléchargé au premier lancement et vérifié par SHA-256) écoute
+  l'intonation et le rythme : phrase finie, Spectre répond après 0,3 s de pause au lieu de
+  1,8 s ; pause pour réfléchir, il attend jusqu'à 2,5 s. Silero VAD (MIT, fourni avec
+  faster-whisper) distingue une voix d'un bruit. Le téléphone le demande à chaque pause
+  (`POST /api/assistant/turn`). Sans ces modèles, Spectre écoute comme avant.
 
 ### Fixed
+- Voix : l'orbe restait sur « je parle » après une annonce (PC et téléphone), et Spectre ne
+  disait plus ses réponses écrites ni ses initiatives.
 - Lanceur : quand l'appli Chrome installée ne s'ouvre plus (Chrome ouvrait un onglet vide),
   `spectre-assistant.ps1` le voit et ouvre Spectre dans une fenêtre d'appli simple.
 

@@ -191,6 +191,137 @@ class VoskBarge:
         return ""
 
 
+def _shim_av() -> None:
+    """Some Windows setups block PyAV's DLLs; faster-whisper only needs it to decode files,
+    and Spectre passes raw arrays."""
+    try:
+        import av  # noqa: F401
+    except ImportError:
+        sys.modules["av"] = types.ModuleType("av")
+
+
+class SileroVAD:
+    """Silero VAD (MIT), the copy shipped with faster-whisper: tells speech from noise, block
+    by block, where a loudness threshold mistakes a door or a fan for a voice. Streaming:
+    512-sample windows with 64 samples of context and the LSTM state carried over."""
+
+    WINDOW = 512
+    CONTEXT = 64
+
+    def __init__(self, threshold: float = 0.5) -> None:
+        _shim_av()
+        import faster_whisper
+        import numpy as np
+        import onnxruntime
+
+        path = Path(faster_whisper.__file__).parent / "assets" / "silero_vad_v6.onnx"
+        opts = onnxruntime.SessionOptions()
+        opts.inter_op_num_threads = 1
+        opts.intra_op_num_threads = 1
+        opts.log_severity_level = 4
+        self.session = onnxruntime.InferenceSession(
+            str(path), sess_options=opts, providers=["CPUExecutionProvider"]
+        )
+        self.np = np
+        self.threshold = threshold
+        self.lock = threading.Lock()  # the PC loop and the phone share it
+        self.reset()
+
+    def reset(self) -> None:
+        np = self.np
+        self.h = np.zeros((1, 1, 128), dtype=np.float32)
+        self.c = np.zeros((1, 1, 128), dtype=np.float32)
+        self.context = np.zeros(self.CONTEXT, dtype=np.float32)
+        self.pending = np.zeros(0, dtype=np.float32)
+
+    def prob(self, block: bytes) -> float:
+        """Highest speech probability in this block (0-1)."""
+        np = self.np
+        with self.lock:
+            audio = np.frombuffer(block, dtype=np.int16).astype(np.float32) / 32768.0
+            self.pending = np.concatenate([self.pending, audio])
+            best = 0.0
+            while self.pending.size >= self.WINDOW:
+                window, self.pending = self.pending[: self.WINDOW], self.pending[self.WINDOW :]
+                frame = np.concatenate([self.context, window])[None, :]
+                out, self.h, self.c = self.session.run(
+                    None, {"input": frame, "h": self.h, "c": self.c}
+                )
+                self.context = window[-self.CONTEXT :]
+                best = max(best, float(np.asarray(out).reshape(-1)[0]))
+            return best
+
+    def speech(self, block: bytes) -> bool:
+        return self.prob(block) >= self.threshold
+
+
+SMART_TURN = "smart-turn-v3.2-cpu.onnx"
+SMART_TURN_URL = f"https://huggingface.co/pipecat-ai/smart-turn-v3/resolve/main/{SMART_TURN}"
+SMART_TURN_SHA256 = "2bb026316b14a660486a75b1733cd3fbab8c2fd0314dc9af7be49f8cca967e4f"
+
+
+def ensure_smart_turn(models: Path) -> Path:
+    """Smart Turn v3.2 (Pipecat, BSD-2-Clause, 8 MB), checked against its published hash."""
+    import hashlib
+
+    path = models / "smart-turn" / SMART_TURN
+    if path.exists():
+        return path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with urllib.request.urlopen(SMART_TURN_URL, timeout=120) as response:  # noqa: S310 - fixed host
+        data = response.read()
+    if hashlib.sha256(data).hexdigest() != SMART_TURN_SHA256:
+        raise ValueError("Smart Turn : empreinte inattendue, modèle refusé")
+    path.write_bytes(data)
+    return path
+
+
+class SmartTurn:
+    """Has the speaker finished? Smart Turn v3 listens to the last 8 s (intonation, rhythm,
+    words) and answers in ~10-60 ms on a CPU, where a fixed silence either cuts a speaker who
+    is thinking or makes everyone wait. Same input as the official `inference.py`: 8 s padded
+    at the start, waveform normalised, Whisper log-mel (80 x 800) — checked against
+    transformers' WhisperFeatureExtractor (max difference 1e-5)."""
+
+    SECONDS = 8
+
+    def __init__(self, models: Path, threshold: float = 0.5) -> None:
+        _shim_av()
+        import numpy as np
+        import onnxruntime
+        from faster_whisper.feature_extractor import FeatureExtractor  # type: ignore[import-untyped]
+
+        opts = onnxruntime.SessionOptions()
+        opts.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
+        opts.inter_op_num_threads = 1
+        opts.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        opts.log_severity_level = 4
+        self.session = onnxruntime.InferenceSession(
+            str(ensure_smart_turn(models)), sess_options=opts, providers=["CPUExecutionProvider"]
+        )
+        self.features = FeatureExtractor(chunk_length=self.SECONDS)
+        self.np = np
+        self.threshold = threshold
+        self.lock = threading.Lock()
+
+    def prob(self, pcm: bytes) -> float:
+        """Probability that the turn is complete (0-1), from 16 kHz mono int16 PCM."""
+        np = self.np
+        size = self.SECONDS * SAMPLE_RATE
+        audio = np.frombuffer(pcm[: len(pcm) - len(pcm) % 2], dtype=np.int16)[-size:].astype(
+            np.float32
+        )
+        audio = np.pad(audio / 32768.0, (size - audio.size, 0))
+        audio = (audio - audio.mean()) / np.sqrt(audio.var() + 1e-7)
+        mel = self.features(audio, padding=0)[:, : self.SECONDS * 100].astype(np.float32)
+        with self.lock:
+            out = self.session.run(None, {"input_features": mel[None, :, :]})
+        return float(np.asarray(out[0]).reshape(-1)[0])
+
+    def done(self, pcm: bytes) -> bool:
+        return self.prob(pcm) >= self.threshold
+
+
 # Names Whisper tends to mishear in French speech; the prompt biases it towards them.
 # A short context for the recogniser. A long list of words gets copied out as if it had been
 # said when the audio is unclear ("Ouvre YouTube, Google Chrome," heard from noise).
@@ -201,12 +332,7 @@ class WhisperSTT:
     """faster-whisper on CPU (int8)."""
 
     def __init__(self, model_size: str = "small", language: str = "fr") -> None:
-        try:
-            import av  # noqa: F401
-        except ImportError:
-            # Some Windows setups block PyAV's DLLs; it is only needed to decode files,
-            # and Spectre passes raw arrays.
-            sys.modules["av"] = types.ModuleType("av")
+        _shim_av()
         from faster_whisper import WhisperModel
 
         self.language = language

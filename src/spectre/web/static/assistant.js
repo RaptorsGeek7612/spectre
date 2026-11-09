@@ -1362,6 +1362,22 @@ async function deviceTalk(more = false) {
   rec.active = true;
   const started = performance.now();
   let spoke = 0, lastVoice = 0;
+  // At each pause, Spectre's Smart Turn says whether the sentence is over (intonation, rhythm):
+  // over, it answers at once; a pause to think, it waits up to 2.5 s; unknown, a 1.8 s pause.
+  let pause = 0, asked = -1, verdict = null;
+  const askTurn = (id) => {
+    const rate = rec.ctx.sampleRate, keep = [];
+    let n = 0;
+    for (let i = rec.chunks.length - 1; i >= 0 && n < 8 * rate; i--) { keep.unshift(rec.chunks[i]); n += rec.chunks[i].length; }
+    const pcm = toPcm16(keep, rate);
+    fetch("/api/assistant/turn", { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/octet-stream" }, body: pcm.buffer })
+      .then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
+      .then((d) => {
+        if (id !== pause || !rec.active) return;  // the user spoke again meanwhile
+        verdict = typeof d.done === "boolean" ? d.done : null;
+        if (verdict) finishRecording();
+      });
+  };
   rec.node.onaudioprocess = (e) => {
     if (!rec.active) return;
     const data = e.inputBuffer.getChannelData(0);
@@ -1371,11 +1387,17 @@ async function deviceTalk(more = false) {
     const level = Math.sqrt(sum / data.length);
     setLevel(Math.min(1, level * 8));
     const now = performance.now();
-    if (level > 0.02) { spoke = spoke || now; lastVoice = now; }
-    // stops after a pause, if nothing is said (sooner when only the end of a sentence is awaited),
-    // or after 25 s
+    if (level > 0.02) {
+      if (spoke && now - lastVoice > 250) { pause++; verdict = null; }  // speaking again
+      spoke = spoke || now; lastVoice = now;
+    }
+    const quiet = spoke ? now - lastVoice : 0;
+    if (spoke && quiet > 400 && asked !== pause && now - spoke > 300) { asked = pause; askTurn(pause); }
+    // stops after a pause (2.5 s when Smart Turn hears an unfinished sentence), if nothing is
+    // said (sooner when only the end of a sentence is awaited), or after 25 s
+    const limit = verdict === false ? 2500 : 1800;
     const wait = more ? 4000 : 7000;
-    if ((spoke && now - lastVoice > 1800) || (!spoke && now - started > wait) || now - started > 25000) finishRecording();
+    if ((spoke && quiet > limit) || (!spoke && now - started > wait) || now - started > 25000) finishRecording();
   };
   source.connect(rec.node);
   rec.node.connect(rec.ctx.destination);  // outputs silence; needed for the node to run

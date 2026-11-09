@@ -1249,6 +1249,18 @@ class AssistantService:
     def voice_reply(self, text: str) -> str:
         return self.chat(text, channel="voice")
 
+    def remote_turn(self, pcm: bytes) -> Event:
+        """Has the speaker on the phone finished (Smart Turn, from the audio so far)? The phone
+        asks at each pause; `done` is None when the model is not loaded (it then waits for
+        a plain 1.8 s pause)."""
+        turn = getattr(self.voice, "turn", None) if self.voice is not None else None
+        if turn is None or len(pcm) < SAMPLE_RATE // 2:  # under a quarter of a second
+            return {"done": None}
+        try:
+            return {"done": bool(turn.done(pcm))}
+        except Exception:  # noqa: BLE001 - the phone falls back to the plain pause
+            return {"done": None}
+
     def remote_voice(self, pcm: bytes, before: str = "", *, final: bool = False) -> Event:
         """A turn spoken into another device (the phone, 16 kHz mono int16): Spectre transcribes
         it with its own speech recognition, answers, and returns its voice as a WAV to play

@@ -6,7 +6,7 @@ import array
 import io
 import math
 import wave
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -26,8 +26,14 @@ def rms(block: bytes) -> float:
 class UtteranceDetector:
     """Collects audio blocks until the speaker pauses.
 
-    Starts after speech is heard (energy above the adaptive noise floor), stops after
-    `silence_s` of quiet, or at `max_s`. `feed` returns True when the utterance is complete.
+    Starts after speech is heard (energy above the adaptive noise floor, and a voice for
+    `vad` when given), stops after `silence_s` of quiet, or at `max_s`. `feed` returns True
+    when the utterance is complete.
+
+    With `turn` (Smart Turn: "has the speaker finished?", from the audio so far), as the
+    leading voice assistants do: at the first `turn_after_s` of each pause the model is asked;
+    finished, the turn ends at once; not finished (a pause to think), it waits for the voice
+    to come back, up to `turn_cap_s`. A failing model falls back to `silence_s`.
     """
 
     block_s: float = 0.1
@@ -43,6 +49,33 @@ class UtteranceDetector:
     quiet_blocks: int = 0
     total_blocks: int = 0
     before: list[bytes] = field(default_factory=list)
+    vad: Callable[[bytes], bool] | None = None  # is this block a voice (not a fan, a door)?
+    turn: Callable[[bytes], bool] | None = None  # has the speaker finished?
+    turn_after_s: float = 0.3
+    turn_cap_s: float = 2.5
+    asked: bool = False  # the model was asked during this pause
+    verdicts: list[bool] = field(default_factory=list)  # its answers, for the log
+
+    def _voiced(self, block: bytes, level: float, threshold: float) -> bool:
+        if level < threshold:
+            return False
+        if self.vad is None:
+            return True
+        try:
+            return self.vad(block)
+        except Exception:  # noqa: BLE001 - a broken model must not deafen Spectre
+            self.vad = None
+            return True
+
+    def _finished(self) -> bool:
+        assert self.turn is not None
+        try:
+            done = bool(self.turn(self.audio()))
+        except Exception:  # noqa: BLE001 - back to the plain pause
+            self.turn = None
+            return False
+        self.verdicts.append(done)
+        return done
 
     def feed(self, block: bytes) -> bool:
         self.total_blocks += 1
@@ -50,7 +83,7 @@ class UtteranceDetector:
         threshold = max(self.floor * 2.5, 500.0)
         if not self.speaking:
             self.floor = 0.9 * self.floor + 0.1 * level if level < threshold else self.floor
-            if level >= threshold:
+            if self._voiced(block, level, threshold):
                 self.speaking = True
                 self.chunks.extend(self.before)  # the onset was quieter than the threshold
             elif self.total_blocks * self.block_s >= self.wait_s:
@@ -61,13 +94,25 @@ class UtteranceDetector:
                 ]
         if self.speaking:
             self.chunks.append(block)
-            if level >= threshold:
+            if self._voiced(block, level, threshold):
                 self.speech_blocks += 1
                 self.quiet_blocks = 0
+                self.asked = False
             else:
                 self.quiet_blocks += 1
-            if self.quiet_blocks * self.block_s >= self.silence_s:
+            quiet = self.quiet_blocks * self.block_s
+            if self.turn is not None and self.heard_speech:
+                if not self.asked and quiet >= self.turn_after_s - 1e-9:
+                    self.asked = True
+                    if self._finished():
+                        return True
+                if self.turn is not None:
+                    return quiet >= self.turn_cap_s - 1e-9 or self._too_long()
+            if quiet >= self.silence_s - 1e-9:
                 return True
+        return self._too_long()
+
+    def _too_long(self) -> bool:
         return self.total_blocks * self.block_s >= self.max_s
 
     @property
