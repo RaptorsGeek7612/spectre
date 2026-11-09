@@ -27,19 +27,45 @@ function Get-SpectreAppArgs {
     return $null
 }
 
+# Is a Chrome window titled "Spectre..." on screen? $null when it cannot be checked.
+# UI Automation lists every top-level window (Get-Process only gives one title per process).
+function Test-SpectreWindow {
+    try {
+        Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+        $element = [System.Windows.Automation.AutomationElement]
+        $chromeWindows = New-Object System.Windows.Automation.PropertyCondition(
+            $element::ClassNameProperty, "Chrome_WidgetWin_1")
+        foreach ($window in $element::RootElement.FindAll(
+                [System.Windows.Automation.TreeScope]::Children, $chromeWindows)) {
+            if ($window.Current.Name -like "Spectre*") { return $true }
+        }
+        return $false
+    } catch { return $null }
+}
+
 # Open the interface in Chrome as an app window (clean, no tabs/address bar) when Chrome is
 # installed: the installed app if there is one, else a plain app window; otherwise fall back
-# to the default browser.
+# to the default browser. The installed app can break (Chrome then opens an empty "New tab"
+# instead, seen with Chrome 156): if no Spectre window shows up, open a plain app window.
 function Open-Spectre {
     $chrome = @(
         "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
         "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
         "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $chrome) { Start-Process $url; return }
     $app = Get-SpectreAppArgs
-    if ($chrome -and $app) { Start-Process $chrome -ArgumentList $app }
-    elseif ($chrome) { Start-Process $chrome -ArgumentList "--app=$url" }
-    else { Start-Process $url }
+    if ($app) {
+        Start-Process $chrome -ArgumentList $app
+        $shown = $null
+        for ($i = 0; $i -lt 30; $i++) {  # up to 15 s: a cold Chrome takes a few seconds
+            Start-Sleep -Milliseconds 500
+            $shown = Test-SpectreWindow
+            if ($shown -ne $false) { break }  # found, or cannot tell: do not open a 2nd window
+        }
+        if ($shown -ne $false) { return }
+    }
+    Start-Process $chrome -ArgumentList "--app=$url"
 }
 
 # --silent: started with the Windows session (shortcut in the Startup folder): no page opened.
