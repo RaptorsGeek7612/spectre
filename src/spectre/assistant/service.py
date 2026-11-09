@@ -40,7 +40,7 @@ from spectre.assistant.routines import Routines
 from spectre.assistant.saas import Saas
 from spectre.assistant.telegram import Telegram, save_token
 from spectre.assistant.vision.faces import SPOOF, UNKNOWN, FaceBook, Presence
-from spectre.assistant.voice.listen import SAMPLE_RATE, to_wav
+from spectre.assistant.voice.listen import SAMPLE_RATE, looks_unfinished, to_wav
 from spectre.assistant.webhooks import Rejected, Webhooks
 from spectre.assistant.webpush import WebPush
 from spectre.config import DEFAULT_SPECS, model_label
@@ -1249,17 +1249,24 @@ class AssistantService:
     def voice_reply(self, text: str) -> str:
         return self.chat(text, channel="voice")
 
-    def remote_voice(self, pcm: bytes) -> Event:
+    def remote_voice(self, pcm: bytes, before: str = "", *, final: bool = False) -> Event:
         """A turn spoken into another device (the phone, 16 kHz mono int16): Spectre transcribes
         it with its own speech recognition, answers, and returns its voice as a WAV to play
-        there; nothing is played on the PC."""
+        there; nothing is played on the PC.
+
+        A sentence that stops mid-way ("je voudrais que tu…") is not answered: the reply says
+        `more`, the device keeps listening and sends the rest with `before` = what was heard;
+        `final` answers `before` as is when nothing more was said (as the PC voice does)."""
         if self.voice is None:
             raise ValueError("la voix n'est pas active (lance Spectre avec la voix)")
-        if len(pcm) < SAMPLE_RATE:  # under half a second: nothing was said
-            return {"heard": "", "reply": "", "audio": ""}
-        text = str(self.voice.stt.transcribe(pcm)).strip()
+        heard = ""
+        if len(pcm) >= SAMPLE_RATE:  # under half a second: nothing was said
+            heard = str(self.voice.stt.transcribe(pcm)).strip()
+        text = f"{before.strip()} {heard}".strip()
         if not text:
             return {"heard": "", "reply": "", "audio": ""}
+        if heard and not final and looks_unfinished(text):
+            return {"heard": text, "reply": "", "audio": "", "more": True}
         reply = self.chat(text, channel="voice")
         return {"heard": text, "reply": reply, "audio": self.render_speech(reply)}
 

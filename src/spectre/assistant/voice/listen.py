@@ -31,7 +31,7 @@ class UtteranceDetector:
     """
 
     block_s: float = 0.1
-    silence_s: float = 1.4  # a natural pause mid-sentence must not end the turn
+    silence_s: float = 1.8  # a pause to think must not end the turn (see `looks_unfinished`)
     max_s: float = 25.0
     pre_roll_s: float = 0.4  # keep the audio just before speech: the first syllable
     wait_s: float = 6.0  # give up if nothing is said after the wake word
@@ -76,6 +76,32 @@ class UtteranceDetector:
 
     def audio(self) -> bytes:
         return b"".join(self.chunks)
+
+
+# Last words after which a French sentence cannot be over: the speaker paused to think.
+_ENDINGS = (
+    "et ou mais donc car ni puis alors ensuite parce puisque que qu dont si quand comme "
+    "lorsque de d du des le la l les un une au aux à en pour avec sans sur sous dans par chez "
+    "vers entre mon ma mes ton ta tes son sa ses notre nos votre vos leur leurs ce cet cette "
+    "ces je j tu il on ils me m te t se s ne n euh heu hum bah ben genre est-ce "
+    "c'est-à-dire notamment très"
+)  # not "quoi", "qui", "où", "vous"…: "c'est quoi ?", "merci à vous" are whole sentences
+UNFINISHED_ENDINGS = frozenset(_ENDINGS.split())
+
+
+def looks_unfinished(text: str) -> bool:
+    """True when a transcript stops mid-sentence ("je voudrais que tu…", "et euh,"): the
+    speaker is thinking, so Spectre keeps listening instead of answering half a request."""
+    words = text.strip().lower()
+    if not words:
+        return False
+    if words.endswith(("…", "...", ",", ":", ";", "-")):
+        return True
+    last = words.rstrip(" .!?").replace("’", "'").split()
+    if not last:
+        return False
+    word = last[-1].strip("\"'«»()")
+    return word in UNFINISHED_ENDINGS or word.endswith("'")
 
 
 def to_wav(pcm: bytes, rate: int) -> bytes:

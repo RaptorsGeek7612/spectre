@@ -52,6 +52,7 @@ class Microphone:
         self.device = device
         self.on_level = on_level  # RMS of each heard block, for the UI's voice orb
         self._queue: queue.Queue[bytes] = queue.Queue(maxsize=200)
+        self._echo: queue.Queue[bytes] = queue.Queue(maxsize=50)  # heard while muted: barge-in
         self._stream: Any = None
         self.muted = threading.Event()  # set while Spectre speaks (no self-echo)
 
@@ -59,12 +60,15 @@ class Microphone:
         import sounddevice as sd
 
         def callback(indata: Any, _frames: int, _time: Any, _status: Any) -> None:
-            if not self.muted.is_set():
-                block = bytes(indata)
+            block = bytes(indata)
+            if self.muted.is_set():  # never the conversation, only the cut-off watch
                 with contextlib.suppress(queue.Full):
-                    self._queue.put_nowait(block)
-                if self.on_level is not None:
-                    self.on_level(rms(block))
+                    self._echo.put_nowait(block)
+                return
+            with contextlib.suppress(queue.Full):
+                self._queue.put_nowait(block)
+            if self.on_level is not None:
+                self.on_level(rms(block))
 
         self._stream = sd.RawInputStream(
             samplerate=SAMPLE_RATE,
@@ -86,6 +90,16 @@ class Microphone:
         while not stop.is_set():
             try:
                 yield self._queue.get(timeout=0.5)
+            except queue.Empty:
+                continue
+
+    def muted_blocks(self, done: threading.Event) -> Iterator[bytes]:
+        """What the microphone hears while Spectre speaks, until `done` (barge-in watch)."""
+        while not self._echo.empty():  # left over from an earlier sentence
+            self._echo.get_nowait()
+        while not done.is_set():
+            try:
+                yield self._echo.get(timeout=0.2)
             except queue.Empty:
                 continue
 
@@ -148,6 +162,33 @@ class VoskWake:
             self._new()
             return True
         return False
+
+
+class VoskBarge:
+    """Spots a cut-off word (its name) while Spectre speaks. The microphone also hears the
+    loudspeakers: measured on this PC (2026-11-09), 45 s of Spectre's own voice never gave
+    "spectre" with a one-word grammar, while "stop"/"attends"/"pardon" came up at 0.97-1.0,
+    so only the name is used; a voice said over it was recognised at 0.56."""
+
+    def __init__(self, model: Any, words: tuple[str, ...], min_conf: float = 0.5) -> None:
+        self.model = model  # shared with the wake word: one model in memory
+        self.words = words
+        self.min_conf = min_conf
+        self.reset()
+
+    def reset(self) -> None:
+        import vosk
+
+        self.rec = vosk.KaldiRecognizer(self.model, SAMPLE_RATE, json.dumps([*self.words, "[unk]"]))
+        self.rec.SetWords(True)  # per-word confidence, only in final results
+
+    def heard(self, block: bytes) -> str:
+        if not self.rec.AcceptWaveform(block):
+            return ""
+        for item in json.loads(self.rec.Result()).get("result", []):
+            if item.get("word") in self.words and float(item.get("conf", 0)) >= self.min_conf:
+                return str(item["word"])
+        return ""
 
 
 # Names Whisper tends to mishear in French speech; the prompt biases it towards them.

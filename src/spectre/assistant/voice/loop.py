@@ -10,10 +10,16 @@ import threading
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any, Protocol
 
-from spectre.assistant.voice.listen import SAMPLE_RATE, UtteranceDetector, chime
+from spectre.assistant.voice.listen import (
+    SAMPLE_RATE,
+    UtteranceDetector,
+    chime,
+    looks_unfinished,
+)
 
 STOP_WORDS = {"stop", "arrête", "arrete", "tais-toi", "silence", "merci c'est tout"}
 ACK_AFTER_S = 2.5
+CONTINUE_S = 4.0  # after an unfinished sentence: how long Spectre waits for the rest
 
 
 class Mic(Protocol):
@@ -25,6 +31,13 @@ class Mic(Protocol):
 
 class Wake(Protocol):
     def heard(self, block: bytes) -> bool: ...
+
+
+class Barge(Protocol):
+    """Spots a cut-off word in what the microphone hears while Spectre speaks."""
+
+    def reset(self) -> None: ...
+    def heard(self, block: bytes) -> str: ...  # the word, or ""
 
 
 class STT(Protocol):
@@ -53,6 +66,7 @@ class VoiceLoop:
         play: Callable[[bytes, int], None] | None = None,
         follow_up_s: float = 6.0,
         ack: str = "",  # optional filler while the brain thinks; off, users found it grating
+        barge: Barge | None = None,
     ) -> None:
         self.mic, self.wake, self.stt, self.tts = mic, wake, stt, tts
         self.reply = reply
@@ -60,8 +74,10 @@ class VoiceLoop:
         self.play = play
         self.follow_up_s = follow_up_s
         self.ack = ack
+        self.barge = barge
         self.stop = threading.Event()
         self.interrupt = threading.Event()
+        self.barged = False  # the user cut Spectre off during its last sentence
         self._triggered = threading.Event()
         self.state = "sleeping"
 
@@ -71,6 +87,8 @@ class VoiceLoop:
     def say(self, text: str) -> None:
         """Speak an announcement (initiative, reminder) between turns."""
         self._speak(text)
+        if self.barged:  # cut off: the user wants to speak, listen without the wake word
+            self.trigger()
 
     def _set(self, state: str, detail: str = "") -> None:
         self.state = state
@@ -103,6 +121,7 @@ class VoiceLoop:
                 return
             self._set("thinking", "")
             text = self.stt.transcribe(detector.audio()).strip()
+            text = self._rest_of(text, blocks)
             if not text:
                 return
             self.on_state("heard", text)
@@ -113,6 +132,24 @@ class VoiceLoop:
             if answer:
                 self._speak(answer)
             first = False
+
+    def _rest_of(self, text: str, blocks: Iterable[bytes]) -> str:
+        """The user paused mid-sentence ("je voudrais que tu…"): keep listening, without a
+        chime, and add what comes next, until the sentence ends or nothing more is said."""
+        while text and looks_unfinished(text) and not self.stop.is_set():
+            self._set("listening", "")
+            more = UtteranceDetector(wait_s=CONTINUE_S)
+            for block in blocks:
+                if more.feed(block):
+                    break
+            if not more.heard_speech:
+                break
+            self._set("thinking", "")
+            rest = self.stt.transcribe(more.audio()).strip()
+            if not rest:
+                break
+            text = f"{text} {rest}"
+        return text
 
     def _reply_with_ack(self, text: str) -> str:
         result: dict[str, Any] = {}
@@ -134,9 +171,34 @@ class VoiceLoop:
     def _speak(self, text: str) -> None:
         self._set("speaking", text)
         self.mic.muted.set()
+        self.interrupt.clear()
+        self.barged = False
+        done = threading.Event()
+        watcher = None
+        if self.barge is not None and hasattr(self.mic, "muted_blocks"):
+            watcher = threading.Thread(
+                target=self._watch_barge, args=(text, done), name="spectre-barge", daemon=True
+            )
+            watcher.start()
         try:
-            self.interrupt.clear()
             self.tts.speak(text, self.interrupt)
         finally:
+            done.set()
+            if watcher is not None:
+                watcher.join(1.0)
             self.mic.flush()
             self.mic.muted.clear()
+
+    def _watch_barge(self, text: str, done: threading.Event) -> None:
+        """While Spectre speaks, listen for a cut-off word and stop its voice at once. A word
+        that Spectre is saying itself is ignored: the microphone hears the loudspeakers.
+        The microphone (`engines.Microphone`) hands its blocks over through `muted_blocks`."""
+        assert self.barge is not None
+        said = {w.strip(".,;:!?«»\"'()…").lower() for w in text.replace("’", "'").split()}
+        self.barge.reset()
+        for block in self.mic.muted_blocks(done):  # type: ignore[attr-defined]
+            word = self.barge.heard(block)
+            if word and word not in said:
+                self.barged = True
+                self.interrupt.set()
+                return

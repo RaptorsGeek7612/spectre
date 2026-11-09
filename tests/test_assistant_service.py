@@ -379,7 +379,7 @@ class FakeTTS:
 
 
 def _utterance() -> list[bytes]:
-    return [LOUD] * 5 + [QUIET] * 15  # a pause longer than silence_s ends the turn
+    return [LOUD] * 5 + [QUIET] * 19  # a pause longer than silence_s ends the turn
 
 
 def _loop(
@@ -474,10 +474,127 @@ def test_listen_helpers() -> None:
     onset.feed(LOUD)
     assert onset.audio() == soft * 4 + LOUD  # 0.4 s kept before the speech started
     patient = UtteranceDetector()
-    assert not any(patient.feed(b) for b in [LOUD] * 3 + [QUIET] * 13)  # a 1.3 s pause
+    assert not any(patient.feed(b) for b in [LOUD] * 3 + [QUIET] * 17)  # a 1.7 s pause
     assert patient.feed(QUIET) is True
     assert len(chime()) == int(SAMPLE_RATE * 0.12) * 2
     assert json.dumps(Reply("a", "b", False).text) == '"a"'
+
+
+def test_looks_unfinished() -> None:
+    from spectre.assistant.voice.listen import looks_unfinished
+
+    for text in (
+        "Je voudrais que tu",
+        "Envoie un message à Kyra et",
+        "Il faudrait regarder le…",
+        "Prépare le budget, euh.",
+        "Rappelle-moi de",
+        "Dis à Gétro qu'",
+        "Liste les fichiers,",
+    ):
+        assert looks_unfinished(text), text
+    for text in (
+        "",
+        "  ",
+        "Quelle heure est-il ?",
+        "C'est quoi ?",
+        "Merci à vous.",
+        "Mets-la sur le bureau.",
+        "Je ne sais pas.",
+        "!",
+    ):
+        assert not looks_unfinished(text), text
+
+
+def test_voice_waits_for_the_end_of_an_unfinished_sentence() -> None:
+    blocks = [WAKE, *_utterance(), *_utterance(), *[QUIET] * 8]
+    voice, tts, states = _loop(blocks, FakeSTT("Rappelle-moi de", "acheter du pain."))
+    voice.run()
+    assert tts.spoken == ["Tu as dit Rappelle-moi de acheter du pain.."]
+    # the pause, then nothing more: Spectre answers what it has
+    voice, tts, _ = _loop([WAKE, *_utterance(), *[QUIET] * 45], FakeSTT("Dis-moi si"))
+    voice.run()
+    assert tts.spoken == ["Tu as dit Dis-moi si."]
+    voice, tts, _ = _loop([WAKE, *_utterance(), *_utterance()], FakeSTT("Note que", " "))
+    voice.run()
+    assert tts.spoken == ["Tu as dit Note que."]
+
+
+class EchoMic(FakeMic):
+    """Hands over what it hears while muted, like `engines.Microphone`."""
+
+    def __init__(self, blocks: list[bytes], echo: list[bytes]) -> None:
+        super().__init__(blocks)
+        self.echo = echo
+
+    def muted_blocks(self, done: threading.Event) -> Iterator[bytes]:
+        for block in self.echo:
+            if done.is_set():
+                return
+            yield block
+
+
+class FakeBarge:
+    def __init__(self) -> None:
+        self.resets = 0
+
+    def reset(self) -> None:
+        self.resets += 1
+
+    def heard(self, block: bytes) -> str:
+        return "spectre" if block == WAKE else ""
+
+
+class LongTTS(FakeTTS):
+    """Speaks until interrupted (or 2 s), and records whether it was cut off."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.cut: list[bool] = []
+
+    def speak(self, text: str, stop: threading.Event | None = None) -> None:
+        self.spoken.append(text)
+        assert stop is not None
+        self.cut.append(stop.wait(2.0))
+
+
+def test_voice_barge_in_cuts_spectre_off() -> None:
+    tts = LongTTS()
+    mic = EchoMic([WAKE, *_utterance(), *_utterance(), *[QUIET] * 8], [QUIET, QUIET, WAKE])
+    barge = FakeBarge()
+    voice = VoiceLoop(
+        mic,
+        FakeWake(),
+        FakeSTT("raconte une histoire", "plutôt une blague"),
+        tts,
+        lambda text: f"Voici {text}.",
+        lambda state, detail: None,
+        follow_up_s=0.5,
+        barge=barge,
+    )
+    voice.run()
+    assert tts.spoken == ["Voici raconte une histoire.", "Voici plutôt une blague."]
+    assert tts.cut[0] and voice.barged  # cut off, then it listened to the new idea
+    assert barge.resets == 2 and not mic.muted.is_set()
+
+
+def test_voice_barge_ignores_its_own_words_and_reopens_after_an_announcement() -> None:
+    tts = LongTTS()
+    voice = VoiceLoop(
+        EchoMic([], [WAKE]),
+        FakeWake(),
+        FakeSTT(),
+        tts,
+        lambda text: "",
+        lambda state, detail: None,
+        barge=FakeBarge(),
+    )
+    voice.say("Je suis Spectre, ton assistant.")  # its own name, heard in the loudspeakers
+    assert tts.cut == [False] and not voice.barged
+    assert not voice._triggered.is_set()
+    voice.say("Rappel : le pain.")
+    assert tts.cut[-1] and voice.barged
+    assert voice._triggered.is_set()  # cut off: it listens without the wake word
 
 
 def test_pick_input_avoids_stereo_mix() -> None:
@@ -556,6 +673,37 @@ def test_remote_voice(service: AssistantService) -> None:
     service.attach_voice(PhoneVoice(render=False))
     out = service.remote_voice(pcm)
     assert out["reply"] == "Réponse." and out["audio"] == ""
+
+
+def test_remote_voice_waits_for_the_end_of_a_sentence(
+    api: Client, service: AssistantService
+) -> None:
+    pcm = b"\x00\x10" * SAMPLE_RATE
+    service.attach_voice(PhoneVoice(heard="Rappelle-moi de"))
+    first = service.remote_voice(pcm)
+    assert first == {"heard": "Rappelle-moi de", "reply": "", "audio": "", "more": True}
+    assert not service.history()  # not answered, not even logged yet
+    service.attach_voice(PhoneVoice(heard="acheter du pain."))
+    out = service.remote_voice(pcm, first["heard"])
+    assert out["heard"] == "Rappelle-moi de acheter du pain." and out["reply"] == "Réponse."
+    # nothing more was said: the device asks for an answer to what was heard
+    out = service.remote_voice(b"", "Dis-moi si", final=True)
+    assert out["heard"] == "Dis-moi si" and out["reply"] == "Réponse." and "more" not in out
+    headers = {"Content-Type": "application/octet-stream"}
+    service.attach_voice(PhoneVoice(heard="et"))
+    status, _, body = api.request(
+        "POST", "/api/assistant/voice?before=Note%20que", raw=pcm, headers=headers
+    )
+    assert status == 200 and json.loads(body) == {
+        "heard": "Note que et",
+        "reply": "",
+        "audio": "",
+        "more": True,
+    }
+    status, _, body = api.request(
+        "POST", "/api/assistant/voice?before=Note%20que&final=1", raw=b"", headers=headers
+    )
+    assert status == 200 and json.loads(body)["heard"] == "Note que"
 
 
 def test_api_voice_route(api: Client, service: AssistantService) -> None:

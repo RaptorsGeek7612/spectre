@@ -7,6 +7,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Added
+- Voix : Spectre laisse finir. Une phrase coupée au milieu (« je voudrais que tu… », « et
+  euh, ») n'est plus prise pour une demande complète : il écoute encore jusqu'à 4 s et ajoute
+  la suite (PC et téléphone). La pause qui termine une phrase passe de 1,4 à 1,8 s sur le PC.
+- Voix : on peut couper la parole à Spectre. Sur le PC, dire « Spectre » pendant qu'il parle
+  l'arrête et il écoute aussitôt (seul son nom compte : « stop », « attends », « pardon »
+  étaient reconnus à tort dans sa propre voix). Sur le téléphone, toucher le micro ou parler
+  par-dessus lui (seulement quand le navigateur annule l'écho).
+
+### Fixed
+- Lanceur : quand l'appli Chrome installée ne s'ouvre plus (Chrome ouvrait un onglet vide),
+  `spectre-assistant.ps1` le voit et ouvre Spectre dans une fenêtre d'appli simple.
+
 ## [0.29.2] - 2026-11-08
 
 ### Fixed

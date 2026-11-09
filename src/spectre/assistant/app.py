@@ -72,6 +72,8 @@ def start_voice(service: AssistantService) -> str:  # pragma: no cover - needs a
         service.voice_reply,
         service.set_voice_state,
         play=lambda pcm, rate: engines.play_pcm(pcm, rate),
+        # only its name cuts it off: short words ("stop", "attends") were heard in its own voice
+        barge=engines.VoskBarge(wake.model, (wake.word,)),
     )
     service.attach_voice(loop)
 
