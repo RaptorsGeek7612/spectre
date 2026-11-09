@@ -456,6 +456,7 @@ def test_voice_ack_error_and_say(monkeypatch: pytest.MonkeyPatch) -> None:
     assert quiet_tts.spoken == ["Désolé, une erreur est survenue : panne"]  # no filler by default
     voice.say("Rappel : pain")
     assert tts.spoken[-1] == "Rappel : pain"
+    assert voice.state == "sleeping"  # not left on "speaking" after an announcement
 
 
 def test_listen_helpers() -> None:

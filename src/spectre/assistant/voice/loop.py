@@ -87,6 +87,9 @@ class VoiceLoop:
     def say(self, text: str) -> None:
         """Speak an announcement (initiative, reminder) between turns."""
         self._speak(text)
+        # back to sleep: left "speaking", the orb stayed on "je parle" and Spectre kept silent
+        # (typed replies and initiatives are only spoken while the voice is "sleeping")
+        self._set("sleeping", "")
         if self.barged:  # cut off: the user wants to speak, listen without the wake word
             self.trigger()
 

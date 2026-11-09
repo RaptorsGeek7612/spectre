@@ -1477,9 +1477,11 @@ async function playWav(b64) {
   setState("speaking");
   rec.playing = src;
   rec.cutOff = false;
-  const unwatch = await watchBargeIn();
-  await new Promise((resolve) => { src.onended = resolve; src.start(); });
-  unwatch();
+  // the voice starts at once; the microphone watch opens beside it (never holds it back)
+  const ended = new Promise((resolve) => { src.onended = resolve; src.start(); });
+  const watching = watchBargeIn().catch(() => () => {});
+  await ended;
+  (await watching)();
   rec.playing = null;
   return rec.cutOff;
 }
