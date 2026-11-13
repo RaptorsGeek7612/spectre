@@ -7,6 +7,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.30.1] - 2026-11-13
+
+### Security
+- soupsieve 4.1 (alerte Dependabot n° 19, gravité haute : déni de service par un sélecteur
+  CSS). Les versions corrigées demandent Python 3.11.5 : le minimum du projet passe de
+  3.11 à 3.11.5, ce qui retire l'ancienne version du fichier de verrouillage.
+
 ## [0.30.0] - 2026-11-13
 
 ### Added
