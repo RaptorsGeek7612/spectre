@@ -871,3 +871,56 @@ def test_remote_turn(api: Client, service: AssistantService) -> None:
     headers = {"Content-Type": "application/octet-stream"}
     status, _, body = api.request("POST", "/api/assistant/turn", raw=pcm, headers=headers)
     assert status == 200 and json.loads(body) == {"done": True}
+
+
+class BrokenTTS(FakeTTS):
+    def speak(self, text: str, stop: threading.Event | None = None) -> None:
+        raise ImportError("DLL load failed while importing espeakbridge")
+
+
+def test_voice_survives_a_voice_that_breaks() -> None:
+    states: list[str] = []
+    mic = FakeMic([WAKE, *_utterance(), *[QUIET] * 8, WAKE, *_utterance(), *[QUIET] * 8])
+    voice = VoiceLoop(
+        mic,
+        FakeWake(),
+        FakeSTT("Quelle heure est-il", "Et demain"),
+        BrokenTTS(),
+        lambda text: "Réponse.",
+        lambda state, detail: states.append(state),
+        follow_up_s=0.5,
+    )
+    voice.say("Bonjour.")  # the greeting that used to leave the orb on "je parle" for good
+    assert voice.state == "sleeping" and not mic.muted.is_set()
+    voice.run()
+    assert states.count("heard") == 2  # the second turn is still heard: the loop went on
+    assert not mic.muted.is_set()
+
+    def explode(text: str) -> str:
+        raise RuntimeError("panne")
+
+    voice = VoiceLoop(
+        FakeMic([WAKE, *_utterance(), WAKE]),
+        FakeWake(),
+        FakeSTT("Quelle heure est-il"),
+        FakeTTS(),
+        lambda text: "",
+        lambda state, detail: states.append(state),
+    )
+    voice.on_state = lambda state, detail: explode(state) if state == "thinking" else None
+    voice.run()  # a turn that breaks is dropped, not the voice
+    assert voice.state == "off"
+
+
+def test_voice_announcements_wait_for_their_turn(monkeypatch: pytest.MonkeyPatch) -> None:
+    tts = FakeTTS()
+    voice = VoiceLoop(
+        FakeMic([]), FakeWake(), FakeSTT(), tts, lambda text: "", lambda state, detail: None
+    )
+    assert voice.say("Un.") is True
+    monkeypatch.setattr(loop_mod, "SAY_WAIT_S", 0.05)
+    with voice._floor:  # a conversation is going on
+        assert voice.say("Deux.") is False
+    voice.stop.set()
+    assert voice.say("Trois.") is False
+    assert tts.spoken == ["Un."]

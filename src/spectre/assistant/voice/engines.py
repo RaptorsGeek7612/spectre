@@ -406,9 +406,91 @@ class PiperTTS:
         return fx.apply(self.effect, pcm, rate), rate
 
     def speak(self, text: str, stop: threading.Event | None = None) -> None:
-        rendered = self.render(text, stop)
-        if rendered is not None:
-            play_pcm(rendered[0], rendered[1], stop, self.on_level)
+        """Say `text` in flux: the first sentence plays as soon as it is ready (0.2 s measured
+        here, against 2.2 s when the whole answer was rendered first) while the next ones are
+        synthesised. If Piper breaks before any sound (Windows sometimes blocks its DLL), the
+        Windows voice says it instead: Spectre never stays silent."""
+        from spectre.assistant.voice import fx
+
+        ready: queue.Queue[bytes | BaseException | None] = queue.Queue()
+        gave_up = threading.Event()
+        rate = self.voice.config.sample_rate
+
+        def sentences() -> Iterator[bytes]:
+            for chunk in self.voice.synthesize(text, syn_config=self.syn):
+                if gave_up.is_set() or (stop is not None and stop.is_set()):
+                    return
+                yield chunk.audio_int16_bytes
+
+        def produce() -> None:
+            try:
+                with self.lock:
+                    for piece in fx.stream(self.effect, sentences(), rate):
+                        ready.put(piece)
+                ready.put(None)
+            except BaseException as err:  # noqa: BLE001 - handed to the speaking thread
+                ready.put(err)
+
+        threading.Thread(target=produce, name="spectre-tts", daemon=True).start()
+        played = False
+        failure: BaseException | None = None
+
+        def pieces() -> Iterator[bytes]:
+            nonlocal played, failure
+            while True:
+                try:
+                    piece = ready.get(timeout=0.05)
+                except queue.Empty:
+                    if stop is not None and stop.is_set():
+                        return  # cut off while the next sentence was being made
+                    continue
+                if isinstance(piece, BaseException):
+                    failure = piece
+                    return
+                if piece is None:
+                    return
+                played = True
+                yield piece
+
+        try:
+            play_stream(pieces(), rate, stop, self.on_level)
+        finally:
+            gave_up.set()
+        if failure is not None and not played and not (stop is not None and stop.is_set()):
+            print(
+                f"Voix Piper en panne ({failure}) : voix de Windows.", file=sys.stderr, flush=True
+            )
+            WindowsTTS().speak(text, stop)
+
+
+def play_stream(
+    pieces: Iterator[bytes],
+    rate: int,
+    stop: threading.Event | None = None,
+    on_level: Level | None = None,
+) -> None:
+    """Play int16 mono PCM pieces one after the other through one output stream, without a gap,
+    cut at once by `stop`; report the loudness being played to `on_level`."""
+    import sounddevice as sd
+
+    step = int(rate * 0.05) * 2  # 50 ms: how fast a cut-off is obeyed
+    stream = sd.RawOutputStream(samplerate=rate, channels=1, dtype="int16")
+    try:
+        stream.start()
+        for piece in pieces:
+            for start in range(0, len(piece), step):
+                if stop is not None and stop.is_set():
+                    stream.abort()
+                    return
+                block = piece[start : start + step]
+                if on_level is not None:
+                    on_level(rms(block))
+                stream.write(block)
+        stream.stop()  # lets the last buffer play to its end
+    finally:
+        stream.close()
+        if on_level is not None:
+            on_level(0.0)
 
 
 class WindowsTTS:
@@ -467,7 +549,19 @@ def ensure_piper_voice(models: Path, voice: str) -> Path:
 def make_tts(
     models: Path, voice: str, speaker: str = "", effect: str = "futuriste", pace: str = "naturel"
 ) -> Any:
-    try:
-        return PiperTTS(models, voice, speaker, effect, pace)
-    except Exception:  # noqa: BLE001 - any Piper failure falls back to the system voice
-        return WindowsTTS()
+    # Piper loads its phonemizer DLL at the first word only, and Windows (Smart App Control)
+    # sometimes blocks it for a moment: say a word in silence now, so a blocked DLL is seen
+    # here (and retried) instead of crashing the first greeting.
+    error: Exception | None = None
+    for attempt in range(3):
+        try:
+            tts = PiperTTS(models, voice, speaker, effect, pace)
+            for _ in tts.voice.synthesize("Prêt.", syn_config=tts.syn):
+                pass
+            return tts
+        except Exception as err:  # noqa: BLE001 - any Piper failure falls back to the system voice
+            error = err
+            if attempt < 2:
+                threading.Event().wait(1.5)
+    print(f"Voix Piper indisponible ({error}) : voix de Windows.", file=sys.stderr, flush=True)
+    return WindowsTTS()

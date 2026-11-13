@@ -6,6 +6,7 @@ so the state machine is tested with fakes and runs for real with `engines`.
 
 from __future__ import annotations
 
+import sys
 import threading
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any, Protocol
@@ -20,6 +21,7 @@ from spectre.assistant.voice.listen import (
 STOP_WORDS = {"stop", "arrête", "arrete", "tais-toi", "silence", "merci c'est tout"}
 ACK_AFTER_S = 2.5
 CONTINUE_S = 4.0  # after an unfinished sentence: how long Spectre waits for the rest
+SAY_WAIT_S = 45.0  # an announcement waits this long for the end of a conversation
 
 
 class Mic(Protocol):
@@ -96,19 +98,30 @@ class VoiceLoop:
         self.interrupt = threading.Event()
         self.barged = False  # the user cut Spectre off during its last sentence
         self._triggered = threading.Event()
+        self._floor = threading.Lock()  # one voice at a time: a conversation or an announcement
         self.state = "sleeping"
 
     def trigger(self) -> None:
         self._triggered.set()
 
-    def say(self, text: str) -> None:
-        """Speak an announcement (initiative, reminder) between turns."""
-        self._speak(text)
-        # back to sleep: left "speaking", the orb stayed on "je parle" and Spectre kept silent
-        # (typed replies and initiatives are only spoken while the voice is "sleeping")
-        self._set("sleeping", "")
+    def say(self, text: str) -> bool:
+        """Speak an announcement (initiative, greeting) between turns; False when it was not
+        said. Announcements come from other threads (camera, initiatives): two of them never
+        talk over each other, and none talks over a conversation — it waits for its end."""
+        if not self._floor.acquire(timeout=SAY_WAIT_S):
+            return False
+        try:
+            if self.stop.is_set():
+                return False
+            self._speak(text)
+        finally:
+            # back to sleep whatever happened: left "speaking", the orb stayed on "je parle"
+            # and Spectre kept silent (replies and initiatives are only spoken while "sleeping")
+            self._set("sleeping", "")
+            self._floor.release()
         if self.barged:  # cut off: the user wants to speak, listen without the wake word
             self.trigger()
+        return True
 
     def _set(self, state: str, detail: str = "") -> None:
         self.state = state
@@ -122,8 +135,13 @@ class VoiceLoop:
                 break
             if self._triggered.is_set() or self.wake.heard(block):
                 self._triggered.clear()
-                self.conversation(blocks)
-                self._set("sleeping", "")
+                with self._floor:
+                    try:
+                        self.conversation(blocks)
+                    except Exception as err:  # noqa: BLE001 - one bad turn never ends the voice
+                        print(f"Voix : tour interrompu ({err!r}).", file=sys.stderr, flush=True)
+                        self.mic.muted.clear()
+                    self._set("sleeping", "")
         self._set("off", "")
 
     def conversation(self, blocks: Iterable[bytes]) -> None:
@@ -212,6 +230,8 @@ class VoiceLoop:
             watcher.start()
         try:
             self.tts.speak(text, self.interrupt)
+        except Exception as err:  # noqa: BLE001 - a voice that breaks must not stop the loop
+            print(f"Voix : impossible de parler ({err!r}).", file=sys.stderr, flush=True)
         finally:
             done.set()
             if watcher is not None:

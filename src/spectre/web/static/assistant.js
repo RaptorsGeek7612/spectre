@@ -1539,7 +1539,8 @@ async function speakHere(text, listen = false) {
 // On a touch screen, the browser allows sound when the finger lifts, not when it presses.
 if (REMOTE) for (const type of ["pointerup", "keydown"]) document.addEventListener(type, () => unlockAudio().catch(() => {}), true);
 
-/* ---- camera of this device (phone): a picture every 2 s, analysed by Spectre like its own ---- */
+/* ---- camera of this device (phone): a picture every 0.7 s (one at a time: a slow network
+   only slows the pace), analysed by Spectre like its own ---- */
 const cam = { stream: null, timer: null, canvas: document.createElement("canvas"), sending: false };
 async function deviceCamera() {
   if (cam.stream) { stopCamera(); return; }
@@ -1554,7 +1555,8 @@ async function deviceCamera() {
   video.hidden = false;
   await video.play().catch(() => {});
   $("#cam-btn").setAttribute("aria-pressed", "true");
-  cam.timer = setInterval(sendFrame, 2000);
+  cam.timer = setInterval(sendFrame, 700);
+  sendFrame();
   toast("Caméra du téléphone active : Spectre regarde qui est là. Retouche le bouton pour l'arrêter.");
 }
 function stopCamera() {

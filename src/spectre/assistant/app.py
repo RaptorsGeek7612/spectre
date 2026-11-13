@@ -100,7 +100,11 @@ def start_camera(service: AssistantService) -> str:  # pragma: no cover - needs 
     from spectre.assistant.vision.camera import Camera, FaceEngine
 
     engine = FaceEngine(service.root / "models")
-    camera = Camera(engine, service.on_faces, index=service.config.camera_index)
+    camera = Camera(
+        engine,
+        lambda faces: service.on_faces(faces, confirm=True),
+        index=service.config.camera_index,
+    )
     service.attach_camera(camera)
     camera.start()
     people = ", ".join(p["name"] for p in service.faces.people()) or "personne encore"
