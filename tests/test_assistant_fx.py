@@ -87,3 +87,19 @@ def test_join_sentences() -> None:
     assert joined[0] == 0 and joined[500] == 8000  # soft edge, untouched middle
     assert not joined[1000 : 1000 + int(RATE * fx.BREATH_S)].any()
     assert fx.join_sentences([], RATE) == b"" and fx.join_sentences([b""], RATE) == b""
+
+
+def test_stream_plays_sentence_by_sentence() -> None:
+    one = _tone(0.4)
+    pieces = list(fx.stream("futuriste", iter([one, b"", one]), RATE))
+    assert len(pieces) == 3  # two sentences, then the last reverb tail
+    whole = fx.futuristic(fx.join_sentences([one], RATE), RATE)
+    tail, breath = int(RATE * fx.TAILS["futuriste"]), int(RATE * fx.BREATH_S)
+    assert len(pieces[0]) // 2 == len(whole) // 2 - tail + breath  # the tail rings over the next
+    first = np.frombuffer(pieces[0], dtype="<i2")
+    alone = np.frombuffer(whole, dtype="<i2")
+    assert np.array_equal(first[:2000], alone[:2000])  # same voice as the one-piece render
+    assert len(pieces[2]) // 2 == tail - breath
+    plain = list(fx.stream("aucun", iter([one, one]), RATE))
+    assert [len(p) // 2 for p in plain] == [len(one) // 2 + breath] * 2  # no tail to carry
+    assert list(fx.stream("futuriste", iter([]), RATE)) == []

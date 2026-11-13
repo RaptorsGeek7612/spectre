@@ -453,12 +453,14 @@ class Brain:
 
         return Learning(self.db, root).catalogue()
 
-    def ask(self, text: str, channel: str = "voice") -> Reply:
+    def ask(self, text: str, channel: str = "voice", note: str = "") -> Reply:
+        """One turn. `note` is a line of context of the moment (who the camera sees), given
+        to the brain with the message but not kept as the user's words."""
         text = text.strip()
         if not text:
             return Reply("", "", True)
         event = self.db.log_event("utterance", "user", text, channel=channel)
-        text = timeline.turn_note(self.db, self.config.timezone) + text
+        text = timeline.turn_note(self.db, self.config.timezone) + note + text
         opener = self.take_opener()
         if opener:  # the brain's session did not see the opener Spectre said on its own
             text = f"[Tu étais venu vers l'utilisateur en lui disant : « {opener} »]\n{text}"

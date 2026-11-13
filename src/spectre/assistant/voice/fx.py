@@ -8,6 +8,7 @@ sentence takes a few milliseconds.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from typing import Final
 
 import numpy as np
@@ -235,6 +236,32 @@ def join_sentences(chunks: list[bytes], rate: int) -> bytes:
     if not parts:
         return b""
     return np.round(np.concatenate(parts)).astype("<i2").tobytes()
+
+
+TAILS: Final = {"futuriste": 0.7, "androide": 0.6, "hologramme": 1.3, "vaisseau": 0.45}  # reverb
+
+
+def stream(effect: str, sentences: Iterable[bytes], rate: int) -> Iterator[bytes]:
+    """The voice sentence by sentence, each with its effect as soon as it is synthesised, so
+    the first words play while the rest is still being made (`apply` waits for the whole
+    text). The reverb tail of a sentence rings over the breath and the start of the next one,
+    as in the one-piece render."""
+    tail = int(rate * TAILS.get(effect, 0.0)) if effect in CHAINS else 0
+    breath = int(rate * BREATH_S)
+    carry = np.zeros(0, np.float32)
+    for sentence in sentences:
+        shaped = join_sentences([sentence], rate)
+        if not shaped:
+            continue
+        x = _to_float(apply(effect, shaped, rate)) * 32768
+        body = max(0, x.size - tail) + breath  # the words and the breath; the tail overlaps
+        out = np.zeros(max(body, x.size, carry.size), np.float32)
+        out[: x.size] += x
+        out[: carry.size] += carry
+        carry = out[body:]
+        yield np.round(np.clip(out[:body], -32768, 32767)).astype("<i2").tobytes()
+    if carry.size:
+        yield np.round(np.clip(carry, -32768, 32767)).astype("<i2").tobytes()
 
 
 def apply(effect: str, pcm: bytes, rate: int) -> bytes:

@@ -64,6 +64,14 @@ def start_voice(service: AssistantService) -> str:  # pragma: no cover - needs a
         service.config.tts_pace,
     )
     tts.on_level = service.set_level
+    # a voice, not a noise (Silero), and "has he finished?" (Smart Turn); without them,
+    # Spectre listens as before (loudness, then a 1.8 s pause)
+    vad = turn = None
+    try:
+        vad = engines.SileroVAD()
+        turn = engines.SmartTurn(models)
+    except Exception as err:  # noqa: BLE001 - optional: never stops the voice
+        print(f"Fin de phrase intelligente indisponible ({err}) : pause de 1,8 s.", flush=True)
     loop = VoiceLoop(
         mic,
         wake,
@@ -72,6 +80,10 @@ def start_voice(service: AssistantService) -> str:  # pragma: no cover - needs a
         service.voice_reply,
         service.set_voice_state,
         play=lambda pcm, rate: engines.play_pcm(pcm, rate),
+        # only its name cuts it off: short words ("stop", "attends") were heard in its own voice
+        barge=engines.VoskBarge(wake.model, (wake.word,)),
+        vad=vad,
+        turn=turn,
     )
     service.attach_voice(loop)
 
@@ -88,7 +100,11 @@ def start_camera(service: AssistantService) -> str:  # pragma: no cover - needs 
     from spectre.assistant.vision.camera import Camera, FaceEngine
 
     engine = FaceEngine(service.root / "models")
-    camera = Camera(engine, service.on_faces, index=service.config.camera_index)
+    camera = Camera(
+        engine,
+        lambda faces: service.on_faces(faces, confirm=True),
+        index=service.config.camera_index,
+    )
     service.attach_camera(camera)
     camera.start()
     people = ", ".join(p["name"] for p in service.faces.people()) or "personne encore"

@@ -7,6 +7,7 @@ import base64
 import contextlib
 import json
 import queue
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -39,8 +40,16 @@ from spectre.assistant.providers import ProviderError, Providers, split_ref
 from spectre.assistant.routines import Routines
 from spectre.assistant.saas import Saas
 from spectre.assistant.telegram import Telegram, save_token
-from spectre.assistant.vision.faces import SPOOF, UNKNOWN, FaceBook, Presence
-from spectre.assistant.voice.listen import SAMPLE_RATE, to_wav
+from spectre.assistant.vision.faces import (
+    SPOOF,
+    SPOOF_LOOKS,
+    UNKNOWN,
+    FaceBook,
+    Liveness,
+    Presence,
+    speaker_note,
+)
+from spectre.assistant.voice.listen import SAMPLE_RATE, looks_unfinished, to_wav
 from spectre.assistant.webhooks import Rejected, Webhooks
 from spectre.assistant.webpush import WebPush
 from spectre.config import DEFAULT_SPECS, model_label
@@ -107,8 +116,11 @@ class AssistantService:
         self.voice_state = "off"
         self.faces = FaceBook(self.db)
         self.presence = Presence(self.db, self._on_arrival, time.monotonic)
+        self.liveness = Liveness(time.monotonic)
+        self.phone_liveness = Liveness(time.monotonic)  # another camera, another light
         self.camera: Any = None
         self._spoof_logged_at = -1e9
+        self._presence_sent: tuple[Event, float] = ({}, -1e9)
         self._subscribers: list[queue.Queue[Event]] = []
         self._sub_lock = threading.Lock()
         self._busy = threading.Lock()
@@ -324,6 +336,10 @@ class AssistantService:
     def set_voice_state(self, state: str, detail: str = "") -> None:
         if state != "heard":
             self.voice_state = state
+        if state == "listening" and self.camera is not None:
+            wake = getattr(self.camera, "wake", None)
+            if wake is not None:  # someone speaks: the camera looks at full pace at once
+                wake()
         self.publish({"type": "state", "state": state, "detail": detail})
 
     def attach(self, name: str, data: bytes) -> Event:
@@ -361,8 +377,15 @@ class AssistantService:
             lines.append(line)
         return "\n".join(lines)
 
-    def chat(self, text: str, channel: str = "text", attached: list[str] | None = None) -> str:
-        """One turn with the brain (serialised: Spectre answers one thing at a time)."""
+    def chat(
+        self,
+        text: str,
+        channel: str = "text",
+        attached: list[str] | None = None,
+        note: str = "",
+    ) -> str:
+        """One turn with the brain (serialised: Spectre answers one thing at a time). `note`
+        is context for the brain only (who the camera sees), never shown as the user's words."""
         text = text.strip()
         if attached:
             text = f"{text or 'Regarde ce que je te joins.'}\n\n{self.joined(attached)}"
@@ -376,7 +399,7 @@ class AssistantService:
         with self._busy:
             if channel == "text":
                 self.publish({"type": "state", "state": "thinking", "detail": ""})
-            reply = self.brain.ask(text, channel=channel)
+            reply = self.brain.ask(text, channel=channel, note=note)
             if channel == "text":
                 self.publish({"type": "state", "state": self.voice_state, "detail": ""})
         self.publish(
@@ -1091,6 +1114,7 @@ class AssistantService:
                 self.db.all("SELECT id FROM missions WHERE status IN ('queued', 'running')")
             ),
             "camera": self.camera is not None,
+            "camera_working": bool(getattr(self.camera, "working", self.camera is not None)),
             "present": self.presence.present(),
             "power": self.power(),
         }
@@ -1247,20 +1271,44 @@ class AssistantService:
         self.voice.trigger()
 
     def voice_reply(self, text: str) -> str:
-        return self.chat(text, channel="voice")
+        """Words said to the PC: the voice and the camera work on the same instant, so the
+        brain hears them with who is in front of the screen right now."""
+        seen = self.presence.snapshot() if self.camera is not None else None
+        return self.chat(text, channel="voice", note=speaker_note(seen))
 
-    def remote_voice(self, pcm: bytes) -> Event:
+    def remote_turn(self, pcm: bytes) -> Event:
+        """Has the speaker on the phone finished (Smart Turn, from the audio so far)? The phone
+        asks at each pause; `done` is None when the model is not loaded (it then waits for
+        a plain 1.8 s pause)."""
+        turn = getattr(self.voice, "turn", None) if self.voice is not None else None
+        if turn is None or len(pcm) < SAMPLE_RATE // 2:  # under a quarter of a second
+            return {"done": None}
+        try:
+            return {"done": bool(turn.done(pcm))}
+        except Exception:  # noqa: BLE001 - the phone falls back to the plain pause
+            return {"done": None}
+
+    def remote_voice(self, pcm: bytes, before: str = "", *, final: bool = False) -> Event:
         """A turn spoken into another device (the phone, 16 kHz mono int16): Spectre transcribes
         it with its own speech recognition, answers, and returns its voice as a WAV to play
-        there; nothing is played on the PC."""
+        there; nothing is played on the PC.
+
+        A sentence that stops mid-way ("je voudrais que tu…") is not answered: the reply says
+        `more`, the device keeps listening and sends the rest with `before` = what was heard;
+        `final` answers `before` as is when nothing more was said (as the PC voice does)."""
         if self.voice is None:
             raise ValueError("la voix n'est pas active (lance Spectre avec la voix)")
-        if len(pcm) < SAMPLE_RATE:  # under half a second: nothing was said
-            return {"heard": "", "reply": "", "audio": ""}
-        text = str(self.voice.stt.transcribe(pcm)).strip()
+        heard = ""
+        if len(pcm) >= SAMPLE_RATE:  # under half a second: nothing was said
+            heard = str(self.voice.stt.transcribe(pcm)).strip()
+        text = f"{before.strip()} {heard}".strip()
         if not text:
             return {"heard": "", "reply": "", "audio": ""}
-        reply = self.chat(text, channel="voice")
+        if heard and not final and looks_unfinished(text):
+            return {"heard": text, "reply": "", "audio": "", "more": True}
+        # as on the PC: the brain hears the words with who the phone's camera sees right now
+        note = speaker_note(self.presence.snapshot("phone", fresh_s=6.0), phone=True)
+        reply = self.chat(text, channel="voice", note=note)
         return {"heard": text, "reply": reply, "audio": self.render_speech(reply)}
 
     # ---- the team and its video call -------------------------------------------------------
@@ -1372,7 +1420,11 @@ class AssistantService:
         if self.voice is None:
             raise ValueError("la voix n'est pas active (lance Spectre avec la voix)")
         render = getattr(self.voice.tts, "render", None)  # the Windows fallback voice cannot
-        rendered = render(text) if text.strip() and render else None
+        try:
+            rendered = render(text) if text.strip() and render else None
+        except Exception as err:  # noqa: BLE001 - the answer is still shown, only unspoken
+            print(f"Voix : rendu impossible ({err!r}).", file=sys.stderr, flush=True)
+            rendered = None
         return base64.b64encode(to_wav(*rendered)).decode("ascii") if rendered else ""
 
     # ---- vision (opt-in) -------------------------------------------------------------------
@@ -1380,25 +1432,40 @@ class AssistantService:
     def attach_camera(self, camera: Any) -> None:
         self.camera = camera
 
-    def on_faces(self, faces: list[dict[str, Any]]) -> None:
-        """One camera look: identify live, enrolled people; flag photos and screens."""
+    def on_faces(
+        self, faces: list[dict[str, Any]], confirm: bool = False, source: str = "pc"
+    ) -> None:
+        """One camera look: identify live, enrolled people; flag photos and screens. `confirm`
+        (the PC camera, several looks a second): a newcomer is here once two looks agree.
+        `source` keeps what the PC and the phone see apart: each has its own view."""
+        liveness = self.liveness if source == "pc" else self.phone_liveness
+        # a photo is judged over several looks of the PC camera (one blurred picture used to
+        # turn the owner into a "photo"); a single picture from the phone is judged alone
         names = [
-            self.faces.identify(face["feature"])[0] if face.get("live", True) else SPOOF
+            liveness.judge(
+                self.faces.identify(face["feature"])[0],
+                bool(face.get("live", True)),
+                bool(face.get("sharp", True)),
+                need=SPOOF_LOOKS if confirm else 1,
+            )
             for face in faces
         ]
-        present = self.presence.sighting(names)
+        present = self.presence.sighting(names, confirm=confirm, source=source)
         spoofs = names.count(SPOOF)
         if spoofs and time.monotonic() - self._spoof_logged_at > 60:
             self._spoof_logged_at = time.monotonic()
             self.db.log_event("spoof", "camera", "photo ou écran présenté à la caméra")
-        self.publish(
-            {
-                "type": "presence",
-                "people": present,
-                "unknown": names.count(UNKNOWN),
-                "spoof": spoofs,
-            }
-        )
+        event = {
+            "type": "presence",
+            "people": present,
+            "unknown": names.count(UNKNOWN),
+            "spoof": spoofs,
+        }
+        # several looks a second: the page is told at once of a change, else every 2 s
+        last, at = self._presence_sent
+        if event != last or time.monotonic() - at >= 2.0:
+            self._presence_sent = (event, time.monotonic())
+            self.publish(event)
 
     def remote_frame(self, jpeg: bytes) -> Event:
         """A picture from another device's camera (the phone), analysed like the PC camera's:
@@ -1411,7 +1478,7 @@ class AssistantService:
         if not jpeg:
             raise ValueError("image vide")
         faces = self.camera.engine.embeddings_jpeg(jpeg)
-        self.on_faces(faces)
+        self.on_faces(faces, source="phone")
         return {"faces": len(faces), "present": self.presence.present()}
 
     def _on_arrival(self, name: str, away_s: float) -> None:
@@ -1443,8 +1510,12 @@ class AssistantService:
             raise ValueError("la caméra n'est pas active (lance avec --camera)")
         shots: list[list[float]] = []
         for _ in range(attempts):
-            faces = self.camera.grab()
-            if len(faces) == 1 and faces[0].get("live", True):  # never enroll a photo
+            try:
+                faces = self.camera.grab()
+            except RuntimeError as err:  # taken by another program, unplugged
+                raise ValueError(str(err)) from err
+            # never enroll a photo, nor a blurred picture (it would be a poor sample)
+            if len(faces) == 1 and faces[0].get("live", True) and faces[0].get("sharp", True):
                 shots.append(faces[0]["feature"])
                 if len(shots) >= samples:
                     break
@@ -1460,5 +1531,7 @@ class AssistantService:
     def forget_face(self, name: str) -> int:
         count = self.faces.forget(name)
         self.presence.last_seen.pop(name, None)
+        self.liveness.trusted.pop(name, None)
+        self.phone_liveness.trusted.pop(name, None)
         self.db.log_event("human_correction", "user", f"visage de {name} oublié")
         return count

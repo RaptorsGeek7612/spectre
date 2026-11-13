@@ -1338,10 +1338,16 @@ function show(view) {
 function closeDrawers() { document.body.classList.remove("rail-open", "inspector-open"); $(".scrim").hidden = true; }
 
 /* ---- voice from this device (phone): record here, Spectre transcribes and answers aloud here ---- */
-const rec = { ctx: null, stream: null, node: null, chunks: [], active: false, busy: false };
-async function deviceTalk() {
+// `before`: a sentence left unfinished ("je voudrais que tu…"), completed by the next recording.
+// `playing`: Spectre's voice being played, cut off by a tap on the mic or by speaking over it.
+const rec = { ctx: null, stream: null, node: null, chunks: [], active: false, busy: false, before: "", playing: null, cutOff: false };
+const BARGE_LEVEL = 0.06;  // louder than what echo cancellation leaves of Spectre's own voice
+const BARGE_MS = 400;      // that loud for this long: the user is speaking over Spectre
+async function deviceTalk(more = false) {
+  if (rec.playing) { stopPlayback(); return; }  // a tap while Spectre speaks: cut it off, then listen
   if (rec.busy) return;
   if (rec.active) { finishRecording(); return; }  // a second tap stops early
+  if (!more) rec.before = "";
   try {
     rec.ctx = rec.ctx || new AudioContext();
     await rec.ctx.resume();  // inside the tap, so the answer may play later
@@ -1356,6 +1362,22 @@ async function deviceTalk() {
   rec.active = true;
   const started = performance.now();
   let spoke = 0, lastVoice = 0;
+  // At each pause, Spectre's Smart Turn says whether the sentence is over (intonation, rhythm):
+  // over, it answers at once; a pause to think, it waits up to 2.5 s; unknown, a 1.8 s pause.
+  let pause = 0, asked = -1, verdict = null;
+  const askTurn = (id) => {
+    const rate = rec.ctx.sampleRate, keep = [];
+    let n = 0;
+    for (let i = rec.chunks.length - 1; i >= 0 && n < 8 * rate; i--) { keep.unshift(rec.chunks[i]); n += rec.chunks[i].length; }
+    const pcm = toPcm16(keep, rate);
+    fetch("/api/assistant/turn", { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/octet-stream" }, body: pcm.buffer })
+      .then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
+      .then((d) => {
+        if (id !== pause || !rec.active) return;  // the user spoke again meanwhile
+        verdict = typeof d.done === "boolean" ? d.done : null;
+        if (verdict) finishRecording();
+      });
+  };
   rec.node.onaudioprocess = (e) => {
     if (!rec.active) return;
     const data = e.inputBuffer.getChannelData(0);
@@ -1365,9 +1387,17 @@ async function deviceTalk() {
     const level = Math.sqrt(sum / data.length);
     setLevel(Math.min(1, level * 8));
     const now = performance.now();
-    if (level > 0.02) { spoke = spoke || now; lastVoice = now; }
-    // stops after a pause, if nothing is said, or after 25 s
-    if ((spoke && now - lastVoice > 1800) || (!spoke && now - started > 7000) || now - started > 25000) finishRecording();
+    if (level > 0.02) {
+      if (spoke && now - lastVoice > 250) { pause++; verdict = null; }  // speaking again
+      spoke = spoke || now; lastVoice = now;
+    }
+    const quiet = spoke ? now - lastVoice : 0;
+    if (spoke && quiet > 400 && asked !== pause && now - spoke > 300) { asked = pause; askTurn(pause); }
+    // stops after a pause (2.5 s when Smart Turn hears an unfinished sentence), if nothing is
+    // said (sooner when only the end of a sentence is awaited), or after 25 s
+    const limit = verdict === false ? 2500 : 1800;
+    const wait = more ? 4000 : 7000;
+    if ((spoke && quiet > limit) || (!spoke && now - started > wait) || now - started > 25000) finishRecording();
   };
   source.connect(rec.node);
   rec.node.connect(rec.ctx.destination);  // outputs silence; needed for the node to run
@@ -1396,22 +1426,70 @@ async function finishRecording() {
   rec.node?.disconnect();
   rec.stream?.getTracks().forEach((t) => t.stop());
   const pcm = toPcm16(rec.chunks, rec.ctx.sampleRate);
-  if (pcm.length < 8000) { setState("sleeping"); return; }  // under half a second
+  const silent = pcm.length < 8000;  // under half a second
+  if (silent && !rec.before) { setState("sleeping"); return; }
   rec.busy = true;
   setState("thinking");
+  let next = null;  // "more": the rest of the sentence; "new": cut off, a new turn
   try {
-    const res = await fetch("/api/assistant/voice", { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/octet-stream" }, body: pcm.buffer });
+    const q = new URLSearchParams();
+    if (rec.before) q.set("before", rec.before);
+    if (silent) q.set("final", "1");  // nothing more came: Spectre answers what it has
+    const url = `/api/assistant/voice${q.toString() ? `?${q}` : ""}`;
+    const res = await fetch(url, { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/octet-stream" }, body: silent ? new ArrayBuffer(0) : pcm.buffer });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    if (!data.heard) toast("Je n'ai rien entendu. Réessaie en parlant près du téléphone.", "warn");
-    else if (data.audio) await playWav(data.audio);
+    if (data.more) { rec.before = data.heard; next = "more"; }  // not finished: keep listening
+    else {
+      rec.before = "";
+      if (!data.heard) toast("Je n'ai rien entendu. Réessaie en parlant près du téléphone.", "warn");
+      else if (data.audio && (await playWav(data.audio))) next = "new";
+    }
   } catch (err) {
+    rec.before = "";
     toast(err.message, "error", 7000);
   } finally {
     rec.busy = false;
     setState("sleeping");
   }
+  if (next) deviceTalk(next === "more");
 }
+function stopPlayback() {
+  if (!rec.playing) return;
+  rec.cutOff = true;
+  try { rec.playing.stop(); } catch { /* already over */ }
+}
+// While Spectre speaks, listen for the user speaking over it. Only with echo cancellation:
+// without it the microphone would hear Spectre itself. Returns a function that stops listening.
+async function watchBargeIn() {
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch { return () => {}; }
+  if (stream.getAudioTracks()[0]?.getSettings?.().echoCancellation !== true) {
+    stream.getTracks().forEach((t) => t.stop());
+    return () => {};
+  }
+  const source = rec.ctx.createMediaStreamSource(stream);
+  const node = rec.ctx.createScriptProcessor(2048, 1, 1);
+  const grace = performance.now() + 600;  // echo cancellation needs a moment to adapt
+  let loud = 0, last = performance.now();
+  node.onaudioprocess = (e) => {
+    const data = e.inputBuffer.getChannelData(0);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    const now = performance.now();
+    if (now > grace) {
+      loud = Math.sqrt(sum / data.length) > BARGE_LEVEL ? loud + (now - last) : Math.max(0, loud - (now - last));
+      if (loud >= BARGE_MS) stopPlayback();
+    }
+    last = now;
+  };
+  source.connect(node);
+  node.connect(rec.ctx.destination);  // outputs silence; needed for the node to run
+  return () => { node.disconnect(); source.disconnect(); stream.getTracks().forEach((t) => t.stop()); };
+}
+// Plays Spectre's voice; resolves true when the user cut it off (to listen to them at once).
 async function playWav(b64) {
   const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
   const buffer = await rec.ctx.decodeAudioData(bytes.buffer);
@@ -1419,7 +1497,15 @@ async function playWav(b64) {
   src.buffer = buffer;
   src.connect(rec.ctx.destination);
   setState("speaking");
-  await new Promise((resolve) => { src.onended = resolve; src.start(); });
+  rec.playing = src;
+  rec.cutOff = false;
+  // the voice starts at once; the microphone watch opens beside it (never holds it back)
+  const ended = new Promise((resolve) => { src.onended = resolve; src.start(); });
+  const watching = watchBargeIn().catch(() => () => {});
+  await ended;
+  (await watching)();
+  rec.playing = null;
+  return rec.cutOff;
 }
 // Spectre's other words (typed replies, initiatives) are spoken here too. The browser only lets
 // a page play sound after a tap: the first tap unlocks it, and what came before waits for it.
@@ -1437,21 +1523,24 @@ async function speakHere(text, listen = false) {
     return;
   }
   rec.busy = true;
+  let cut = false;
   try {
     const { audio } = await api("POST", "speak", { text });
-    if (audio) await playWav(audio);
+    if (audio) cut = await playWav(audio);
   } catch (err) {
     toast(err.message, "error");
   } finally {
     rec.busy = false;
     setState("sleeping");
   }
-  if (listen && document.visibilityState === "visible") deviceTalk();  // then the user can simply answer
+  // then the user can simply answer (at once when they cut Spectre off)
+  if ((listen || cut) && document.visibilityState === "visible") deviceTalk();
 }
 // On a touch screen, the browser allows sound when the finger lifts, not when it presses.
 if (REMOTE) for (const type of ["pointerup", "keydown"]) document.addEventListener(type, () => unlockAudio().catch(() => {}), true);
 
-/* ---- camera of this device (phone): a picture every 2 s, analysed by Spectre like its own ---- */
+/* ---- camera of this device (phone): a picture every 0.7 s (one at a time: a slow network
+   only slows the pace), analysed by Spectre like its own ---- */
 const cam = { stream: null, timer: null, canvas: document.createElement("canvas"), sending: false };
 async function deviceCamera() {
   if (cam.stream) { stopCamera(); return; }
@@ -1466,7 +1555,8 @@ async function deviceCamera() {
   video.hidden = false;
   await video.play().catch(() => {});
   $("#cam-btn").setAttribute("aria-pressed", "true");
-  cam.timer = setInterval(sendFrame, 2000);
+  cam.timer = setInterval(sendFrame, 700);
+  sendFrame();
   toast("Caméra du téléphone active : Spectre regarde qui est là. Retouche le bouton pour l'arrêter.");
 }
 function stopCamera() {

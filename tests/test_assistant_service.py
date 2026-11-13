@@ -379,7 +379,7 @@ class FakeTTS:
 
 
 def _utterance() -> list[bytes]:
-    return [LOUD] * 5 + [QUIET] * 15  # a pause longer than silence_s ends the turn
+    return [LOUD] * 5 + [QUIET] * 19  # a pause longer than silence_s ends the turn
 
 
 def _loop(
@@ -456,6 +456,7 @@ def test_voice_ack_error_and_say(monkeypatch: pytest.MonkeyPatch) -> None:
     assert quiet_tts.spoken == ["Désolé, une erreur est survenue : panne"]  # no filler by default
     voice.say("Rappel : pain")
     assert tts.spoken[-1] == "Rappel : pain"
+    assert voice.state == "sleeping"  # not left on "speaking" after an announcement
 
 
 def test_listen_helpers() -> None:
@@ -474,10 +475,127 @@ def test_listen_helpers() -> None:
     onset.feed(LOUD)
     assert onset.audio() == soft * 4 + LOUD  # 0.4 s kept before the speech started
     patient = UtteranceDetector()
-    assert not any(patient.feed(b) for b in [LOUD] * 3 + [QUIET] * 13)  # a 1.3 s pause
+    assert not any(patient.feed(b) for b in [LOUD] * 3 + [QUIET] * 17)  # a 1.7 s pause
     assert patient.feed(QUIET) is True
     assert len(chime()) == int(SAMPLE_RATE * 0.12) * 2
     assert json.dumps(Reply("a", "b", False).text) == '"a"'
+
+
+def test_looks_unfinished() -> None:
+    from spectre.assistant.voice.listen import looks_unfinished
+
+    for text in (
+        "Je voudrais que tu",
+        "Envoie un message à Kyra et",
+        "Il faudrait regarder le…",
+        "Prépare le budget, euh.",
+        "Rappelle-moi de",
+        "Dis à Gétro qu'",
+        "Liste les fichiers,",
+    ):
+        assert looks_unfinished(text), text
+    for text in (
+        "",
+        "  ",
+        "Quelle heure est-il ?",
+        "C'est quoi ?",
+        "Merci à vous.",
+        "Mets-la sur le bureau.",
+        "Je ne sais pas.",
+        "!",
+    ):
+        assert not looks_unfinished(text), text
+
+
+def test_voice_waits_for_the_end_of_an_unfinished_sentence() -> None:
+    blocks = [WAKE, *_utterance(), *_utterance(), *[QUIET] * 8]
+    voice, tts, states = _loop(blocks, FakeSTT("Rappelle-moi de", "acheter du pain."))
+    voice.run()
+    assert tts.spoken == ["Tu as dit Rappelle-moi de acheter du pain.."]
+    # the pause, then nothing more: Spectre answers what it has
+    voice, tts, _ = _loop([WAKE, *_utterance(), *[QUIET] * 45], FakeSTT("Dis-moi si"))
+    voice.run()
+    assert tts.spoken == ["Tu as dit Dis-moi si."]
+    voice, tts, _ = _loop([WAKE, *_utterance(), *_utterance()], FakeSTT("Note que", " "))
+    voice.run()
+    assert tts.spoken == ["Tu as dit Note que."]
+
+
+class EchoMic(FakeMic):
+    """Hands over what it hears while muted, like `engines.Microphone`."""
+
+    def __init__(self, blocks: list[bytes], echo: list[bytes]) -> None:
+        super().__init__(blocks)
+        self.echo = echo
+
+    def muted_blocks(self, done: threading.Event) -> Iterator[bytes]:
+        for block in self.echo:
+            if done.is_set():
+                return
+            yield block
+
+
+class FakeBarge:
+    def __init__(self) -> None:
+        self.resets = 0
+
+    def reset(self) -> None:
+        self.resets += 1
+
+    def heard(self, block: bytes) -> str:
+        return "spectre" if block == WAKE else ""
+
+
+class LongTTS(FakeTTS):
+    """Speaks until interrupted (or 2 s), and records whether it was cut off."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.cut: list[bool] = []
+
+    def speak(self, text: str, stop: threading.Event | None = None) -> None:
+        self.spoken.append(text)
+        assert stop is not None
+        self.cut.append(stop.wait(2.0))
+
+
+def test_voice_barge_in_cuts_spectre_off() -> None:
+    tts = LongTTS()
+    mic = EchoMic([WAKE, *_utterance(), *_utterance(), *[QUIET] * 8], [QUIET, QUIET, WAKE])
+    barge = FakeBarge()
+    voice = VoiceLoop(
+        mic,
+        FakeWake(),
+        FakeSTT("raconte une histoire", "plutôt une blague"),
+        tts,
+        lambda text: f"Voici {text}.",
+        lambda state, detail: None,
+        follow_up_s=0.5,
+        barge=barge,
+    )
+    voice.run()
+    assert tts.spoken == ["Voici raconte une histoire.", "Voici plutôt une blague."]
+    assert tts.cut[0] and voice.barged  # cut off, then it listened to the new idea
+    assert barge.resets == 2 and not mic.muted.is_set()
+
+
+def test_voice_barge_ignores_its_own_words_and_reopens_after_an_announcement() -> None:
+    tts = LongTTS()
+    voice = VoiceLoop(
+        EchoMic([], [WAKE]),
+        FakeWake(),
+        FakeSTT(),
+        tts,
+        lambda text: "",
+        lambda state, detail: None,
+        barge=FakeBarge(),
+    )
+    voice.say("Je suis Spectre, ton assistant.")  # its own name, heard in the loudspeakers
+    assert tts.cut == [False] and not voice.barged
+    assert not voice._triggered.is_set()
+    voice.say("Rappel : le pain.")
+    assert tts.cut[-1] and voice.barged
+    assert voice._triggered.is_set()  # cut off: it listens without the wake word
 
 
 def test_pick_input_avoids_stereo_mix() -> None:
@@ -556,6 +674,37 @@ def test_remote_voice(service: AssistantService) -> None:
     service.attach_voice(PhoneVoice(render=False))
     out = service.remote_voice(pcm)
     assert out["reply"] == "Réponse." and out["audio"] == ""
+
+
+def test_remote_voice_waits_for_the_end_of_a_sentence(
+    api: Client, service: AssistantService
+) -> None:
+    pcm = b"\x00\x10" * SAMPLE_RATE
+    service.attach_voice(PhoneVoice(heard="Rappelle-moi de"))
+    first = service.remote_voice(pcm)
+    assert first == {"heard": "Rappelle-moi de", "reply": "", "audio": "", "more": True}
+    assert not service.history()  # not answered, not even logged yet
+    service.attach_voice(PhoneVoice(heard="acheter du pain."))
+    out = service.remote_voice(pcm, first["heard"])
+    assert out["heard"] == "Rappelle-moi de acheter du pain." and out["reply"] == "Réponse."
+    # nothing more was said: the device asks for an answer to what was heard
+    out = service.remote_voice(b"", "Dis-moi si", final=True)
+    assert out["heard"] == "Dis-moi si" and out["reply"] == "Réponse." and "more" not in out
+    headers = {"Content-Type": "application/octet-stream"}
+    service.attach_voice(PhoneVoice(heard="et"))
+    status, _, body = api.request(
+        "POST", "/api/assistant/voice?before=Note%20que", raw=pcm, headers=headers
+    )
+    assert status == 200 and json.loads(body) == {
+        "heard": "Note que et",
+        "reply": "",
+        "audio": "",
+        "more": True,
+    }
+    status, _, body = api.request(
+        "POST", "/api/assistant/voice?before=Note%20que&final=1", raw=b"", headers=headers
+    )
+    assert status == 200 and json.loads(body)["heard"] == "Note que"
 
 
 def test_api_voice_route(api: Client, service: AssistantService) -> None:
@@ -642,3 +791,136 @@ def test_api_mcp_secret(api: Client, service: AssistantService) -> None:
     assert api.json("POST", path, {"var": "NOPE", "value": "x"})[0] == 400
     audit = service.db.one("SELECT args FROM audit WHERE tool = 'mcp_server_secret'")
     assert "s3cr3t" not in audit["args"]
+
+
+def _feed(detector: UtteranceDetector, blocks: list[bytes]) -> int:
+    """How many blocks the detector took before ending the turn (-1: never ended)."""
+    for i, block in enumerate(blocks, 1):
+        if detector.feed(block):
+            return i
+    return -1
+
+
+def test_detector_smart_turn_ends_a_finished_sentence_at_once() -> None:
+    asked: list[int] = []
+
+    def finished(pcm: bytes) -> bool:
+        asked.append(len(pcm))
+        return True
+
+    detector = UtteranceDetector(turn=finished)
+    assert _feed(detector, [LOUD] * 5 + [QUIET] * 30) == 8  # 0.3 s of pause, not 1.8 s
+    assert len(asked) == 1 and detector.verdicts == [True]
+
+
+def test_detector_smart_turn_waits_for_a_thinking_pause() -> None:
+    answers = iter([False, True])
+    detector = UtteranceDetector(turn=lambda pcm: next(answers))
+    # "je voudrais que tu…" (unfinished, 1 s of thinking), then the rest
+    blocks = [LOUD] * 5 + [QUIET] * 10 + [LOUD] * 5 + [QUIET] * 30
+    assert _feed(detector, blocks) == 23  # asked once per pause
+    assert detector.verdicts == [False, True]
+    # never finished: gives up after turn_cap_s (2.5 s) of quiet
+    stubborn = UtteranceDetector(turn=lambda pcm: False)
+    assert _feed(stubborn, [LOUD] * 5 + [QUIET] * 40) == 30
+
+
+def test_detector_falls_back_when_the_models_fail() -> None:
+    def broken(_: bytes) -> bool:
+        raise RuntimeError("onnx")
+
+    detector = UtteranceDetector(turn=broken, vad=broken)
+    assert _feed(detector, _utterance()) == 23  # the plain 1.8 s pause
+    assert detector.turn is None and detector.vad is None
+
+
+def test_detector_vad_ignores_loud_noise() -> None:
+    detector = UtteranceDetector(vad=lambda block: False, wait_s=1.0)
+    assert _feed(detector, [LOUD] * 20) == 10  # a fan, a door: never speech
+    assert not detector.heard_speech
+
+
+def test_voice_loop_uses_the_vad_and_turn_models() -> None:
+    resets: list[int] = []
+    vad = SimpleNamespace(reset=lambda: resets.append(1), speech=lambda block: block == LOUD)
+    turn = SimpleNamespace(done=lambda pcm: True)
+    voice, tts, _ = _loop([WAKE, *[LOUD] * 5, *[QUIET] * 4], FakeSTT("quelle heure"))
+    voice.vad, voice.turn = vad, turn
+    detector = voice._detector(8.0)
+    assert resets and detector.vad is not None and detector.turn is not None
+    voice.run()
+    assert tts.spoken == ["Tu as dit quelle heure."]  # answered after 0.3 s of pause
+
+
+def test_remote_turn(api: Client, service: AssistantService) -> None:
+    pcm = b"\x00\x10" * SAMPLE_RATE
+    assert service.remote_turn(pcm) == {"done": None}  # no voice
+    voice = PhoneVoice()
+    service.attach_voice(voice)
+    assert service.remote_turn(pcm) == {"done": None}  # no Smart Turn loaded
+    voice.turn = SimpleNamespace(done=lambda pcm: False)  # type: ignore[attr-defined]
+    assert service.remote_turn(b"\x00" * 100) == {"done": None}  # too short
+    assert service.remote_turn(pcm) == {"done": False}
+
+    def broken(_: bytes) -> bool:
+        raise RuntimeError("onnx")
+
+    voice.turn = SimpleNamespace(done=broken)  # type: ignore[attr-defined]
+    assert service.remote_turn(pcm) == {"done": None}
+    voice.turn = SimpleNamespace(done=lambda pcm: True)  # type: ignore[attr-defined]
+    headers = {"Content-Type": "application/octet-stream"}
+    status, _, body = api.request("POST", "/api/assistant/turn", raw=pcm, headers=headers)
+    assert status == 200 and json.loads(body) == {"done": True}
+
+
+class BrokenTTS(FakeTTS):
+    def speak(self, text: str, stop: threading.Event | None = None) -> None:
+        raise ImportError("DLL load failed while importing espeakbridge")
+
+
+def test_voice_survives_a_voice_that_breaks() -> None:
+    states: list[str] = []
+    mic = FakeMic([WAKE, *_utterance(), *[QUIET] * 8, WAKE, *_utterance(), *[QUIET] * 8])
+    voice = VoiceLoop(
+        mic,
+        FakeWake(),
+        FakeSTT("Quelle heure est-il", "Et demain"),
+        BrokenTTS(),
+        lambda text: "Réponse.",
+        lambda state, detail: states.append(state),
+        follow_up_s=0.5,
+    )
+    voice.say("Bonjour.")  # the greeting that used to leave the orb on "je parle" for good
+    assert voice.state == "sleeping" and not mic.muted.is_set()
+    voice.run()
+    assert states.count("heard") == 2  # the second turn is still heard: the loop went on
+    assert not mic.muted.is_set()
+
+    def explode(text: str) -> str:
+        raise RuntimeError("panne")
+
+    voice = VoiceLoop(
+        FakeMic([WAKE, *_utterance(), WAKE]),
+        FakeWake(),
+        FakeSTT("Quelle heure est-il"),
+        FakeTTS(),
+        lambda text: "",
+        lambda state, detail: states.append(state),
+    )
+    voice.on_state = lambda state, detail: explode(state) if state == "thinking" else None
+    voice.run()  # a turn that breaks is dropped, not the voice
+    assert voice.state == "off"
+
+
+def test_voice_announcements_wait_for_their_turn(monkeypatch: pytest.MonkeyPatch) -> None:
+    tts = FakeTTS()
+    voice = VoiceLoop(
+        FakeMic([]), FakeWake(), FakeSTT(), tts, lambda text: "", lambda state, detail: None
+    )
+    assert voice.say("Un.") is True
+    monkeypatch.setattr(loop_mod, "SAY_WAIT_S", 0.05)
+    with voice._floor:  # a conversation is going on
+        assert voice.say("Deux.") is False
+    voice.stop.set()
+    assert voice.say("Trois.") is False
+    assert tts.spoken == ["Un."]
