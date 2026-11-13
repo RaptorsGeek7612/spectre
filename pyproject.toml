@@ -94,7 +94,7 @@ files = ["src"]
 
 [[tool.mypy.overrides]]
 # Optional voice extra: untyped, and absent from CI.
-module = ["sounddevice", "vosk", "faster_whisper", "av", "piper", "piper.*", "cv2", "cv2.*", "onnxruntime", "laya", "laya.*", "numpy_financial", "sympy", "astropy", "astropy.*", "ccxt", "yfinance", "skyfield"]
+module = ["sounddevice", "vosk", "faster_whisper", "faster_whisper.*", "av", "piper", "piper.*", "cv2", "cv2.*", "onnxruntime", "laya", "laya.*", "numpy_financial", "sympy", "astropy", "astropy.*", "ccxt", "yfinance", "skyfield"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

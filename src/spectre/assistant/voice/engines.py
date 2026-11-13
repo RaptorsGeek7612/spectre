@@ -289,7 +289,7 @@ class SmartTurn:
         _shim_av()
         import numpy as np
         import onnxruntime
-        from faster_whisper.feature_extractor import FeatureExtractor  # type: ignore[import-untyped]
+        from faster_whisper.feature_extractor import FeatureExtractor
 
         opts = onnxruntime.SessionOptions()
         opts.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
