@@ -46,7 +46,7 @@ livre la meilleure version de Warden et signale les points restants.
 
 ## Installation
 
-Prérequis : Python ≥ 3.11 et [uv](https://docs.astral.sh/uv/).
+Prérequis : Python ≥ 3.11.5 et [uv](https://docs.astral.sh/uv/).
 
 ```shell
 git clone https://github.com/RaptorsGeek7612/spectre.git
