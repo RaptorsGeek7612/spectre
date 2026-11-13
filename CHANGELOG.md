@@ -7,7 +7,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-11-13
+
 ### Added
+- Voix en flux : Spectre dit sa réponse phrase par phrase, la première dès qu'elle est prête
+  (premier son en 0,2 à 0,8 s au lieu de 2,2 s pour une réponse longue), avec le même timbre.
+- Caméra en temps réel : 4 regards par seconde (1 par seconde quand il n'y a personne) au lieu
+  d'un toutes les 1,5 s ; quelqu'un est « parti » après 8 s au lieu de 30. Un nouveau venu
+  compte quand deux regards de suite sont d'accord.
+- Voix et caméra synchronisées : à chaque phrase dite, le cerveau sait qui la caméra voit à
+  cet instant (toi, quelqu'un qu'il ne connaît pas — il reste alors discret sur le personnel —
+  ou personne), sur le PC comme sur le téléphone. Dès qu'on lui parle, la caméra regarde à
+  plein rythme.
+- Téléphone : une image toutes les 0,7 s au lieu de 2 s ; la caméra du téléphone et celle du
+  PC ont chacune leur vue.
 - Voix : Spectre laisse finir. Une phrase coupée au milieu (« je voudrais que tu… », « et
   euh, ») n'est plus prise pour une demande complète : il écoute encore jusqu'à 4 s et ajoute
   la suite (PC et téléphone). La pause qui termine une phrase passe de 1,4 à 1,8 s sur le PC.
@@ -23,6 +36,18 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   (`POST /api/assistant/turn`). Sans ces modèles, Spectre écoute comme avant.
 
 ### Fixed
+- Visages : le propriétaire était pris pour une photo. L'anti-fraude se trompe quand l'image
+  du visage est floue (une tête qui bouge) : mesuré sur 368 regards, 97 % de bons verdicts sur
+  image nette, 30 à 60 % sur image floue. Il est maintenant jugé dans le temps : pas de
+  verdict sur une image floue, une personne vérifiée le reste tant que la caméra la voit, et
+  il faut 4 regards nets d'affilée pour conclure à une photo.
+- Voix : quand Windows bloquait la DLL de Piper, l'accueil plantait et l'orbe restait sur
+  « je parle ». Spectre réessaie au démarrage, passe sur la voix de Windows si besoin, et un
+  tour en panne ne coupe plus la voix. Sur le téléphone, la réponse s'affiche même si la voix
+  ne peut pas être produite.
+- Voix : deux annonces ne se parlent plus dessus, ni par-dessus une conversation.
+- Caméra : débranchée ou prise par un autre programme, elle est rouverte toute seule et la
+  présence ne reste plus figée.
 - Voix : l'orbe restait sur « je parle » après une annonce (PC et téléphone), et Spectre ne
   disait plus ses réponses écrites ni ses initiatives.
 - Lanceur : quand l'appli Chrome installée ne s'ouvre plus (Chrome ouvrait un onglet vide),
