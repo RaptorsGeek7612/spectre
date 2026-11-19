@@ -26,6 +26,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 - L'orbe du téléphone ne bouge plus avec le micro du PC (bruit de la pièce) au repos ni
   pendant son propre tour.
 
+### Security
+- opentelemetry-api 1.45.2 (alerte Dependabot n° 20, gravité moyenne : déni de service par
+  une lecture en temps quadratique de l'en-tête `traceparent`).
+
 ## [0.30.1] - 2026-11-13
 
 ### Security
