@@ -84,6 +84,7 @@ def start_voice(service: AssistantService) -> str:  # pragma: no cover - needs a
         barge=engines.VoskBarge(wake.model, (wake.word,)),
         vad=vad,
         turn=turn,
+        hold=service.phone_holds,
     )
     service.attach_voice(loop)
 

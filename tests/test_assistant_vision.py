@@ -139,7 +139,13 @@ def test_service_faces(service: AssistantService) -> None:  # noqa: F811
         time.sleep(0.01)
     events = _drain(q)
     # the line the model wrote (here the fake's "Réponse."), spoken, then Spectre listens
-    assert {"type": "arrival", "name": "Barth", "text": "Réponse.", "speak": True} in events
+    assert {
+        "type": "arrival",
+        "name": "Barth",
+        "text": "Réponse.",
+        "speak": False,
+        "on": "pc",
+    } in events
     assert {"type": "presence", "people": ["Barth"], "unknown": 1, "spoof": 1} in events
     assert voice.said == ["Réponse."] and voice.triggered == 1
     assert service.status()["present"] == ["Barth"] and service.status()["camera"]

@@ -84,6 +84,7 @@ class VoiceLoop:
         barge: Barge | None = None,
         vad: VAD | None = None,
         turn: Turn | None = None,
+        hold: Callable[[], bool] | None = None,
     ) -> None:
         self.mic, self.wake, self.stt, self.tts = mic, wake, stt, tts
         self.reply = reply
@@ -94,6 +95,9 @@ class VoiceLoop:
         self.barge = barge
         self.vad = vad
         self.turn = turn
+        # another device holds the conversation (the phone): the wake word is not listened
+        # for, since this microphone hears « Spectre » in the phone's loudspeaker
+        self.hold = hold or (lambda: False)
         self.stop = threading.Event()
         self.interrupt = threading.Event()
         self.barged = False  # the user cut Spectre off during its last sentence
@@ -133,7 +137,7 @@ class VoiceLoop:
         for block in blocks:
             if self.stop.is_set():
                 break
-            if self._triggered.is_set() or self.wake.heard(block):
+            if self._triggered.is_set() or (not self.hold() and self.wake.heard(block)):
                 self._triggered.clear()
                 with self._floor:
                     try:

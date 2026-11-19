@@ -1340,7 +1340,29 @@ function closeDrawers() { document.body.classList.remove("rail-open", "inspector
 /* ---- voice from this device (phone): record here, Spectre transcribes and answers aloud here ---- */
 // `before`: a sentence left unfinished ("je voudrais que tu…"), completed by the next recording.
 // `playing`: Spectre's voice being played, cut off by a tap on the mic or by speaking over it.
-const rec = { ctx: null, stream: null, node: null, chunks: [], active: false, busy: false, before: "", playing: null, cutOff: false };
+const rec = { ctx: null, stream: null, node: null, chunks: [], active: false, busy: false, before: "", playing: null, cutOff: false, state: "sleeping" };
+// One conversation, several devices: `shared` is the last state Spectre announced (the PC's
+// voice or the phone's). A device in its own turn shows its own state; the others mirror it.
+const shared = { state: "off", device: "pc" };
+function localBusy() { return REMOTE && (rec.active || rec.busy || !!rec.playing); }
+function tellState(state) {
+  fetch("/api/assistant/voice/state", { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/json" }, body: JSON.stringify({ device: "phone", state }) }).catch(() => {});
+}
+// This device's own voice: shown here, and told to Spectre so the PC shows it and stays quiet.
+function localState(state) {
+  rec.state = state;
+  if (REMOTE) tellState(state);
+  // the turn is over while the PC is in a conversation: show the PC's state again
+  if (state === "sleeping" && shared.device === "pc" && !["sleeping", "off"].includes(shared.state)) setState(shared.state);
+  else setState(state);
+}
+if (REMOTE) {
+  setInterval(() => { if (localBusy() && document.visibilityState === "visible") tellState(rec.state); }, 10000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { if (!localBusy()) tellState("away"); }
+    else if (!localBusy()) tellState("sleeping");
+  });
+}
 const BARGE_LEVEL = 0.06;  // louder than what echo cancellation leaves of Spectre's own voice
 const BARGE_MS = 400;      // that loud for this long: the user is speaking over Spectre
 async function deviceTalk(more = false) {
@@ -1401,7 +1423,7 @@ async function deviceTalk(more = false) {
   };
   source.connect(rec.node);
   rec.node.connect(rec.ctx.destination);  // outputs silence; needed for the node to run
-  setState("listening");
+  localState("listening");
 }
 function toPcm16(chunks, rate) {
   // downsample to 16 kHz by averaging, then 16-bit: what Spectre's speech recognition expects
@@ -1427,9 +1449,9 @@ async function finishRecording() {
   rec.stream?.getTracks().forEach((t) => t.stop());
   const pcm = toPcm16(rec.chunks, rec.ctx.sampleRate);
   const silent = pcm.length < 8000;  // under half a second
-  if (silent && !rec.before) { setState("sleeping"); return; }
+  if (silent && !rec.before) { localState("sleeping"); return; }
   rec.busy = true;
-  setState("thinking");
+  localState("thinking");
   let next = null;  // "more": the rest of the sentence; "new": cut off, a new turn
   try {
     const q = new URLSearchParams();
@@ -1450,7 +1472,7 @@ async function finishRecording() {
     toast(err.message, "error", 7000);
   } finally {
     rec.busy = false;
-    setState("sleeping");
+    localState("sleeping");
   }
   if (next) deviceTalk(next === "more");
 }
@@ -1496,7 +1518,7 @@ async function playWav(b64) {
   const src = rec.ctx.createBufferSource();
   src.buffer = buffer;
   src.connect(rec.ctx.destination);
-  setState("speaking");
+  localState("speaking");
   rec.playing = src;
   rec.cutOff = false;
   // the voice starts at once; the microphone watch opens beside it (never holds it back)
@@ -1531,7 +1553,7 @@ async function speakHere(text, listen = false) {
     toast(err.message, "error");
   } finally {
     rec.busy = false;
-    setState("sleeping");
+    localState("sleeping");
   }
   // then the user can simply answer (at once when they cut Spectre off)
   if ((listen || cut) && document.visibilityState === "visible") deviceTalk();
@@ -1665,7 +1687,16 @@ initToolsLive();
 /* ---- live events ---- */
 function connect() {
   const es = new EventSource("/api/assistant/events");
-  es.addEventListener("state", (e) => { const d = JSON.parse(e.data); setState(d.state, d.detail); });
+  es.addEventListener("state", (e) => {
+    const d = JSON.parse(e.data);
+    const device = d.device || "pc";
+    if (d.state === "heard") { setState(d.state, d.detail); return; }
+    shared.state = d.state; shared.device = device;
+    if (localBusy()) return;  // this phone is in its own turn: it shows its own state
+    if (REMOTE && device === "phone") return;  // this phone's own state, echoed back
+    const where = device === "phone" && !REMOTE && d.state !== "sleeping" ? "Sur le téléphone" : "";
+    setState(d.state, d.detail || where);
+  });
   es.addEventListener("message", (e) => {
     const d = JSON.parse(e.data);
     addLine(d.role, d.text, d.error);
@@ -1673,7 +1704,14 @@ function connect() {
     else caption("#heard", d.text, 14000);
     loadStatus().catch(() => {});
   });
-  es.addEventListener("level", (e) => setLevel(JSON.parse(e.data).v));
+  es.addEventListener("level", (e) => {
+    // the PC's microphone: never over this phone's own voice, nor while the phone talks; on a
+    // phone, only during a conversation with the PC (not the noise of the PC's room)
+    if (localBusy()) return;
+    if (shared.device === "phone" && shared.state !== "sleeping") return;
+    if (REMOTE && !(shared.device === "pc" && ["listening", "speaking"].includes(shared.state))) return;
+    setLevel(JSON.parse(e.data).v);
+  });
   es.addEventListener("presence", (e) => { const d = JSON.parse(e.data); showPresence(d.people, d.unknown, d.spoof); });
   es.addEventListener("arrival", (e) => {
     const d = JSON.parse(e.data);

@@ -44,6 +44,11 @@ def handle(
             before = query.get("before", [""])[0]  # an unfinished sentence, heard just before
             final = query.get("final", [""])[0] == "1"  # nothing more came: answer it as is
             handler._json(200, service.remote_voice(handler._raw_body(), before, final=final))
+        case "POST", ["voice", "state"]:
+            data = body()
+            handler._json(
+                200, service.device_state(str(data.get("device", "")), str(data.get("state", "")))
+            )
         case "POST", ["turn"]:
             handler._json(200, service.remote_turn(handler._raw_body()))
         case "POST", ["speak"]:
