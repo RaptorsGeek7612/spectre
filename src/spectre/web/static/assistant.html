@@ -451,6 +451,11 @@
     <section class="as-view" data-view="settings" hidden>
       <h2 class="as-h">Réglages de l'assistant</h2>
       <form id="settings-form" class="settings-grid" autocomplete="off"></form>
+      <section class="faces-panel" id="phone-panel" aria-labelledby="phone-title" hidden>
+        <h3 class="as-h" id="phone-title">Sur cet appareil</h3>
+        <label class="co-switch"><input type="checkbox" id="phone-barge"><span>Couper Spectre en parlant par-dessus</span></label>
+        <p class="meta">Le micro reste alors ouvert pendant qu'il parle : le téléphone passe en mode « appel » et sa voix est nettement moins forte. Sans cette option, touche le micro pour le couper, et sa voix sort au volume du média.</p>
+      </section>
       <section class="faces-panel" aria-labelledby="faces-title">
         <h3 class="as-h" id="faces-title">Visages connus</h3>
         <p class="meta">Spectre ne reconnaît que les personnes enregistrées ici, avec leur accord. Il ne garde aucune photo : seulement une empreinte numérique (128 nombres), sur ce PC, effaçable à tout moment.</p>

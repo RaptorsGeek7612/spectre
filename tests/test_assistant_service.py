@@ -156,7 +156,9 @@ def test_voice_hooks(service: AssistantService) -> None:
         time.sleep(0.01)
     assert voice.said == ["Briefing. Beau temps."]
     events = _drain(q)
-    assert events[-1]["type"] == "initiative" and events[-1]["speak"] is True
+    # said once, on the PC (the user spoke to no phone): the phone page stays silent
+    assert events[-1]["type"] == "initiative" and events[-1]["on"] == "pc"
+    assert events[-1]["speak"] is False
     service.stop()
     assert voice.stop.is_set()
 
@@ -235,7 +237,9 @@ def test_api_events_stream(api: Client, service: AssistantService) -> None:
     resp = conn.getresponse()
     assert resp.status == 200 and resp.getheader("Content-Type").startswith("text/event-stream")
     first = resp.fp.readline() + resp.fp.readline()
-    assert first == b"event: state\n" + b'data: {"type": "state", "state": "off", "detail": ""}\n'
+    assert first == b"event: state\n" + (
+        b'data: {"type": "state", "state": "off", "detail": "", "device": "pc"}\n'
+    )
     service.set_voice_state("listening")
     seen = b""
     while b"listening" not in seen:
@@ -674,6 +678,132 @@ def test_remote_voice(service: AssistantService) -> None:
     service.attach_voice(PhoneVoice(render=False))
     out = service.remote_voice(pcm)
     assert out["reply"] == "Réponse." and out["audio"] == ""
+
+
+def test_phone_and_pc_share_one_conversation(api: Client, service: AssistantService) -> None:
+    """The phone tells its state: every page shows it, the PC keeps quiet meanwhile, and
+    Spectre's spontaneous words are said once, on the device the user is using."""
+    voice = FakeVoice()
+    service.attach_voice(voice)
+    service.set_voice_state("sleeping")
+    assert not service.phone_holds() and service.speaks_on() == "pc"
+    q = service.subscribe()
+    _drain(q)
+    status, _, _ = api.request(
+        "POST", "/api/assistant/voice/state", {"device": "phone", "state": "listening"}
+    )
+    assert status == 200 and service.phone_holds() and service.speaks_on() == "phone"
+    assert _drain(q)[-1] == {"type": "state", "state": "listening", "detail": "", "device": "phone"}
+    # a page opened meanwhile shows the phone's state at once
+    assert service.subscribe().get_nowait()["device"] == "phone"
+    # the PC does not announce over the phone, and the phone says it instead
+    service._on_initiative("briefing", "Briefing", "Beau temps.")
+    time.sleep(0.05)
+    initiative = [e for e in _drain(q) if e["type"] == "initiative"][-1]
+    assert voice.said == [] and initiative["speak"] is True and initiative["on"] == "phone"
+    # the phone's turn is over: every page shows the PC again
+    service.device_state("phone", "sleeping")
+    assert not service.phone_holds()
+    assert _drain(q)[-1] == {"type": "state", "state": "sleeping", "detail": "", "device": "pc"}
+    # its page hidden: the PC speaks again
+    service.device_state("phone", "away")
+    assert service.speaks_on() == "pc"
+    # the PC heard its name: it is the device in use
+    service.device_state("phone", "speaking")
+    service.set_voice_state("listening")
+    assert service.speaks_on() == "pc"
+    with pytest.raises(ValueError):
+        service.device_state("pc", "listening")
+    with pytest.raises(ValueError):
+        service.device_state("phone", "dancing")
+    status, _, _ = api.request(
+        "POST", "/api/assistant/voice/state", {"device": "phone", "state": "?"}
+    )
+    assert status == 400
+
+
+def test_phone_wake_word(api: Client, service: AssistantService) -> None:
+    """« Spectre » said into the phone: spotted here, the phone gets the floor at once; the
+    PC already in a conversation keeps it."""
+
+    class Spotter:
+        def __init__(self) -> None:
+            self.resets = 0
+            self.pieces: list[tuple[int, bool]] = []
+
+        def reset(self) -> None:
+            self.resets += 1
+
+        def heard(self, pcm: bytes, end: bool = False) -> bool:
+            self.pieces.append((len(pcm), end))
+            return end
+
+    spotter = Spotter()
+    with pytest.raises(ValueError, match="voix"):
+        service.remote_wake(b"")
+    service.attach_voice(FakeVoice())
+    service.set_voice_state("sleeping")
+    service.phone_wake = lambda: spotter
+    assert service.status()["phone_wake"] is True
+    assert service.remote_wake(b"\x00" * 5, start=True) == {"wake": False}
+    assert spotter.resets == 1 and spotter.pieces == [(4, False)]  # whole samples only
+    q = service.subscribe()
+    assert service.remote_wake(b"", end=True) == {"wake": True}
+    assert service.phone_holds() and service.speaks_on() == "phone"
+    assert _drain(q)[-1]["state"] == "listening"
+    service.device_state("phone", "sleeping")
+    service.set_voice_state("listening")  # the PC heard its name first
+    assert service.remote_wake(b"", end=True) == {"wake": False, "busy": True}
+    service.set_voice_state("sleeping")
+    headers = {"Content-Type": "application/octet-stream"}
+    status, _, body = api.request(
+        "POST", "/api/assistant/wake?start=1&end=1", raw=b"\x00\x00", headers=headers
+    )
+    assert status == 200 and json.loads(body) == {"wake": True}
+
+
+def test_phone_turn_holds_the_pc(service: AssistantService) -> None:
+    """While the phone's words are answered, the PC holds back, and every page sees them."""
+    held: list[bool] = []
+    service.attach_voice(PhoneVoice())
+    original = service.chat
+
+    def chat(text: str, channel: str = "text", attached: Any = None, note: str = "") -> str:
+        held.append(service.phone_holds())
+        return original(text, channel, attached, note)
+
+    service.chat = chat  # type: ignore[method-assign]
+    q = service.subscribe()
+    service.remote_voice(b"\x00\x10" * SAMPLE_RATE)
+    assert held == [True] and not service.phone_holds()
+    heard = [e for e in _drain(q) if e.get("state") == "heard"]
+    assert heard == [
+        {"type": "state", "state": "heard", "detail": "Quelle heure est-il ?", "device": "phone"}
+    ]
+
+
+def test_voice_loop_ignores_its_name_while_another_device_holds() -> None:
+    class Wake:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def heard(self, block: bytes) -> bool:
+            self.calls += 1
+            return False
+
+    class Mic:
+        muted = threading.Event()
+
+        def blocks(self, stop: threading.Event) -> Iterator[bytes]:
+            yield from [b"\x00" * 3200] * 3
+
+        def flush(self) -> None:
+            pass
+
+    wake = Wake()
+    loop = VoiceLoop(Mic(), wake, None, None, lambda t: "", lambda s, d: None, hold=lambda: True)  # type: ignore[arg-type]
+    loop.run()
+    assert wake.calls == 0 and loop.state == "off"
 
 
 def test_remote_voice_waits_for_the_end_of_a_sentence(

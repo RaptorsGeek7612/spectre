@@ -56,6 +56,9 @@ from spectre.config import DEFAULT_SPECS, model_label
 
 Event = dict[str, Any]
 LEVEL_EVERY_S = 0.05
+DEVICE_STATES = ("listening", "thinking", "speaking", "sleeping", "away")
+PHONE_HOLD_S = 30.0  # a phone that stopped telling its state (closed, offline) frees the PC
+SPEAK_THERE_S = 600.0  # Spectre speaks on the phone for 10 min after the user last used it
 ATTACHMENTS = "pieces-jointes"  # in the brain's workspace: files joined to messages
 MAX_ATTACHMENTS = 10
 INLINE_TEXT = 20_000  # bytes: a short text file also goes into the message
@@ -114,6 +117,14 @@ class AssistantService:
         self._config_mtime = self._config_stamp()
         self.voice: Any = None
         self.voice_state = "off"
+        # one conversation, several devices: what the phone is doing, the device the user last
+        # spoke into (Spectre answers and announces there, once), phone turns in progress
+        self._phone: tuple[str, float] = ("away", -1e9)
+        self._last_device: tuple[str, float] = ("pc", -1e9)
+        self._phone_turns = 0
+        self.phone_wake: Callable[[], Any] | None = None  # makes the phone's wake word spotter
+        self._phone_wake_rec: Any = None
+        self._wake_lock = threading.Lock()
         self.faces = FaceBook(self.db)
         self.presence = Presence(self.db, self._on_arrival, time.monotonic)
         self.liveness = Liveness(time.monotonic)
@@ -170,7 +181,10 @@ class AssistantService:
         q: queue.Queue[Event] = queue.Queue(maxsize=500)
         with self._sub_lock:
             self._subscribers.append(q)
-        q.put({"type": "state", "state": self.voice_state, "detail": ""})
+        if self.phone_holds():
+            q.put({"type": "state", "state": self._phone[0], "detail": "", "device": "phone"})
+        else:
+            q.put({"type": "state", "state": self.voice_state, "detail": "", "device": "pc"})
         return q
 
     def unsubscribe(self, q: queue.Queue[Event]) -> None:
@@ -189,13 +203,79 @@ class AssistantService:
         """Nobody is talking with Spectre right now (a good moment to come over)."""
         return self.voice_state in ("sleeping", "off") and not self._busy.locked()
 
+    # ---- one conversation, several devices -------------------------------------------------
+
+    def device_state(self, device: str, state: str) -> Event:
+        """The phone tells where its own voice is (listening, thinking, speaking, sleeping, or
+        away when its page is hidden): every page shows it, and the PC stays quiet meanwhile."""
+        if device != "phone" or state not in DEVICE_STATES:
+            raise ValueError(f"état d'appareil inconnu : {device}/{state}")
+        now = time.monotonic()
+        self._phone = (state, now)
+        if state != "away":
+            self._last_device = ("phone", now)
+        elif self._last_device[0] == "phone":  # the phone went away: the PC speaks again
+            self._last_device = ("pc", now)
+        if state in ("sleeping", "away"):  # the phone is done: every page shows the PC again
+            self.publish({"type": "state", "state": self.voice_state, "detail": "", "device": "pc"})
+        else:
+            self.publish({"type": "state", "state": state, "detail": "", "device": "phone"})
+        return {"ok": True}
+
+    def remote_wake(self, pcm: bytes, *, start: bool = False, end: bool = False) -> Event:
+        """Did the user say « Spectre » into the phone? The phone sends what it hears while
+        someone speaks (16 kHz mono int16, in short pieces; `start` opens a stretch of speech,
+        `end` closes it). Heard while the PC is already in a conversation: not taken."""
+        if self.voice is None or self.phone_wake is None:
+            raise ValueError("la voix n'est pas active (lance Spectre avec la voix)")
+        with self._wake_lock:
+            if self._phone_wake_rec is None:
+                self._phone_wake_rec = self.phone_wake()
+            spotter = self._phone_wake_rec
+            if start:
+                spotter.reset()
+            heard = bool(spotter.heard(pcm[: len(pcm) // 2 * 2], end=end))
+        if not heard:
+            return {"wake": False}
+        if self.voice_state not in ("sleeping", "off"):
+            return {"wake": False, "busy": True}  # the PC heard it first: it answers
+        self.device_state("phone", "listening")  # at once: the PC stops listening for its name
+        return {"wake": True}
+
+    def phone_holds(self) -> bool:
+        """The user is talking with Spectre through the phone right now: the PC does not wake
+        (its microphone would hear « Spectre » in the phone's loudspeaker) nor announce."""
+        if self._phone_turns > 0:
+            return True
+        state, at = self._phone
+        return state in ("listening", "thinking", "speaking") and (
+            time.monotonic() - at < PHONE_HOLD_S
+        )
+
+    def speaks_on(self) -> str:
+        """Where Spectre's spontaneous words (initiatives, greetings) are said, on one device
+        only: the phone when the user spoke into it lately and its page is open, else the PC."""
+        device, at = self._last_device
+        if device == "phone" and time.monotonic() - at < SPEAK_THERE_S:
+            return "phone"
+        return "pc"
+
     def _on_initiative(self, kind: str, title: str, body: str) -> None:
-        speak = self.voice is not None and self.config.speak_initiatives  # the phone says it too
+        enabled = self.voice is not None and self.config.speak_initiatives
+        where = self.speaks_on()  # said once, on the device the user is using
         self.publish(
-            {"type": "initiative", "kind": kind, "title": title, "body": body, "speak": speak}
+            {
+                "type": "initiative",
+                "kind": kind,
+                "title": title,
+                "body": body,
+                "speak": enabled and where == "phone",
+                "on": where,
+            }
         )
         if kind == "lien":  # Spectre comes to talk: its words join the conversation
             self.publish({"type": "message", "role": "spectre", "text": body, "channel": "voice"})
+        speak = enabled and where == "pc" and not self.phone_holds()
         if speak and self.voice_state == "sleeping":
             threading.Thread(target=self._announce, args=(kind, title, body), daemon=True).start()
         self._to_telegram(f"{title}\n{body}" if kind != "lien" else body)
@@ -331,16 +411,19 @@ class AssistantService:
             return
         self._level_at = now
         level = min(1.0, (max(rms, 0.0) / 6000) ** 0.6)
-        self.publish({"type": "level", "v": round(level, 3)})
+        # the PC's microphone or voice: a page shows it only while the PC is in a conversation
+        self.publish({"type": "level", "v": round(level, 3), "device": "pc"})
 
     def set_voice_state(self, state: str, detail: str = "") -> None:
         if state != "heard":
             self.voice_state = state
+        if state == "listening":
+            self._last_device = ("pc", time.monotonic())
         if state == "listening" and self.camera is not None:
             wake = getattr(self.camera, "wake", None)
             if wake is not None:  # someone speaks: the camera looks at full pace at once
                 wake()
-        self.publish({"type": "state", "state": state, "detail": detail})
+        self.publish({"type": "state", "state": state, "detail": detail, "device": "pc"})
 
     def attach(self, name: str, data: bytes) -> Event:
         """Keep a file the user joins to a message (paperclip, paste, drop) in the workspace,
@@ -1105,6 +1188,7 @@ class AssistantService:
             "name": self.config.name,
             "voice": self.voice_state,
             "voice_available": self.voice is not None,
+            "phone_wake": self.voice is not None and self.phone_wake is not None,
             "brain_model": self.config.brain_model,
             "brain_label": model_label(self.config.brain_model),
             "pending_approvals": len(self.approvals()),
@@ -1298,18 +1382,25 @@ class AssistantService:
         `final` answers `before` as is when nothing more was said (as the PC voice does)."""
         if self.voice is None:
             raise ValueError("la voix n'est pas active (lance Spectre avec la voix)")
-        heard = ""
-        if len(pcm) >= SAMPLE_RATE:  # under half a second: nothing was said
-            heard = str(self.voice.stt.transcribe(pcm)).strip()
-        text = f"{before.strip()} {heard}".strip()
-        if not text:
-            return {"heard": "", "reply": "", "audio": ""}
-        if heard and not final and looks_unfinished(text):
-            return {"heard": text, "reply": "", "audio": "", "more": True}
-        # as on the PC: the brain hears the words with who the phone's camera sees right now
-        note = speaker_note(self.presence.snapshot("phone", fresh_s=6.0), phone=True)
-        reply = self.chat(text, channel="voice", note=note)
-        return {"heard": text, "reply": reply, "audio": self.render_speech(reply)}
+        self._phone_turns += 1  # the PC keeps quiet until the phone has answered
+        self._last_device = ("phone", time.monotonic())
+        try:
+            heard = ""
+            if len(pcm) >= SAMPLE_RATE:  # under half a second: nothing was said
+                heard = str(self.voice.stt.transcribe(pcm)).strip()
+            text = f"{before.strip()} {heard}".strip()
+            if not text:
+                return {"heard": "", "reply": "", "audio": ""}
+            if heard and not final and looks_unfinished(text):
+                return {"heard": text, "reply": "", "audio": "", "more": True}
+            # every page shows what was heard, as when the PC hears it
+            self.publish({"type": "state", "state": "heard", "detail": text, "device": "phone"})
+            # as on the PC: the brain hears the words with who the phone's camera sees right now
+            note = speaker_note(self.presence.snapshot("phone", fresh_s=6.0), phone=True)
+            reply = self.chat(text, channel="voice", note=note)
+            return {"heard": text, "reply": reply, "audio": self.render_speech(reply)}
+        finally:
+            self._phone_turns -= 1
 
     # ---- the team and its video call -------------------------------------------------------
 
@@ -1497,9 +1588,18 @@ class AssistantService:
         now = datetime.now().astimezone()
         text = greetings.compose(self.cli, self.db, now, name, situation)
         self.db.set_kv("befriend_opener", f"{time.time()}|{text}")  # the brain will know it
-        speak = self.voice is not None and self.voice_state == "sleeping"
-        self.publish({"type": "arrival", "name": name, "text": text, "speak": speak})
-        if speak:
+        where = self.speaks_on()  # said once, on the device the user is using
+        free = self.voice is not None and self.voice_state == "sleeping" and not self.phone_holds()
+        self.publish(
+            {
+                "type": "arrival",
+                "name": name,
+                "text": text,
+                "speak": self.voice is not None and where == "phone",
+                "on": where,
+            }
+        )
+        if free and where == "pc":
             self.voice.say(text)
             self.voice.trigger()
         return text
