@@ -27,7 +27,7 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__version__ = "0.30.1"
+__version__ = "0.31.0"
 
 __all__ = [
     "AgentRefusalError",

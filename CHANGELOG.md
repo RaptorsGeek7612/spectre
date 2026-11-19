@@ -7,6 +7,25 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-11-19
+
+### Added
+- PC et téléphone tiennent une seule conversation, en temps réel : le téléphone dit à Spectre
+  où en est sa voix (j'écoute, je réfléchis, je parle) et toutes les pages l'affichent aussitôt
+  (« Sur le téléphone », 11 à 52 ms mesurés), puis reviennent à l'état du PC.
+- « Spectre » réveille aussi le téléphone : sa page écoute tant qu'elle est ouverte (après un
+  premier toucher, écran allumé) et n'envoie que la parole, jamais le silence ; Spectre y
+  repère son nom avec le même modèle que pour le PC, puis un bip et il écoute la demande.
+  Des mots proches (spectacle, spectateurs, inspecteur…) ne le réveillent pas.
+
+### Fixed
+- Pendant une conversation au téléphone, le PC ne se réveille plus en entendant « Spectre »
+  dans la voix qui sort du téléphone.
+- Annonces et accueils dits une seule fois, sur l'appareil utilisé (le téléphone pendant
+  10 minutes après qu'on lui a parlé, sa page ouverte ; sinon le PC), au lieu des deux.
+- L'orbe du téléphone ne bouge plus avec le micro du PC (bruit de la pièce) au repos ni
+  pendant son propre tour.
+
 ## [0.30.1] - 2026-11-13
 
 ### Security
