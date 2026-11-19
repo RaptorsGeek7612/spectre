@@ -25,6 +25,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
   10 minutes après qu'on lui a parlé, sa page ouverte ; sinon le PC), au lieu des deux.
 - L'orbe du téléphone ne bouge plus avec le micro du PC (bruit de la pièce) au repos ni
   pendant son propre tour.
+- Voix de Spectre trop basse sur le téléphone : le micro y restait ouvert pendant qu'il
+  parlait (réveil vocal, coupure à la voix), ce qui fait passer le téléphone en mode « appel »,
+  bien moins fort. Le micro est maintenant fermé quand il parle ; la coupure à la voix devient
+  une option (Réglages › Sur cet appareil), le toucher du micro coupe toujours. Voix renforcée
+  de 4,4 dB (compresseur et limiteur, sans saturation).
 
 ### Security
 - opentelemetry-api 1.45.2 (alerte Dependabot n° 20, gravité moyenne : déni de service par

@@ -1515,19 +1515,44 @@ async function watchBargeIn() {
   node.connect(rec.ctx.destination);  // outputs silence; needed for the node to run
   return () => { node.disconnect(); source.disconnect(); stream.getTracks().forEach((t) => t.stop()); };
 }
+// Cutting Spectre off by speaking over it keeps the microphone open while it speaks: phones
+// then switch to "call" audio, much quieter. Off by default: a tap on the mic cuts it off.
+const BARGE_KEY = "spectre-phone-barge";
+function voiceBarge() { try { return localStorage.getItem(BARGE_KEY) === "1"; } catch { return false; } }
+if (REMOTE) {
+  $("#phone-panel").hidden = false;
+  $("#phone-barge").checked = voiceBarge();
+  $("#phone-barge").addEventListener("change", (e) => { try { localStorage.setItem(BARGE_KEY, e.target.checked ? "1" : "0"); } catch { /* private window */ } });
+}
+// Louder without crackling: the quiet parts raised, the peaks held under full scale.
+function loudChain(ctx) {
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -24; comp.knee.value = 12; comp.ratio.value = 4;
+  comp.attack.value = 0.003; comp.release.value = 0.15;
+  const gain = ctx.createGain();
+  gain.gain.value = 3.2;
+  const limit = ctx.createDynamicsCompressor();
+  limit.threshold.value = -4; limit.knee.value = 0; limit.ratio.value = 20;
+  limit.attack.value = 0.001; limit.release.value = 0.05;
+  const trim = ctx.createGain();  // what the limiter lets through its first millisecond
+  trim.gain.value = 0.9;
+  comp.connect(gain); gain.connect(limit); limit.connect(trim); trim.connect(ctx.destination);
+  return comp;
+}
 // Plays Spectre's voice; resolves true when the user cut it off (to listen to them at once).
 async function playWav(b64) {
+  wakeStop();  // no microphone open while Spectre speaks: the phone keeps its media volume
   const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
   const buffer = await rec.ctx.decodeAudioData(bytes.buffer);
   const src = rec.ctx.createBufferSource();
   src.buffer = buffer;
-  src.connect(rec.ctx.destination);
+  src.connect(loudChain(rec.ctx));
   localState("speaking");
   rec.playing = src;
   rec.cutOff = false;
   // the voice starts at once; the microphone watch opens beside it (never holds it back)
   const ended = new Promise((resolve) => { src.onended = resolve; src.start(); });
-  const watching = watchBargeIn().catch(() => () => {});
+  const watching = voiceBarge() ? watchBargeIn().catch(() => () => {}) : Promise.resolve(() => {});
   await ended;
   (await watching)();
   rec.playing = null;
