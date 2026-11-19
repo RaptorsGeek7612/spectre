@@ -49,6 +49,10 @@ def handle(
             handler._json(
                 200, service.device_state(str(data.get("device", "")), str(data.get("state", "")))
             )
+        case "POST", ["wake"]:
+            start = query.get("start", [""])[0] == "1"
+            end = query.get("end", [""])[0] == "1"
+            handler._json(200, service.remote_wake(handler._raw_body(), start=start, end=end))
         case "POST", ["turn"]:
             handler._json(200, service.remote_turn(handler._raw_body()))
         case "POST", ["speak"]:

@@ -191,6 +191,63 @@ class VoskBarge:
         return ""
 
 
+# Words that sound like the wake word: in the grammar, they take those sounds instead of it.
+# Measured 2026-11-19 with Piper and the small French Vosk model: with « spectre » alone,
+# « spectacle », « spectateurs », « spectaculaire », « inspecteur » all woke it (confidence
+# 1.0, useless); with these words, none did and « Spectre » still came at 1.0.
+DECOYS = {
+    "spectre": (
+        "spectacle",
+        "spectacles",
+        "spectateur",
+        "spectateurs",
+        "spectatrice",
+        "spectaculaire",
+        "inspecteur",
+        "inspecter",
+        "respecte",
+        "respecter",
+        "aspect",
+        "suspect",
+        "prospecteur",
+    )
+}
+
+
+class ChunkWake:
+    """The wake word in audio sent by another device (the phone): pieces of speech with gaps
+    between them, so each piece ends with `end`. Final results only, with a confidence, and
+    look-alike words in the grammar: a TV saying « spectacle » must not wake Spectre."""
+
+    def __init__(self, model: Any, word: str, min_conf: float = 0.5) -> None:
+        self.model = model  # shared with the PC's wake word: one model in memory
+        self.word = word.lower()
+        self.min_conf = min_conf
+        self.reset()
+
+    def reset(self) -> None:
+        import vosk
+
+        grammar = [self.word, *DECOYS.get(self.word, ()), "[unk]"]
+        self.rec = vosk.KaldiRecognizer(self.model, SAMPLE_RATE, json.dumps(grammar))
+        self.rec.SetWords(True)
+
+    def heard(self, pcm: bytes, end: bool = False) -> bool:
+        results = []
+        if pcm and self.rec.AcceptWaveform(pcm):
+            results.append(self.rec.Result())
+        if end:
+            results.append(self.rec.FinalResult())
+        found = any(
+            item.get("word") == self.word and float(item.get("conf", 0)) >= self.min_conf
+            for result in results
+            for item in json.loads(result).get("result", [])
+        )
+        if found or end:
+            self.reset()
+        return found
+
+
 def _shim_av() -> None:
     """Some Windows setups block PyAV's DLLs; faster-whisper only needs it to decode files,
     and Spectre passes raw arrays."""

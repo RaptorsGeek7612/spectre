@@ -122,6 +122,9 @@ class AssistantService:
         self._phone: tuple[str, float] = ("away", -1e9)
         self._last_device: tuple[str, float] = ("pc", -1e9)
         self._phone_turns = 0
+        self.phone_wake: Callable[[], Any] | None = None  # makes the phone's wake word spotter
+        self._phone_wake_rec: Any = None
+        self._wake_lock = threading.Lock()
         self.faces = FaceBook(self.db)
         self.presence = Presence(self.db, self._on_arrival, time.monotonic)
         self.liveness = Liveness(time.monotonic)
@@ -218,6 +221,26 @@ class AssistantService:
         else:
             self.publish({"type": "state", "state": state, "detail": "", "device": "phone"})
         return {"ok": True}
+
+    def remote_wake(self, pcm: bytes, *, start: bool = False, end: bool = False) -> Event:
+        """Did the user say « Spectre » into the phone? The phone sends what it hears while
+        someone speaks (16 kHz mono int16, in short pieces; `start` opens a stretch of speech,
+        `end` closes it). Heard while the PC is already in a conversation: not taken."""
+        if self.voice is None or self.phone_wake is None:
+            raise ValueError("la voix n'est pas active (lance Spectre avec la voix)")
+        with self._wake_lock:
+            if self._phone_wake_rec is None:
+                self._phone_wake_rec = self.phone_wake()
+            spotter = self._phone_wake_rec
+            if start:
+                spotter.reset()
+            heard = bool(spotter.heard(pcm[: len(pcm) // 2 * 2], end=end))
+        if not heard:
+            return {"wake": False}
+        if self.voice_state not in ("sleeping", "off"):
+            return {"wake": False, "busy": True}  # the PC heard it first: it answers
+        self.device_state("phone", "listening")  # at once: the PC stops listening for its name
+        return {"wake": True}
 
     def phone_holds(self) -> bool:
         """The user is talking with Spectre through the phone right now: the PC does not wake
@@ -1165,6 +1188,7 @@ class AssistantService:
             "name": self.config.name,
             "voice": self.voice_state,
             "voice_available": self.voice is not None,
+            "phone_wake": self.voice is not None and self.phone_wake is not None,
             "brain_model": self.config.brain_model,
             "brain_label": model_label(self.config.brain_model),
             "pending_approvals": len(self.approvals()),

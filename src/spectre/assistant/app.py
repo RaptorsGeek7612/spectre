@@ -87,6 +87,8 @@ def start_voice(service: AssistantService) -> str:  # pragma: no cover - needs a
         hold=service.phone_holds,
     )
     service.attach_voice(loop)
+    # « Spectre » said into the phone, recognised here with the same model
+    service.phone_wake = lambda: engines.ChunkWake(wake.model, wake.word)
 
     def run() -> None:
         with mic:

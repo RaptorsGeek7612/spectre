@@ -44,6 +44,8 @@ const STATES = {
   speaking: ["Je parle", ""],
 };
 let voiceAvailable = false;
+// The phone listening for « Spectre » (see wakeStart): its microphone, while the page is open.
+const wake = { ok: false, stream: null, node: null, source: null, sending: false, queue: [], pre: [], last: 0, startedAt: 0, inflight: false, denied: false };
 // Opened from another device (the phone, through Tailscale): the microphone button records on
 // this device instead of making the PC listen, and Spectre's answer is played here.
 const REMOTE = !["127.0.0.1", "localhost", "::1", "[::1]"].includes(location.hostname);
@@ -90,7 +92,7 @@ function setState(state, detail = "") {
   const [label, base] = STATES[state] || [state, ""];
   const hint = state === "sleeping" ? SLEEP_HINT : base;
   $("#presence-state").textContent = label;
-  $("#orb-state").textContent = state === "sleeping" && voiceAvailable ? (REMOTE ? "En veille — touche le micro" : "En veille — dis « Spectre »") : label;
+  $("#orb-state").textContent = state === "sleeping" && voiceAvailable ? (REMOTE && !wake.stream ? "En veille — touche le micro" : "En veille — dis « Spectre »") : label;
   if (state === "listening") caption("#heard", "", 0);
   if (state !== "listening" && state !== "speaking") setLevel(0);
   $("#presence-detail").textContent = state === "speaking" ? detail : (detail || (state === "sleeping" && !voiceAvailable ? STATES.off[1] : hint));
@@ -1303,6 +1305,8 @@ $("#settings-form").addEventListener("submit", async (e) => {
 async function loadStatus() {
   const s = await api("GET", "status");
   voiceAvailable = s.voice_available;
+  wake.ok = !!s.phone_wake;
+  wakeStart();
   $("#brain-model").textContent = `cerveau : ${s.brain_label || s.brain_model}`;
   $("#talk-btn").hidden = !voiceAvailable;
   $("#cam-btn").hidden = !(REMOTE && s.camera);  // the PC's own camera already watches the PC
@@ -1559,7 +1563,98 @@ async function speakHere(text, listen = false) {
   if ((listen || cut) && document.visibilityState === "visible") deviceTalk();
 }
 // On a touch screen, the browser allows sound when the finger lifts, not when it presses.
-if (REMOTE) for (const type of ["pointerup", "keydown"]) document.addEventListener(type, () => unlockAudio().catch(() => {}), true);
+if (REMOTE) for (const type of ["pointerup", "keydown"]) document.addEventListener(type, () => unlockAudio().then(wakeStart).catch(() => {}), true);
+
+/* ---- « Spectre » said to the phone: while the page is open, the phone listens; when someone
+   speaks, it sends what it hears to Spectre, which spots its name (Vosk, as on the PC). Only
+   speech is sent (with 0.4 s before it), never the silence: little data, nothing stored. ---- */
+const WAKE_LEVEL = 0.015;    // louder than a quiet room (echo cancellation and noise suppression on)
+const WAKE_HOLD_MS = 900;    // speech ends after this much quiet (Spectre needs the pause to decide)
+const WAKE_PIECE_MS = 300;   // what is heard is sent in pieces this long
+const WAKE_MAX_MS = 6000;    // a stretch of speech longer than this is closed and a new one begins
+function wakePaused() {
+  // its own turn, a PC conversation, a hidden page: the phone does not listen for its name
+  return localBusy() || document.visibilityState !== "visible" || (shared.device === "pc" && !["sleeping", "off"].includes(shared.state));
+}
+async function wakeStart() {
+  if (!REMOTE || !wake.ok || wake.stream || wake.denied || !voiceAvailable) return;
+  if (!rec.ctx || rec.ctx.state !== "running" || wakePaused()) return;  // needs a first tap, a free phone
+  if (wake.opening) return;
+  wake.opening = true;
+  try {
+    wake.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch { wake.denied = true; return; } finally { wake.opening = false; }
+  if (wakePaused()) { wakeStop(); return; }
+  wake.source = rec.ctx.createMediaStreamSource(wake.stream);
+  wake.node = rec.ctx.createScriptProcessor(2048, 1, 1);
+  wake.sending = false; wake.queue = []; wake.pre = [];
+  wake.node.onaudioprocess = (e) => {
+    if (!wake.stream) return;
+    if (wakePaused()) { wakeStop(); return; }
+    const data = new Float32Array(e.inputBuffer.getChannelData(0));
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    const loud = Math.sqrt(sum / data.length) > WAKE_LEVEL;
+    const now = performance.now();
+    const rate = rec.ctx.sampleRate;
+    if (!wake.sending) {
+      wake.pre.push(data);
+      while (wake.pre.length * data.length > rate * 0.4) wake.pre.shift();
+      if (!loud) return;
+      wake.sending = true; wake.startedAt = now; wake.last = now;
+      wake.queue = [...wake.pre]; wake.pre = [];
+      wakeSend(true, false);
+      return;
+    }
+    wake.queue.push(data);
+    if (loud) wake.last = now;
+    const over = now - wake.last > WAKE_HOLD_MS || now - wake.startedAt > WAKE_MAX_MS;
+    if (over) { wake.sending = false; wakeSend(false, true); return; }
+    if (wake.queue.reduce((n, c) => n + c.length, 0) >= rate * WAKE_PIECE_MS / 1000) wakeSend(false, false);
+  };
+  wake.source.connect(wake.node);
+  wake.node.connect(rec.ctx.destination);  // outputs silence; needed for the node to run
+  if (document.body.dataset.voice === "sleeping") setState("sleeping");  // « dis « Spectre » »
+}
+function wakeStop() {
+  if (!wake.stream) return;
+  wake.node?.disconnect(); wake.source?.disconnect();
+  wake.stream.getTracks().forEach((t) => t.stop());
+  wake.stream = wake.node = wake.source = null;
+  wake.sending = false; wake.queue = []; wake.pre = [];
+}
+let wakeChain = Promise.resolve();  // pieces go one after the other, in order
+function wakeSend(start, end) {
+  const pcm = toPcm16(wake.queue, rec.ctx.sampleRate);
+  wake.queue = [];
+  const q = new URLSearchParams();
+  if (start) q.set("start", "1");
+  if (end) q.set("end", "1");
+  wakeChain = wakeChain.then(() => fetch(`/api/assistant/wake?${q}`, { method: "POST", credentials: "same-origin", headers: { "X-Spectre": "1", "Content-Type": "application/octet-stream" }, body: pcm.buffer })
+    .then((r) => (r.ok ? r.json() : (r.status === 400 ? (wake.ok = false, wakeStop(), {}) : {})))
+    .then((d) => { if (d.wake) onWake(); })
+    .catch(() => {}));
+}
+function onWake() {
+  wakeStop();
+  if (localBusy()) return;
+  beep();
+  deviceTalk();
+}
+// A short rising tone, as the PC's chime: Spectre is listening.
+function beep() {
+  try {
+    const o = rec.ctx.createOscillator(), g = rec.ctx.createGain(), t = rec.ctx.currentTime;
+    o.frequency.setValueAtTime(660, t); o.frequency.linearRampToValueAtTime(990, t + 0.12);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    o.connect(g); g.connect(rec.ctx.destination); o.start(t); o.stop(t + 0.2);
+  } catch { /* no sound: the orb still shows it */ }
+}
+// Listening again when the phone is free (its turn over, the PC's conversation over, page shown).
+if (REMOTE) {
+  setInterval(() => { if (!wake.stream && !wakePaused()) wakeStart(); }, 1000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState !== "visible") wakeStop(); });
+}
 
 /* ---- camera of this device (phone): a picture every 0.7 s (one at a time: a slow network
    only slows the pace), analysed by Spectre like its own ---- */

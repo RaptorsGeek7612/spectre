@@ -722,6 +722,46 @@ def test_phone_and_pc_share_one_conversation(api: Client, service: AssistantServ
     assert status == 400
 
 
+def test_phone_wake_word(api: Client, service: AssistantService) -> None:
+    """« Spectre » said into the phone: spotted here, the phone gets the floor at once; the
+    PC already in a conversation keeps it."""
+
+    class Spotter:
+        def __init__(self) -> None:
+            self.resets = 0
+            self.pieces: list[tuple[int, bool]] = []
+
+        def reset(self) -> None:
+            self.resets += 1
+
+        def heard(self, pcm: bytes, end: bool = False) -> bool:
+            self.pieces.append((len(pcm), end))
+            return end
+
+    spotter = Spotter()
+    with pytest.raises(ValueError, match="voix"):
+        service.remote_wake(b"")
+    service.attach_voice(FakeVoice())
+    service.set_voice_state("sleeping")
+    service.phone_wake = lambda: spotter
+    assert service.status()["phone_wake"] is True
+    assert service.remote_wake(b"\x00" * 5, start=True) == {"wake": False}
+    assert spotter.resets == 1 and spotter.pieces == [(4, False)]  # whole samples only
+    q = service.subscribe()
+    assert service.remote_wake(b"", end=True) == {"wake": True}
+    assert service.phone_holds() and service.speaks_on() == "phone"
+    assert _drain(q)[-1]["state"] == "listening"
+    service.device_state("phone", "sleeping")
+    service.set_voice_state("listening")  # the PC heard its name first
+    assert service.remote_wake(b"", end=True) == {"wake": False, "busy": True}
+    service.set_voice_state("sleeping")
+    headers = {"Content-Type": "application/octet-stream"}
+    status, _, body = api.request(
+        "POST", "/api/assistant/wake?start=1&end=1", raw=b"\x00\x00", headers=headers
+    )
+    assert status == 200 and json.loads(body) == {"wake": True}
+
+
 def test_phone_turn_holds_the_pc(service: AssistantService) -> None:
     """While the phone's words are answered, the PC holds back, and every page sees them."""
     held: list[bool] = []
