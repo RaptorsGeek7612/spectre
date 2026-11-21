@@ -445,7 +445,7 @@ wheels = [
 
 [[package]]
 name = "ccxt"
-version = "4.5.91"
+version = "4.5.93"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohappyeyeballs" },
@@ -472,9 +472,9 @@ dependencies = [
     { name = "yarl" },
     { name = "zlib-ng" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/fd/15244562d712e41a225c90b32a63586e94ac38ca739ad0773b964c8095f0/ccxt-4.5.91.tar.gz", hash = "sha256:643209f01d9dcb4a720b2ec321b73a89ca4b0530e3c3ee70aed6cacb26f13a20", size = 6445049, upload-time = "2026-10-29T15:24:22.858Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/b8/7ef51debbd745320f8f6727cc913eae5d8e6fc4861fce1dd35374f719fc3/ccxt-4.5.93.tar.gz", hash = "sha256:da110503c8fcc3e789db342eec1fe82cbe7da7f4ed52e50d9bfd521da8f17d8d", size = 6469452, upload-time = "2026-11-17T09:55:44.012Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/66/88dcd02ecb7321b02a21e38ba92254fde197c0aa14f44029b7503924c7ee/ccxt-4.5.91-py3-none-any.whl", hash = "sha256:883d36142f3921a7383b413851915a2ea6e55ff3dce7e1a8af3856c7a5fa6b72", size = 6825458, upload-time = "2026-10-29T15:24:19.425Z" },
+    { url = "https://files.pythonhosted.org/packages/df/ca/803d2a424d29b4229ceb78b7eb6ab60f20dd4c23e2d83245b0e1021423e7/ccxt-4.5.93-py3-none-any.whl", hash = "sha256:214d1a0379b5539fa29936e03cbe12d78c55a58df8f225d59f9fc3ad72805b53", size = 6847453, upload-time = "2026-11-17T09:55:41.341Z" },
 ]
 
 [[package]]
@@ -3453,7 +3453,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "astropy", marker = "extra == 'science'", specifier = ">=6.0" },
-    { name = "ccxt", marker = "extra == 'markets'", specifier = ">=4.0" },
+    { name = "ccxt", marker = "extra == 'markets'", specifier = ">=4.5.93" },
     { name = "cryptography", specifier = ">=43" },
     { name = "faster-whisper", marker = "extra == 'voice'", specifier = ">=1.2" },
     { name = "holidays", marker = "extra == 'administration'", specifier = ">=0.107" },
