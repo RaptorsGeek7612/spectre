@@ -77,7 +77,9 @@ class VibeCLI:
             "[[mcp_servers]]",
             f"name = {toml(SERVER_NAME)}",
             'transport = "stdio"',
-            f"command = {toml(sys.executable)}",
+            # forward slashes: Vibe splits the command like a POSIX shell and drops backslashes
+            # (C:\Users\... became C:Users..., so Mistral had no Spectre tool at all; 2026-11-21)
+            f"command = {toml(Path(sys.executable).as_posix())}",
             'args = ["-m", "spectre.assistant.mcp_server"]',
             f"env = {{{mcp_env(self.root)}}}",
         ]
