@@ -7,6 +7,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.31.2] - 2026-11-21
+
 ### Fixed
 - Quand Spectre répond par Mistral (Claude indisponible, ou Monty), il retrouve tous ses outils,
   PowerShell compris : Vibe découpe la commande du serveur d'outils comme un shell POSIX et
