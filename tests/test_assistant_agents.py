@@ -126,7 +126,11 @@ def test_vibe_home_and_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     config = (cli.home / "config.toml").read_text(encoding="utf-8")
     assert 'system_prompt_id = "spectre"' in config
     assert 'active_model = "mistral-medium-3.5"' in config
-    assert f"command = {json.dumps(sys.executable)}" in config and 'name = "spectre"' in config
+    # forward slashes: Vibe splits the command like a POSIX shell (backslashes would vanish)
+    assert f"command = {json.dumps(Path(sys.executable).as_posix())}" in config
+    assert (
+        'name = "spectre"' in config and "\\\\" not in config.split("command = ")[1].split("\n")[0]
+    )
     default = VibeCLI(AssistantConfig(), tmp_path / "b")
     default.write_home("s")
     assert "active_model" not in (default.home / "config.toml").read_text(encoding="utf-8")
