@@ -7,6 +7,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+### Fixed
+- Spectre ne se coupe plus lui-même au milieu de ses réponses vocales sur le PC : ses propres
+  mots proches de son nom (« respecter », « aspect », « spectacle »…) passaient pour
+  « Spectre » dit par-dessus (4 réponses sur 6 coupées, mesuré avec Piper ; 0 sur 14 après).
+  Les mots leurres du réveil du téléphone servent aussi à la coupure du PC.
+- Téléphone : l'orbe bouge au rythme de la voix de Spectre (même échelle que sur le PC),
+  l'écran reste allumé pendant qu'il parle (une mise en veille arrêtait la voix) et la voix
+  démarre 150 ms plus tard, le temps que le téléphone quitte le mode « appel » (le début des
+  phrases était avalé).
+
 ## [0.31.0] - 2026-11-19
 
 ### Added
