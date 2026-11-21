@@ -7,6 +7,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-11-21
+
 ### Fixed
 - Spectre ne se coupe plus lui-même au milieu de ses réponses vocales sur le PC : ses propres
   mots proches de son nom (« respecter », « aspect », « spectacle »…) passaient pour
