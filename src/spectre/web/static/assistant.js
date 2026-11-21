@@ -1546,17 +1546,40 @@ async function playWav(b64) {
   const buffer = await rec.ctx.decodeAudioData(bytes.buffer);
   const src = rec.ctx.createBufferSource();
   src.buffer = buffer;
-  src.connect(loudChain(rec.ctx));
+  // the orb follows the voice being played, on the PC's scale (int16 RMS / 6000, ^0.6)
+  const meter = rec.ctx.createAnalyser();
+  meter.fftSize = 1024;
+  src.connect(meter);
+  meter.connect(loudChain(rec.ctx));
   localState("speaking");
   rec.playing = src;
   rec.cutOff = false;
-  // the voice starts at once; the microphone watch opens beside it (never holds it back)
-  const ended = new Promise((resolve) => { src.onended = resolve; src.start(); });
+  const screen = await keepScreenOn();  // a screen going dark would stop the voice mid-way
+  const samples = new Float32Array(meter.fftSize);
+  let frame = 0;
+  const follow = () => {
+    meter.getFloatTimeDomainData(samples);
+    let sum = 0;
+    for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+    setLevel(Math.min(1, ((Math.sqrt(sum / samples.length) * 32768) / 6000) ** 0.6));
+    frame = requestAnimationFrame(follow);
+  };
+  // the voice starts after 150 ms: the phone leaves its "call" audio once the microphone has
+  // closed, and that switch swallowed the first syllables; the microphone watch opens beside it
+  const ended = new Promise((resolve) => { src.onended = resolve; src.start(rec.ctx.currentTime + 0.15); });
+  frame = requestAnimationFrame(follow);
   const watching = voiceBarge() ? watchBargeIn().catch(() => () => {}) : Promise.resolve(() => {});
   await ended;
+  cancelAnimationFrame(frame);
+  setLevel(0);
+  screen?.release().catch(() => {});
   (await watching)();
   rec.playing = null;
   return rec.cutOff;
+}
+// Keeps the screen lit while Spectre speaks (Screen Wake Lock); null where it is not offered.
+async function keepScreenOn() {
+  try { return navigator.wakeLock && document.visibilityState === "visible" ? await navigator.wakeLock.request("screen") : null; } catch { return null; }
 }
 // Spectre's other words (typed replies, initiatives) are spoken here too. The browser only lets
 // a page play sound after a tap: the first tap unlocks it, and what came before waits for it.

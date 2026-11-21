@@ -168,7 +168,9 @@ class VoskBarge:
     """Spots a cut-off word (its name) while Spectre speaks. The microphone also hears the
     loudspeakers: measured on this PC (2026-11-09), 45 s of Spectre's own voice never gave
     "spectre" with a one-word grammar, while "stop"/"attends"/"pardon" came up at 0.97-1.0,
-    so only the name is used; a voice said over it was recognised at 0.56."""
+    so only the name is used; a voice said over it was recognised at 0.56. Its own words that
+    sound like it did cut it off (2026-11-21: « respecter », « aspect », « spectacle » in 4
+    answers out of 6, Piper): the look-alike words of `DECOYS` take those sounds instead."""
 
     def __init__(self, model: Any, words: tuple[str, ...], min_conf: float = 0.5) -> None:
         self.model = model  # shared with the wake word: one model in memory
@@ -179,7 +181,9 @@ class VoskBarge:
     def reset(self) -> None:
         import vosk
 
-        self.rec = vosk.KaldiRecognizer(self.model, SAMPLE_RATE, json.dumps([*self.words, "[unk]"]))
+        decoys = [d for w in self.words for d in DECOYS.get(w, ())]
+        grammar = json.dumps([*self.words, *decoys, "[unk]"])
+        self.rec = vosk.KaldiRecognizer(self.model, SAMPLE_RATE, grammar)
         self.rec.SetWords(True)  # per-word confidence, only in final results
 
     def heard(self, block: bytes) -> str:
@@ -210,6 +214,17 @@ DECOYS = {
         "aspect",
         "suspect",
         "prospecteur",
+        # 2026-11-21: Spectre's own voice cut itself off on these (PC cut-off word, Piper)
+        "respect",
+        "respecté",
+        "respectés",
+        "inspecté",
+        "inspection",
+        "prospection",
+        "perspective",
+        "spectral",
+        "délai",
+        "délais",
     )
 }
 
